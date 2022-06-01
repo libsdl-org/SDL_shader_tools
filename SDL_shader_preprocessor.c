@@ -206,6 +206,7 @@ SDL_bool SDL_SHADER_internal_include_open(SDL_SHADER_IncludeType inctype,
                                      const char *fname, const char *parent,
                                      const char **outdata, size_t *outbytes,
                                      const char **include_paths, size_t include_path_count,
+                                     char *failstr, size_t failstrlen,
                                      SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d)
 {
     #if defined(__WINDOWS__) || defined(__OS2__)
@@ -217,6 +218,7 @@ SDL_bool SDL_SHADER_internal_include_open(SDL_SHADER_IncludeType inctype,
     size_t i;
     for (i = 0; i < include_path_count; i++)
     {
+        SDL_RWops *io = NULL;
         char stackpath[128];
         const char *path = include_paths[i];
         const size_t len = SDL_strlen(path) + SDL_strlen(fname) + 2;
@@ -226,10 +228,21 @@ SDL_bool SDL_SHADER_internal_include_open(SDL_SHADER_IncludeType inctype,
         }
 
         SDL_snprintf(fullpath, len, "%s%c%s", path, dirsep, fname);
-        *outdata = (const char *) SDL_LoadFile(fullpath, outbytes);
 
+        io = SDL_RWFromFile(fullpath, "rb");
         if (fullpath != stackpath) {
             f(fullpath, d);
+        }
+
+        if (!io) {
+            continue;  /* !!! FIXME: continue if not found, stop if permission denied, etc */
+        }
+
+        *outdata = (const char *) SDL_LoadFile_RW(io, outbytes, 1);
+
+        if (!*outdata) {
+            SDL_snprintf(failstr, failstrlen, "Failed to read '%s': %s", fname, SDL_GetError());
+            return SDL_FALSE;
         }
 
         if (*outdata) {
@@ -237,6 +250,7 @@ SDL_bool SDL_SHADER_internal_include_open(SDL_SHADER_IncludeType inctype,
         }
     }
 
+    SDL_snprintf(failstr, failstrlen, "%s: no such file or directory", fname);
     return SDL_FALSE;
 }
 
@@ -768,10 +782,15 @@ static void handle_pp_include(Context *ctx)
     SDL_assert(ctx->open_callback != NULL);
     SDL_assert(ctx->close_callback != NULL);
 
+    ctx->failstr[0] = '\0';
     if (!ctx->open_callback(incltype, filename, state->source_base,
                             &newdata, &newbytes, include_paths, include_path_count,
+                            ctx->failstr, sizeof (ctx->failstr),
                             ctx->malloc, ctx->free, ctx->malloc_data)) {
-        fail(ctx, "Include callback failed");  /* !!! FIXME: better error */
+        ctx->isfail = SDL_TRUE;
+        if (ctx->failstr[0] == '\0') {
+            SDL_strlcpy(ctx->failstr, "Include callback failed", sizeof (ctx->failstr));  /* in case the callback doesn't set this */
+        }
         return;
     }
 

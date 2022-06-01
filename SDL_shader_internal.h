@@ -135,6 +135,7 @@ SDL_bool SDLCALL SDL_SHADER_internal_include_open(SDL_SHADER_IncludeType inctype
                                      const char *fname, const char *parent,
                                      const char **outdata, size_t *outbytes,
                                      const char **include_paths, size_t include_path_count,
+                                     char *failstr, size_t failstrlen,
                                      SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d);
 
 void SDLCALL SDL_SHADER_internal_include_close(const char *data, SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d);
