@@ -2065,13 +2065,6 @@ const SDL_SHADER_PreprocessData *SDL_SHADER_Preprocess(const char *filename,
     size_t errcount = 0;
     size_t total_bytes = 0;
 
-    /* !!! FIXME: what's wrong with ENDLINE_STR? */
-    #ifdef _WINDOWS
-    static const char endline[] = { '\r', '\n' };
-    #else
-    static const char endline[] = { '\n' };
-    #endif
-
     /* !!! FIXME: should be an error if one is NULL but the other isn't. */
     if (!m) { m = SDL_SHADER_internal_malloc; }
     if (!f) { f = SDL_SHADER_internal_free; }
@@ -2107,7 +2100,7 @@ const SDL_SHADER_PreprocessData *SDL_SHADER_Preprocess(const char *filename,
         }
 
         if (token == ((Token) '\n')) {
-            buffer_append(buffer, endline, sizeof (endline));
+            buffer_append(buffer, ENDLINE_STR, SDL_strlen(ENDLINE_STR));
             isnewline = 1;
         } else if (token == TOKEN_PREPROCESSING_ERROR) {
             size_t pos = 0;

@@ -27,7 +27,7 @@
 
 /* Get basic wankery out of the way here... */
 
-#ifdef _WINDOWS
+#ifdef __WINDOWS__
 #define ENDLINE_STR "\r\n"
 #else
 #define ENDLINE_STR "\n"
