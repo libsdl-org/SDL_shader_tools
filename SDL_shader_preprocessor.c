@@ -2109,31 +2109,7 @@ const SDL_SHADER_PreprocessData *SDL_SHADER_Preprocess(const char *filename,
         if (token == ((Token) '\n')) {
             buffer_append(buffer, endline, sizeof (endline));
             isnewline = 1;
-        }
-
-        #if MATCH_MICROSOFT_PREPROCESSOR
-        /* Microsoft's preprocessor is weird.
-           It ignores newlines, and then inserts its own around certain
-           tokens. For example, after a semicolon. This allows HLSL code to
-           be mostly readable, instead of a stream of tokens. */
-        else if ( (token == ((Token) '}')) || (token == ((Token) ';')) ) {
-            if ( (token == ((Token) '}')) && (indent > 0) ) {
-                indent--;
-            }
-            buffer_append(buffer, tokstr, len);
-            buffer_append(buffer, endline, sizeof (endline));
-
-            isnewline = 1;
-        } else if (token == ((Token) '{')) {
-            buffer_append(buffer, endline, sizeof (endline));
-            buffer_append(buffer, "{", 1);
-            buffer_append(buffer, endline, sizeof (endline));
-            indent++;
-            isnewline = 1;
-        }
-        #endif
-
-        else if (token == TOKEN_PREPROCESSING_ERROR) {
+        } else if (token == TOKEN_PREPROCESSING_ERROR) {
             size_t pos = 0;
             const char *fname = preprocessor_sourcepos(pp, &pos);
             errorlist_add(errors, fname, (int) pos, tokstr);
