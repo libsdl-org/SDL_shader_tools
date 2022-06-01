@@ -1926,7 +1926,13 @@ static inline const char *_preprocessor_nexttoken(Preprocessor *_ctx, size_t *_l
         cond = state->conditional_stack;
         skipping = ((cond != NULL) && (cond->skipping)) ? SDL_TRUE : SDL_FALSE;
 
+        state->report_whitespace = SDL_TRUE;
+        state->report_comments = SDL_TRUE;
+
         token = lexer(state);
+
+        state->report_whitespace = SDL_FALSE;
+        state->report_comments = SDL_FALSE;
 
         if (token != TOKEN_IDENTIFIER) {
             ctx->recursion_count = 0;
