@@ -32,28 +32,25 @@ typedef unsigned char uchar;
 
 static uchar sentinel[YYMAXFILL];
 
-static Token update_state(IncludeState *s, int eoi, const uchar *cur,
-                          const uchar *tok, const Token val)
+static Token update_state(IncludeState *s, int eoi, const uchar *cur, const uchar *tok, const Token val)
 {
-    if (eoi)
-    {
+    if (eoi) {
         s->bytes_left = 0;
         s->source = (const char *) s->source_base + s->orig_length;
-        if ( (tok >= sentinel) && (tok < (sentinel+YYMAXFILL)) )
+        if ( (tok >= sentinel) && (tok < (sentinel+YYMAXFILL)) ) {
             s->token = s->source;
-        else
+        } else {
             s->token = (const char *) tok;
-    } // if
-    else
-    {
+        }
+    } else {
         s->bytes_left -= (size_t) (cur - ((const uchar *) s->source));
         s->source = (const char *) cur;
         s->token = (const char *) tok;
-    } // else
+    }
     s->tokenlen = (size_t) (s->source - s->token);
     s->tokenval = val;
     return val;
-} // update_state
+}
 
 Token preprocessor_lexer(IncludeState *s)
 {
@@ -80,11 +77,12 @@ Token preprocessor_lexer(IncludeState *s)
 */
 
     // preprocessor directives are only valid at start of line.
-    if (s->tokenval == ((Token) '\n'))
+    if (s->tokenval == ((Token) '\n')) {
         goto ppdirective;  // may jump back to scanner_loop.
+    }
 
 scanner_loop:
-    if (YYLIMIT == YYCURSOR) YYFILL(1);
+    if (YYLIMIT == YYCURSOR) { YYFILL(1); }
     token = cursor;
 
 /*!re2c
@@ -151,25 +149,26 @@ scanner_loop:
     "="             { RET('='); }
     "?"             { RET('?'); }
 
-    ";"             { if (s->asm_comments) goto singlelinecomment; RET(';'); }
+    ";"             { if (s->asm_comments) { goto singlelinecomment; } RET(';'); }
 
     "\000"          { if (eoi) { RET(TOKEN_EOI); } goto bad_chars; }
 
-    WHITESPACE      { if (s->report_whitespace) RET(' '); goto scanner_loop; }
+    WHITESPACE      { if (s->report_whitespace) { RET(' '); } goto scanner_loop; }
     NEWLINE         { s->line++; RET('\n'); }
     ANY             { goto bad_chars; }
 */
 
 multilinecomment:
-    if (YYLIMIT == YYCURSOR) YYFILL(1);
+    if (YYLIMIT == YYCURSOR) { YYFILL(1); }
     matchptr = cursor;
 // The "*\/" is just to avoid screwing up text editor syntax highlighting.
 /*!re2c
     "*\/"           {
-                        if (s->report_comments)
+                        if (s->report_comments) {
                             RET(TOKEN_MULTI_COMMENT);
-                        else if (s->report_whitespace)
+                        } else if (s->report_whitespace) {
                             RET(' ');
+                        }
                         goto scanner_loop;
                     }
     NEWLINE         {
@@ -177,21 +176,21 @@ multilinecomment:
                         goto multilinecomment;
                     }
     "\000"          {
-                        if (eoi)
+                        if (eoi) {
                             RET(TOKEN_INCOMPLETE_COMMENT);
+                        }
                         goto multilinecomment;
                     }
     ANY             { goto multilinecomment; }
 */
 
 singlelinecomment:
-    if (YYLIMIT == YYCURSOR) YYFILL(1);
+    if (YYLIMIT == YYCURSOR) { YYFILL(1); }
     matchptr = cursor;
 /*!re2c
     NEWLINE         {
                         s->line++;
-                        if (s->report_comments)
-                        {
+                        if (s->report_comments) {
                             cursor = matchptr;  // so we RET('\n') next.
                             RET(TOKEN_SINGLE_COMMENT);
                         }
@@ -199,12 +198,12 @@ singlelinecomment:
                         RET('\n');
                     }
     "\000"          {
-                        if (eoi)
-                        {
-                            if (s->report_comments)
+                        if (eoi) {
+                            if (s->report_comments) {
                                 RET(TOKEN_SINGLE_COMMENT);
-                            else
+                            } else {
                                 RET(TOKEN_EOI);
+                            }
                         }
                         goto singlelinecomment;
                     }
@@ -212,7 +211,7 @@ singlelinecomment:
 */
 
 ppdirective:
-    if (YYLIMIT == YYCURSOR) YYFILL(1);
+    if (YYLIMIT == YYCURSOR) { YYFILL(1); }
 /*!re2c
         PP "include"    { RET(TOKEN_PP_INCLUDE); }
         PP "line"       { RET(TOKEN_PP_LINE); }
@@ -236,7 +235,7 @@ ppdirective:
 */
 
 bad_chars:
-    if (YYLIMIT == YYCURSOR) YYFILL(1);
+    if (YYLIMIT == YYCURSOR) { YYFILL(1); }
 /*!re2c
     ANYLEGAL        { cursor--; RET(TOKEN_BAD_CHARS); }
     "\000"          {
