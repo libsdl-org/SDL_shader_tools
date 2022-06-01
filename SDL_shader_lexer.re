@@ -1,13 +1,10 @@
 /**
- * MojoShader; generate shader programs from bytecode of compiled
- *  Direct3D shaders.
+ * SDL_shader_language; tools for SDL GPU shader support.
  *
  * Please see the file LICENSE.txt in the source's root directory.
- *
- *  This file written by Ryan C. Gordon.
  */
 
-// This was originally based on examples/pp-c.re from re2c: http://re2c.org/
+// This was originally based on examples/pp-c.re from re2c: https://re2c.org/
 //   re2c is public domain code.
 //
 // You build mojoshader_lexer.c from the .re file with re2c...
@@ -17,10 +14,11 @@
 //
 // Please note that this isn't a perfect C lexer, since it is used for both
 //  HLSL and shader assembly language, and follows the quirks of Microsoft's
-//  tools.
+//  tools (!!! FIXME: that was true for MojoShader, but we can fix anything
+//  that pops up now).
 
-#define __MOJOSHADER_INTERNAL__ 1
-#include "mojoshader_internal.h"
+#define __SDL_SHADER_INTERNAL__ 1
+#include "SDL_shader_internal.h"
 
 typedef unsigned char uchar;
 
@@ -48,11 +46,11 @@ static Token update_state(IncludeState *s, int eoi, const uchar *cur,
     } // if
     else
     {
-        s->bytes_left -= (unsigned int) (cur - ((const uchar *) s->source));
+        s->bytes_left -= (size_t) (cur - ((const uchar *) s->source));
         s->source = (const char *) cur;
         s->token = (const char *) tok;
     } // else
-    s->tokenlen = (unsigned int) (s->source - s->token);
+    s->tokenlen = (size_t) (s->source - s->token);
     s->tokenval = val;
     return val;
 } // update_state
@@ -256,8 +254,7 @@ bad_chars:
     "\000"          {
                         if (eoi)
                         {
-                            assert( !((token >= sentinel) &&
-                                     (token < sentinel+YYMAXFILL)) );
+                            SDL_assert( !((token >= sentinel) && (token < sentinel+YYMAXFILL)) );
                             eoi = 0;
                             cursor = (uchar *) s->source_base + s->orig_length;
                             RET(TOKEN_BAD_CHARS);  // next call will be EOI.
@@ -268,7 +265,7 @@ bad_chars:
     ANY             { goto bad_chars; }
 */
 
-    assert(0 && "Shouldn't hit this code");
+    SDL_assert(0 && "Shouldn't hit this code");
     RET(TOKEN_UNKNOWN);
 } // preprocessor_lexer
 

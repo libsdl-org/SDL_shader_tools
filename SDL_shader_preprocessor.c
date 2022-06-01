@@ -8,7 +8,6 @@
 #include "SDL_shader_internal.h"
 
 /* !!! FIXME: replace printf debugging with SDL_Log? */
-/* !!! FIXME: lots of "unsigned int" should become size_t or Uint32 */
 
 #if DEBUG_PREPROCESSOR
     #define print_debug_token(token, len, val) \
@@ -54,10 +53,10 @@ typedef struct Context
     Define *file_macro;
     Define *line_macro;
     StringCache *filename_cache;
-    SDL_SHADER_includeOpen open_callback;
-    SDL_SHADER_includeClose close_callback;
-    SDL_SHADER_malloc malloc;
-    SDL_SHADER_free free;
+    SDL_SHADER_IncludeOpen open_callback;
+    SDL_SHADER_IncludeClose close_callback;
+    SDL_SHADER_Malloc malloc;
+    SDL_SHADER_Free free;
     void *malloc_data;
 } Context;
 
@@ -83,9 +82,9 @@ static inline void Free(Context *ctx, void *ptr)
     ctx->free(ptr, ctx->malloc_data);
 }
 
-static void *MallocBridge(int bytes, void *data)
+static void *MallocBridge(size_t bytes, void *data)
 {
-    return Malloc((Context *) data, (size_t) bytes);
+    return Malloc((Context *) data, bytes);
 }
 
 static void FreeBridge(void *ptr, void *data)
@@ -102,7 +101,7 @@ static inline char *StrDup(Context *ctx, const char *str)
     return retval;
 }
 
-static void failf(Context *ctx, const char *fmt, ...) ISPRINTF(2,3);
+static void failf(Context *ctx, SDL_PRINTF_FORMAT_STRING const char *fmt, ...) SDL_PRINTF_VARARG_FUNC(2);
 static void failf(Context *ctx, const char *fmt, ...)
 {
     ctx->isfail = SDL_TRUE;
@@ -120,11 +119,10 @@ static inline void fail(Context *ctx, const char *reason)
 
 #if DEBUG_TOKENIZER
 void SDL_SHADER_print_debug_token(const char *subsystem, const char *token,
-                                  const unsigned int tokenlen,
-                                  const Token tokenval)
+                                  const size_t tokenlen, const Token tokenval)
 {
     printf("%s TOKEN: \"", subsystem);
-    unsigned int i;
+    size_t i;
     for (i = 0; i < tokenlen; i++) {
         if (token[i] == '\n') {
             printf("\\n");
@@ -212,12 +210,10 @@ void SDL_SHADER_print_debug_token(const char *subsystem, const char *token,
 #include <unistd.h>
 #endif
 
-int SDL_SHADER_internal_include_open(SDL_SHADER_includeType inctype,
+int SDL_SHADER_internal_include_open(SDL_SHADER_IncludeType inctype,
                                      const char *fname, const char *parent,
-                                     const char **outdata,
-                                     unsigned int *outbytes,
-                                     SDL_SHADER_malloc m, SDL_SHADER_free f,
-                                     void *d)
+                                     const char **outdata, size_t *outbytes,
+                                     SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d)
 {
 #ifdef _WIN32
     WCHAR wpath[MAX_PATH];
@@ -281,14 +277,14 @@ int SDL_SHADER_internal_include_open(SDL_SHADER_includeType inctype,
     }
     close(fd);
     *outdata = data;
-    *outbytes = (unsigned int) statbuf.st_size;
+    *outbytes = (size_t) statbuf.st_size;
     return 1;
 #endif
 }
 
 
-void SDL_SHADER_internal_include_close(const char *data, SDL_SHADER_malloc m,
-                                       SDL_SHADER_free f, void *d)
+void SDL_SHADER_internal_include_close(const char *data, SDL_SHADER_Malloc m,
+                                       SDL_SHADER_Free f, void *d)
 {
     f((void *) data, d);
 }
@@ -313,7 +309,7 @@ void SDL_SHADER_internal_include_close(const char *data, SDL_SHADER_malloc m,
 #define GET_POOL(type, poolname) \
     static type *get_##poolname(Context *ctx) { \
         type *retval = ctx->poolname##_pool; \
-        if (retval != NULL) \
+        if (retval != NULL) { \
             ctx->poolname##_pool = retval->next; \
         } else { \
             retval = (type *) Malloc(ctx, sizeof (type)); \
@@ -466,7 +462,7 @@ static const Define *find_define(Context *ctx, const char *sym)
         if (!str) {
             return 0;
         }
-        const size_t len = snprintf(str, bufsize, "%u", state->line);
+        const size_t len = SDL_snprintf(str, bufsize, "%u", state->line);
         SDL_assert(len < bufsize);
         ctx->line_macro->definition = str;
         return ctx->line_macro;
@@ -520,8 +516,8 @@ static void put_all_defines(Context *ctx)
 }
 
 static int push_source(Context *ctx, const char *fname, const char *source,
-                       unsigned int srclen, unsigned int linenum,
-                       SDL_SHADER_includeClose close_callback)
+                       size_t srclen, Uint32 linenum,
+                       SDL_SHADER_IncludeClose close_callback)
 {
     IncludeState *state = get_include(ctx);
     if (state == NULL) {
@@ -586,23 +582,23 @@ static void pop_source(Context *ctx)
 }
 
 
-static void close_define_include(const char *data, SDL_SHADER_malloc m,
-                                 SDL_SHADER_free f, void *d)
+static void close_define_include(const char *data, SDL_SHADER_Malloc m,
+                                 SDL_SHADER_Free f, void *d)
 {
     f((void *) data, d);
 }
 
 
 Preprocessor *preprocessor_start(const char *fname, const char *source,
-                                 unsigned int sourcelen,
-                                 SDL_SHADER_includeOpen open_callback,
-                                 SDL_SHADER_includeClose close_callback,
-                                 const SDL_SHADER_preprocessorDefine *defines,
-                                 unsigned int define_count, SDL_bool asm_comments,
-                                 SDL_SHADER_malloc m, SDL_SHADER_free f, void *d)
+                                 size_t sourcelen,
+                                 SDL_SHADER_IncludeOpen open_callback,
+                                 SDL_SHADER_IncludeClose close_callback,
+                                 const SDL_SHADER_PreprocessorDefine *defines,
+                                 size_t define_count, SDL_bool asm_comments,
+                                 SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d)
 {
     int okay = 1;
-    unsigned int i = 0;
+    size_t i = 0;
 
     /* the preprocessor is internal-only, so we verify all these are != NULL. */
     SDL_assert(m != NULL);
@@ -638,7 +634,7 @@ Preprocessor *preprocessor_start(const char *fname, const char *source,
 
     /* let the usual preprocessor parser sort these out. */
     char *define_include = NULL;
-    unsigned int define_include_len = 0;
+    size_t define_include_len = 0;
     if ((okay) && (define_count > 0)) {
         Buffer *predefbuf = buffer_create(256, MallocBridge, FreeBridge, ctx);
         okay = okay && (predefbuf != NULL);
@@ -714,14 +710,14 @@ static inline void pushback(IncludeState *state)
     printf("PREPROCESSOR PUSHBACK\n");
     #endif
     SDL_assert(!state->pushedback);
-    state->pushedback = 1;
+    state->pushedback = SDL_TRUE;
 }
 
 
 static Token lexer(IncludeState *state)
 {
     if (state->pushedback) {
-        state->pushedback = 0;
+        state->pushedback = SDL_FALSE;
         return state->tokenval;
     }
     return preprocessor_lexer(state);
@@ -753,9 +749,9 @@ static void handle_pp_include(Context *ctx)
 {
     IncludeState *state = ctx->include_stack;
     Token token = lexer(state);
-    SDL_SHADER_includeType incltype;
+    SDL_SHADER_IncludeType incltype;
     const char *newdata = NULL;
-    unsigned int newbytes = 0;
+    size_t newbytes = 0;
     char *filename = NULL;
     int bogus = 0;
 
@@ -784,7 +780,7 @@ static void handle_pp_include(Context *ctx)
     if (!bogus) {
         size_t len;
         state->token++;  /* skip '<' or '\"'... */
-        len = (size_t) (state->source - state->token));
+        len = (size_t) (state->source - state->token);
         filename = (char *) alloca(len);
         SDL_memcpy(filename, state->token, len-1);
         filename[len-1] = '\0';
@@ -891,7 +887,7 @@ static void handle_pp_error(Context *ctx)
                 break;
 
             default:
-                cpy = Min(avail, (int) state->tokenlen);
+                cpy = SDL_min(avail, (int) state->tokenlen);
                 if (cpy) {
                     SDL_memcpy(ptr, state->token, cpy);
                 }
@@ -1053,7 +1049,7 @@ static void handle_pp_define(Context *ctx)
         }
     }
     state->report_whitespace = SDL_FALSE;
-`
+
     buflen = buffer_size(buffer) + 1;
     if (!ctx->out_of_memory) {
         definition = buffer_flatten(buffer);
@@ -1185,8 +1181,8 @@ static Conditional *_handle_pp_ifdef(Context *ctx, const Token type)
 
     conditional->type = type;
     conditional->linenum = state->line - 1;
-    conditional->skipping = skipping;
-    conditional->chosen = chosen;
+    conditional->skipping = skipping ? SDL_TRUE : SDL_FALSE;
+    conditional->chosen = chosen ? SDL_TRUE : SDL_FALSE;
     conditional->next = parent;
     state->conditional_stack = conditional;
     return conditional;
@@ -1216,8 +1212,7 @@ static int replace_and_push_macro(Context *ctx, const Define *def,
     }
 
     state = ctx->include_stack;
-    if (!push_source(ctx, state->filename, def->definition,
-                     SDL_strlen(def->definition), state->line, NULL)) {
+    if (!push_source(ctx, state->filename, def->definition, SDL_strlen(def->definition), state->line, NULL)) {
         buffer_destroy(buffer);
         return 0;
     }
@@ -1227,7 +1222,7 @@ static int replace_and_push_macro(Context *ctx, const Define *def,
         SDL_bool wantorig = SDL_FALSE;
         const Define *arg = NULL;
         const char *data;
-        unsigned int len;
+        size_t len;
 
         /* put a space between tokens if we're not concatenating. */
         if (state->tokenval == TOKEN_HASHHASH) { /* concatenate? */
@@ -1296,8 +1291,7 @@ static int replace_and_push_macro(Context *ctx, const Define *def,
     buffer_destroy(buffer);
     pop_source(ctx);  /* ditch the macro. */
     state = ctx->include_stack;
-    if (!push_source(ctx, state->filename, final, SDL_strlen(final), state->line,
-                     close_define_include)) {
+    if (!push_source(ctx, state->filename, final, SDL_strlen(final), state->line, close_define_include)) {
         Free(ctx, final);
         return 0;
     }
@@ -1340,9 +1334,9 @@ static int handle_macro_args(Context *ctx, const char *sym, const Define *def)
 
         while (SDL_TRUE) {
             const char *origexpr = state->token;
-            unsigned int origexprlen = state->tokenlen;
+            size_t origexprlen = state->tokenlen;
             const char *expr = state->token;
-            unsigned int exprlen = state->tokenlen;
+            size_t exprlen = state->tokenlen;
 
             if (t == ((Token) '(')) {
                 paren++;
@@ -1470,7 +1464,7 @@ static int handle_pp_identifier(Context *ctx)
 {
     IncludeState *state = ctx->include_stack;
     const char *fname = state->filename;
-    const unsigned int line = state->line;
+    const Uint32 line = state->line;
     char *sym = (char *) alloca(state->tokenlen+1);
     const Define *def;
 
@@ -1486,7 +1480,7 @@ static int handle_pp_identifier(Context *ctx)
     def = find_define(ctx, sym);
     if (def == NULL) {
         return 0;   /* just send the token through unchanged. */
-    } else if (def->paramcount != 0)
+    } else if (def->paramcount != 0) {
         return handle_macro_args(ctx, sym, def);
     }
 
@@ -1826,8 +1820,8 @@ static Conditional *handle_pp_if(Context *ctx)
 
     conditional->type = TOKEN_PP_IF;
     conditional->linenum = state->line - 1;
-    conditional->skipping = skipping;
-    conditional->chosen = chosen;
+    conditional->skipping = skipping ? SDL_TRUE : SDL_FALSE;
+    conditional->chosen = chosen ? SDL_TRUE : SDL_FALSE;
     conditional->next = parent;
     state->conditional_stack = conditional;
     return conditional;
@@ -1852,9 +1846,9 @@ static void handle_pp_elif(Context *ctx)
     } else {
         const Conditional *parent = cond->next;
         cond->type = TOKEN_PP_ELIF;
-        cond->skipping = (parent && parent->skipping) || cond->chosen || !rc;
+        cond->skipping = ((parent && parent->skipping) || cond->chosen || !rc) ? SDL_TRUE : SDL_FALSE;
         if (!cond->chosen) {
-            cond->chosen = rc;
+            cond->chosen = rc ? SDL_TRUE : SDL_FALSE;
         }
     }
 }
@@ -1873,9 +1867,9 @@ static void handle_pp_else(Context *ctx)
     } else {
         const Conditional *parent = cond->next;
         cond->type = TOKEN_PP_ELSE;
-        cond->skipping = (parent && parent->skipping) || cond->chosen;
+        cond->skipping = ((parent && parent->skipping) || cond->chosen) ? SDL_TRUE : SDL_FALSE;
         if (!cond->chosen) {
-            cond->chosen = 1;
+            cond->chosen = SDL_TRUE;
         }
     }
 }
@@ -1916,7 +1910,7 @@ static void unterminated_pp_condition(Context *ctx)
     put_conditional(ctx, cond);
 }
 
-static inline const char *_preprocessor_nexttoken(Preprocessor *_ctx, unsigned int *_len, Token *_token)
+static inline const char *_preprocessor_nexttoken(Preprocessor *_ctx, size_t *_len, Token *_token)
 {
     Context *ctx = (Context *) _ctx;
 
@@ -1942,17 +1936,7 @@ static inline const char *_preprocessor_nexttoken(Preprocessor *_ctx, unsigned i
         cond = state->conditional_stack;
         skipping = ((cond != NULL) && (cond->skipping)) ? SDL_TRUE : SDL_FALSE;
 
-        #if !MATCH_MICROSOFT_PREPROCESSOR
-        state->report_whitespace = SDL_TRUE;
-        state->report_comments = SDL_TRUE;
-        #endif
-
         token = lexer(state);
-
-        #if !MATCH_MICROSOFT_PREPROCESSOR
-        state->report_whitespace = SDL_FALSE;
-        state->report_comments = SDL_FALSE;
-        #endif
 
         if (token != TOKEN_IDENTIFIER) {
             ctx->recursion_count = 0;
@@ -2023,11 +2007,6 @@ static inline const char *_preprocessor_nexttoken(Preprocessor *_ctx, unsigned i
             print_debug_lexing_position(state);
             if (ctx->parsing_pragma) {  /* let this one through. */
                 ctx->parsing_pragma = SDL_FALSE;
-            } else {
-                #if MATCH_MICROSOFT_PREPROCESSOR
-                /* preprocessor is line-oriented, nothing else gets newlines. */
-                continue;  /* get the next thing. */
-                #endif
             }
         }
 
@@ -2044,8 +2023,7 @@ static inline const char *_preprocessor_nexttoken(Preprocessor *_ctx, unsigned i
 }
 
 
-const char *preprocessor_nexttoken(Preprocessor *ctx, unsigned int *len,
-                                   Token *token)
+const char *preprocessor_nexttoken(Preprocessor *ctx, size_t *len, Token *token)
 {
     const char *retval = _preprocessor_nexttoken(ctx, len, token);
     print_debug_token(retval, *len, *token);
@@ -2053,7 +2031,7 @@ const char *preprocessor_nexttoken(Preprocessor *ctx, unsigned int *len,
 }
 
 
-const char *preprocessor_sourcepos(Preprocessor *_ctx, unsigned int *pos)
+const char *preprocessor_sourcepos(Preprocessor *_ctx, size_t *pos)
 {
     Context *ctx = (Context *) _ctx;
     if (ctx->include_stack == NULL) {
@@ -2065,41 +2043,22 @@ const char *preprocessor_sourcepos(Preprocessor *_ctx, unsigned int *pos)
     return ctx->include_stack->filename;
 }
 
-
-static void indent_buffer(Buffer *buffer, int n, const int newline)
-{
-#if MATCH_MICROSOFT_PREPROCESSOR
-    static const char spaces[4] = { ' ', ' ', ' ', ' ' };
-    if (newline) {
-        while (n--) {
-            if (!buffer_append(buffer, spaces, sizeof (spaces)))
-                return;
-        }
-    } else {
-        if (!buffer_append(buffer, spaces, 1)) {
-            return;
-        }
-    }
-#endif
-}
-
-
-static const SDL_SHADER_preprocessData out_of_mem_data_preprocessor = {
+static const SDL_SHADER_PreprocessData out_of_mem_data_preprocessor = {
     1, &SDL_SHADER_out_of_mem_error, 0, 0, 0, 0, 0
 };
 
 
 /* public API... */
 
-const SDL_SHADER_preprocessData *SDL_SHADER_preprocess(const char *filename,
-                             const char *source, unsigned int sourcelen,
-                             const SDL_SHADER_preprocessorDefine *defines,
-                             unsigned int define_count,
-                             SDL_SHADER_includeOpen include_open,
-                             SDL_SHADER_includeClose include_close,
-                             SDL_SHADER_malloc m, SDL_SHADER_free f, void *d)
+const SDL_SHADER_PreprocessData *SDL_SHADER_Preprocess(const char *filename,
+                             const char *source, size_t sourcelen,
+                             const SDL_SHADER_PreprocessorDefine *defines,
+                             size_t define_count,
+                             SDL_SHADER_IncludeOpen include_open,
+                             SDL_SHADER_IncludeClose include_close,
+                             SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d)
 {
-    SDL_SHADER_preprocessData *retval = NULL;
+    SDL_SHADER_PreprocessData *retval = NULL;
     Preprocessor *pp = NULL;
     ErrorList *errors = NULL;
     Buffer *buffer = NULL;
@@ -2107,9 +2066,9 @@ const SDL_SHADER_preprocessData *SDL_SHADER_preprocess(const char *filename,
     const char *tokstr = NULL;
     int nl = 1;
     int indent = 0;
-    unsigned int len = 0;
+    size_t len = 0;
     char *output = NULL;
-    int errcount = 0;
+    size_t errcount = 0;
     size_t total_bytes = 0;
 
     /* !!! FIXME: what's wrong with ENDLINE_STR? */
@@ -2164,14 +2123,12 @@ const SDL_SHADER_preprocessData *SDL_SHADER_preprocess(const char *filename,
             if ( (token == ((Token) '}')) && (indent > 0) ) {
                 indent--;
             }
-            indent_buffer(buffer, indent, nl);
             buffer_append(buffer, tokstr, len);
             buffer_append(buffer, endline, sizeof (endline));
 
             isnewline = 1;
         } else if (token == ((Token) '{')) {
             buffer_append(buffer, endline, sizeof (endline));
-            indent_buffer(buffer, indent, 1);
             buffer_append(buffer, "{", 1);
             buffer_append(buffer, endline, sizeof (endline));
             indent++;
@@ -2180,11 +2137,10 @@ const SDL_SHADER_preprocessData *SDL_SHADER_preprocess(const char *filename,
         #endif
 
         else if (token == TOKEN_PREPROCESSING_ERROR) {
-            unsigned int pos = 0;
+            size_t pos = 0;
             const char *fname = preprocessor_sourcepos(pp, &pos);
             errorlist_add(errors, fname, (int) pos, tokstr);
         } else {
-            indent_buffer(buffer, indent, nl);
             buffer_append(buffer, tokstr, len);
         }
 
@@ -2202,7 +2158,7 @@ const SDL_SHADER_preprocessData *SDL_SHADER_preprocess(const char *filename,
         goto preprocess_out_of_mem;
     }
 
-    retval = (SDL_SHADER_preprocessData *) m(sizeof (*retval), d);
+    retval = (SDL_SHADER_PreprocessData *) m(sizeof (*retval), d);
     if (retval == NULL) {
         goto preprocess_out_of_mem;
     }
@@ -2237,10 +2193,10 @@ preprocess_out_of_mem:
     return &out_of_mem_data_preprocessor;
 }
 
-void SDL_SHADER_freePreprocessData(const SDL_SHADER_preprocessData *_data)
+void SDL_SHADER_FreePreprocessData(const SDL_SHADER_PreprocessData *_data)
 {
-    SDL_SHADER_preprocessData *data = (SDL_SHADER_preprocessData *) _data;
-    SDL_SHADER_free f;
+    SDL_SHADER_PreprocessData *data = (SDL_SHADER_PreprocessData *) _data;
+    SDL_SHADER_Free f;
     void *d;
     int i;
 

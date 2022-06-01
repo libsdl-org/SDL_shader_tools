@@ -1,35 +1,29 @@
 /**
- * MojoShader; generate shader programs from bytecode of compiled
- *  Direct3D shaders.
+ * SDL_shader_language; tools for SDL GPU shader support.
  *
  * Please see the file LICENSE.txt in the source's root directory.
- *
- *  This file written by Ryan C. Gordon.
  */
 
-// This is a Lemon Parser grammar for HLSL. It is based on an ANSI C YACC
-//  grammar by Jeff Lee: http://www.lysator.liu.se/c/ANSI-C-grammar-y.html
+// This is a Lemon Parser grammar for SDLSL. It is based on an ANSI C YACC
+//  grammar by Jeff Lee: https://www.lysator.liu.se/c/ANSI-C-grammar-y.html
 
-// Lemon is here: http://www.hwaci.com/sw/lemon/  ...  the source is included
-//  with MojoShader, and built with the library, so you don't have to track
+// Lemon is here: https://www.hwaci.com/sw/lemon/  ...  the source is included
+//  here, and built with the library, so you don't have to track
 //  down the dependency.
 
-// HLSL syntax is described, informally, here:
-//  http://msdn.microsoft.com/en-us/library/bb509615(VS.85).aspx
-
-%name ParseHLSL
+%name ParseSDLSL
 
 // Some shift-reduce conflicts are basically unavoidable, but if the final
 //  conflict count matches this value, we consider it known and acceptable.
 %expect 2
 
 %start_symbol shader
-%token_prefix TOKEN_HLSL_
+%token_prefix TOKEN_SDLSL_
 %token_type { TokenData }
 %extra_argument { Context *ctx }
 
 %include {
-#ifndef __MOJOSHADER_HLSL_COMPILER__
+#ifndef __MOJOSHADER_SDLSL_COMPILER__
 #error Do not compile this file directly.
 #endif
 }
@@ -330,7 +324,7 @@ datatype_scalar(A) ::= UINT. { A = &ctx->dt_uint; }
 datatype_scalar(A) ::= HALF. { A = &ctx->dt_half; }
 datatype_scalar(A) ::= FLOAT. { A = &ctx->dt_float; }
 datatype_scalar(A) ::= DOUBLE. { A = &ctx->dt_double; }
-datatype_scalar(A) ::= STRING. { A = &ctx->dt_string; } // this is for the effects framework, not HLSL.
+datatype_scalar(A) ::= STRING. { A = &ctx->dt_string; }
 datatype_scalar(A) ::= SNORM FLOAT. { A = &ctx->dt_float_snorm; }
 datatype_scalar(A) ::= UNORM FLOAT. { A = &ctx->dt_float_unorm; }
 
@@ -476,7 +470,7 @@ primary_expr(A) ::= LPAREN expression(B) RPAREN. { A = B; }
 postfix_expr(A) ::= primary_expr(B). { A = B; }
 postfix_expr(A) ::= postfix_expr(B) LBRACKET expression(C) RBRACKET. { A = new_binary_expr(ctx, MOJOSHADER_AST_OP_DEREF_ARRAY, B, C); }
 postfix_expr(A) ::= IDENTIFIER(B) arguments(C). { A = new_callfunc_expr(ctx, B.string, C); }
-postfix_expr(A) ::= datatype(B) arguments(C). { A = new_constructor_expr(ctx, B, C); } // HLSL constructor
+postfix_expr(A) ::= datatype(B) arguments(C). { A = new_constructor_expr(ctx, B, C); } // SDLSL constructor
 postfix_expr(A) ::= postfix_expr(B) DOT IDENTIFIER(C). { A = new_deref_struct_expr(ctx, B, C.string); }
 postfix_expr(A) ::= postfix_expr(B) PLUSPLUS. { A = new_unary_expr(ctx, MOJOSHADER_AST_OP_POSTINCREMENT, B); }
 postfix_expr(A) ::= postfix_expr(B) MINUSMINUS. { A = new_unary_expr(ctx, MOJOSHADER_AST_OP_POSTDECREMENT, B); }
@@ -589,5 +583,5 @@ assignment_expr(A) ::= unary_expr(B) ORASSIGN assignment_expr(C). { A = new_bina
 expression(A) ::= assignment_expr(B). { A = B; }
 expression(A) ::= expression(B) COMMA assignment_expr(C). { A = new_binary_expr(ctx, MOJOSHADER_AST_OP_COMMA, B, C); }
 
-// end of mojoshader_parser_hlsl.lemon ...
+// end of SDL_shader_parser.lemon ...
 
