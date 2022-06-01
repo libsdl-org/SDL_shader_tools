@@ -718,7 +718,7 @@ static int preprocess(const char *fname, const char *buf, size_t len,
     const SDL_SHADER_PreprocessData *pd;
     int retval = 0;
 
-    pd = SDL_SHADER_Preprocess(fname, buf, len, defs, defcount, NULL, NULL, Malloc, Free, NULL);
+    pd = SDL_SHADER_Preprocess(fname, buf, len, defs, defcount, NULL, 0, include_paths, include_path_count, NULL, NULL, Malloc, Free, NULL);
 
     if (pd->error_count > 0) {
         int i;
@@ -755,6 +755,7 @@ static int ast(const char *fname, const char *buf, size_t len,
 
     ad = SDL_SHADER_ParseAst("",  /* !!! FIXME */
                         fname, buf, len, defs, defcount,
+                        NULL, 0, include_paths, include_path_count,
                         NULL, NULL, Malloc, Free, NULL);
     
     if (ad->error_count > 0) {
@@ -787,7 +788,7 @@ static int compile(const char *fname, const char *buf, size_t len,
     const SDL_SHADER_parseData *pd;
     int retval = 0; */
 
-    SDL_SHADER_Compile("" /* !!! FIXME */, fname, buf, len, defs, defcount, NULL, NULL, Malloc, Free, NULL);
+    SDL_SHADER_Compile("" /* !!! FIXME */, fname, buf, len, defs, defcount, NULL, 0, include_paths, include_path_count, NULL, NULL, Malloc, Free, NULL);
     return 1;
 }
 #endif

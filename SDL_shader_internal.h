@@ -131,12 +131,13 @@ ssize_t buffer_find(Buffer *buffer, const size_t start, const void *data, const 
 void * SDLCALL SDL_SHADER_internal_malloc(size_t bytes, void *d);
 void SDLCALL SDL_SHADER_internal_free(void *ptr, void *d);
 
-int SDL_SHADER_internal_include_open(SDL_SHADER_IncludeType inctype,
+SDL_bool SDLCALL SDL_SHADER_internal_include_open(SDL_SHADER_IncludeType inctype,
                                      const char *fname, const char *parent,
                                      const char **outdata, size_t *outbytes,
+                                     const char **include_paths, size_t include_path_count,
                                      SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d);
 
-void SDL_SHADER_internal_include_close(const char *data, SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d);
+void SDLCALL SDL_SHADER_internal_include_close(const char *data, SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d);
 
 
 extern SDL_SHADER_Error SDL_SHADER_out_of_mem_error;
@@ -269,6 +270,10 @@ Token preprocessor_lexer(IncludeState *s);
 /* This will only fail if the allocator fails, so it doesn't return any error code...NULL on failure. */
 Preprocessor *preprocessor_start(const char *fname, const char *source,
                             size_t sourcelen,
+                            const char **system_include_paths,
+                            size_t system_include_path_count,
+                            const char **local_include_paths,
+                            size_t local_include_path_count,
                             SDL_SHADER_IncludeOpen open_callback,
                             SDL_SHADER_IncludeClose close_callback,
                             const SDL_SHADER_PreprocessorDefine *defines,

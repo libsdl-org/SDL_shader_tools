@@ -53,6 +53,10 @@ typedef struct Context
     Define *file_macro;
     Define *line_macro;
     StringCache *filename_cache;
+    const char **system_include_paths;
+    size_t system_include_path_count;
+    const char **local_include_paths;
+    size_t local_include_path_count;
     SDL_SHADER_IncludeOpen open_callback;
     SDL_SHADER_IncludeClose close_callback;
     SDL_SHADER_Malloc malloc;
@@ -198,97 +202,50 @@ void SDL_SHADER_print_debug_token(const char *subsystem, const char *token,
 #endif
 
 
-/* !!! FIXME: Use SDL_RWops and make this non-optional */
-#if !SDL_SHADER_FORCE_INCLUDE_CALLBACKS
-
-#ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN 1
-#include <windows.h>  /* GL headers need this for WINGDIAPI definition. */
-#else
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#endif
-
-int SDL_SHADER_internal_include_open(SDL_SHADER_IncludeType inctype,
+SDL_bool SDL_SHADER_internal_include_open(SDL_SHADER_IncludeType inctype,
                                      const char *fname, const char *parent,
                                      const char **outdata, size_t *outbytes,
+                                     const char **include_paths, size_t include_path_count,
                                      SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d)
 {
-#ifdef _WIN32
-    WCHAR wpath[MAX_PATH];
-    if (!MultiByteToWideChar(CP_UTF8, 0, fname, -1, wpath, MAX_PATH)) {
-        return 0;
+    #if defined(__WINDOWS__) || defined(__OS2__)
+    const char dirsep = '\\';
+    #else
+    const char dirsep = '/';
+    #endif
+
+    size_t i;
+    for (i = 0; i < include_path_count; i++)
+    {
+        char stackpath[128];
+        const char *path = include_paths[i];
+        const size_t len = SDL_strlen(path) + SDL_strlen(fname) + 2;
+        char *fullpath = (len < sizeof (stackpath)) ? stackpath : (char *) m(len, d);
+        if (fullpath == NULL) {
+            return SDL_FALSE;
+        }
+
+        SDL_snprintf(fullpath, len, "%s%c%s", path, dirsep, fname);
+        *outdata = (const char *) SDL_LoadFile(fullpath, outbytes);
+
+        if (fullpath != stackpath) {
+            f(fullpath, d);
+        }
+
+        if (*outdata) {
+            return SDL_TRUE;
+        }
     }
 
-    const DWORD share = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
-    const HANDLE handle = CreateFileW(wpath, FILE_GENERIC_READ, share,
-                                      NULL, OPEN_EXISTING, NULL, NULL);
-    if (handle == INVALID_HANDLE_VALUE) {
-        return 0;
-    }
-
-    const DWORD fileSize = GetFileSize(handle, NULL);
-    if (fileSize == INVALID_FILE_SIZE) {
-        CloseHandle(handle);
-        return 0;
-    }
-
-    char *data = (char *) m(fileSize, d);
-    if (data == NULL) {
-        CloseHandle(handle);
-        return 0;
-    }
-
-    DWORD readLength = 0;
-    if (!ReadFile(handle, data, fileSize, &readLength, NULL)) {
-        CloseHandle(handle);
-        f(data, d);
-        return 0;
-    }
-
-    CloseHandle(handle);
-
-    if (readLength != fileSize) {
-        f(data, d);
-        return 0;
-    }
-    *outdata = data;
-    *outbytes = fileSize;
-    return 1;
-#else
-    struct stat statbuf;
-    if (stat(fname, &statbuf) == -1) {
-        return 0;
-    }
-    char *data = (char *) m(statbuf.st_size, d);
-    if (data == NULL) {
-        return 0;
-    }
-    const int fd = open(fname, O_RDONLY);
-    if (fd == -1) {
-        f(data, d);
-        return 0;
-    }
-    if (read(fd, data, statbuf.st_size) != statbuf.st_size) {
-        f(data, d);
-        close(fd);
-        return 0;
-    }
-    close(fd);
-    *outdata = data;
-    *outbytes = (size_t) statbuf.st_size;
-    return 1;
-#endif
+    return SDL_FALSE;
 }
-
 
 void SDL_SHADER_internal_include_close(const char *data, SDL_SHADER_Malloc m,
                                        SDL_SHADER_Free f, void *d)
 {
-    f((void *) data, d);
+    /* !!! FIXME: SDL_LoadFile uses SDL_malloc. Roll our own and use m() */
+    SDL_free((void *) data);
 }
-#endif  /* !SDL_SHADER_FORCE_INCLUDE_CALLBACKS */
 
 
 /* !!! FIXME: maybe use these pool magic elsewhere? */
@@ -591,6 +548,10 @@ static void close_define_include(const char *data, SDL_SHADER_Malloc m,
 
 Preprocessor *preprocessor_start(const char *fname, const char *source,
                                  size_t sourcelen,
+                                 const char **system_include_paths,
+                                 size_t system_include_path_count,
+                                 const char **local_include_paths,
+                                 size_t local_include_path_count,
                                  SDL_SHADER_IncludeOpen open_callback,
                                  SDL_SHADER_IncludeClose close_callback,
                                  const SDL_SHADER_PreprocessorDefine *defines,
@@ -609,10 +570,15 @@ Preprocessor *preprocessor_start(const char *fname, const char *source,
         return NULL;
     }
 
+    /* we don't own the *_include_paths arrays, don't free them. */
     SDL_zerop(ctx);
     ctx->malloc = m;
     ctx->free = f;
     ctx->malloc_data = d;
+    ctx->system_include_paths = system_include_paths;
+    ctx->system_include_path_count = system_include_path_count;
+    ctx->local_include_paths = local_include_paths;
+    ctx->local_include_path_count = local_include_path_count;
     ctx->open_callback = open_callback;
     ctx->close_callback = close_callback;
     ctx->asm_comments = asm_comments;
@@ -754,11 +720,17 @@ static void handle_pp_include(Context *ctx)
     size_t newbytes = 0;
     char *filename = NULL;
     int bogus = 0;
+    const char **include_paths = NULL;
+    size_t include_path_count = 0;
 
     if (token == TOKEN_STRING_LITERAL) {
         incltype = SDL_SHADER_INCLUDETYPE_LOCAL;
+        include_paths = ctx->system_include_paths;
+        include_path_count = ctx->system_include_path_count;
     } else if (token == ((Token) '<')) {
         incltype = SDL_SHADER_INCLUDETYPE_SYSTEM;
+        include_paths = ctx->local_include_paths;
+        include_path_count = ctx->local_include_path_count;
         /* can't use lexer, since every byte between the < > pair is considered part of the filename.  :/  */
         while (!bogus) {
             if ( !(bogus = (state->bytes_left == 0)) ) {
@@ -792,14 +764,13 @@ static void handle_pp_include(Context *ctx)
         return;
     }
 
-    if ((ctx->open_callback == NULL) || (ctx->close_callback == NULL)) {
-        fail(ctx, "Saw #include, but no include callbacks defined");
-        return;
-    }
+    /* We _should_ have provided internal implementations in this case. */
+    SDL_assert(ctx->open_callback != NULL);
+    SDL_assert(ctx->close_callback != NULL);
 
     if (!ctx->open_callback(incltype, filename, state->source_base,
-                            &newdata, &newbytes, ctx->malloc,
-                            ctx->free, ctx->malloc_data)) {
+                            &newdata, &newbytes, include_paths, include_path_count,
+                            ctx->malloc, ctx->free, ctx->malloc_data)) {
         fail(ctx, "Include callback failed");  /* !!! FIXME: better error */
         return;
     }
@@ -2054,6 +2025,10 @@ const SDL_SHADER_PreprocessData *SDL_SHADER_Preprocess(const char *filename,
                              const char *source, size_t sourcelen,
                              const SDL_SHADER_PreprocessorDefine *defines,
                              size_t define_count,
+                             const char **system_include_paths,
+                             size_t system_include_path_count,
+                             const char **local_include_paths,
+                             size_t local_include_path_count,
                              SDL_SHADER_IncludeOpen include_open,
                              SDL_SHADER_IncludeClose include_close,
                              SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d)
@@ -2078,12 +2053,15 @@ const SDL_SHADER_PreprocessData *SDL_SHADER_Preprocess(const char *filename,
     static const char endline[] = { '\n' };
     #endif
 
+    /* !!! FIXME: should be an error if one is NULL but the other isn't. */
     if (!m) { m = SDL_SHADER_internal_malloc; }
     if (!f) { f = SDL_SHADER_internal_free; }
     if (!include_open) { include_open = SDL_SHADER_internal_include_open; }
     if (!include_close) { include_close = SDL_SHADER_internal_include_close; }
 
     pp = preprocessor_start(filename, source, sourcelen,
+                            system_include_paths, system_include_path_count,
+                            local_include_paths, local_include_path_count,
                             include_open, include_close,
                             defines, define_count, 0, m, f, d);
     if (pp == NULL) {
