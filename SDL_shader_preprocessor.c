@@ -739,12 +739,12 @@ static void handle_pp_include(Context *ctx)
 
     if (token == TOKEN_STRING_LITERAL) {
         incltype = SDL_SHADER_INCLUDETYPE_LOCAL;
-        include_paths = ctx->system_include_paths;
-        include_path_count = ctx->system_include_path_count;
-    } else if (token == ((Token) '<')) {
-        incltype = SDL_SHADER_INCLUDETYPE_SYSTEM;
         include_paths = ctx->local_include_paths;
         include_path_count = ctx->local_include_path_count;
+    } else if (token == ((Token) '<')) {
+        incltype = SDL_SHADER_INCLUDETYPE_SYSTEM;
+        include_paths = ctx->system_include_paths;
+        include_path_count = ctx->system_include_path_count;
         /* can't use lexer, since every byte between the < > pair is considered part of the filename.  :/  */
         while (!bogus) {
             if ( !(bogus = (state->bytes_left == 0)) ) {
