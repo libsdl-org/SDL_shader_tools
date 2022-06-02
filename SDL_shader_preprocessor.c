@@ -176,6 +176,7 @@ void SDL_SHADER_print_debug_token(const char *subsystem, const char *token,
         TOKENCASE(TOKEN_PP_ENDIF);
         TOKENCASE(TOKEN_PP_ERROR);
         TOKENCASE(TOKEN_PP_PRAGMA);
+        TOKENCASE(TOKEN_INCOMPLETE_STRING_LITERAL);
         TOKENCASE(TOKEN_INCOMPLETE_COMMENT);
         TOKENCASE(TOKEN_BAD_CHARS);
         TOKENCASE(TOKEN_SINGLE_COMMENT);
@@ -709,7 +710,8 @@ static int require_newline(IncludeState *state)
 {
     const Token token = lexer(state);
     pushback(state);  /* rewind no matter what. */
-    return ( (token == TOKEN_INCOMPLETE_COMMENT) || /* call it an eol. */
+    return ( (token == TOKEN_INCOMPLETE_STRING_LITERAL) || /* call it an eol. */
+             (token == TOKEN_INCOMPLETE_COMMENT) || /* call it an eol. */
              (token == ((Token) '\n')) || (token == TOKEN_EOI) );
 }
 
@@ -862,6 +864,7 @@ static void handle_pp_error(Context *ctx)
             case ((Token) '\n'):
                 state->line--;  /* make sure error is on the right line. */
                 /* fall through! */
+            case TOKEN_INCOMPLETE_STRING_LITERAL:
             case TOKEN_INCOMPLETE_COMMENT:
             case TOKEN_EOI:
                 pushback(state);  /* move back so we catch this later. */
@@ -1018,6 +1021,7 @@ static void handle_pp_define(Context *ctx)
     while ((!done) && (!ctx->out_of_memory)) {
         const Token token = lexer(state);
         switch (token) {
+            case TOKEN_INCOMPLETE_STRING_LITERAL:
             case TOKEN_INCOMPLETE_COMMENT:
             case TOKEN_EOI:
                 pushback(state);  /* move back so we catch this later. */
@@ -1351,7 +1355,7 @@ static int handle_macro_args(Context *ctx, const char *sym, const Define *def)
                     expr = def->definition;
                     exprlen = SDL_strlen(def->definition);
                 }
-            } else if ((t == TOKEN_INCOMPLETE_COMMENT) || (t == TOKEN_EOI)) {
+            } else if ((t == TOKEN_INCOMPLETE_STRING_LITERAL) || (t == TOKEN_INCOMPLETE_COMMENT) || (t == TOKEN_EOI)) {
                 pushback(state);
                 fail(ctx, "Unterminated macro list");
                 goto handle_macro_args_failed;
@@ -1945,6 +1949,9 @@ static inline const char *_preprocessor_nexttoken(Preprocessor *_ctx, size_t *_l
 
             pop_source(ctx);
             continue;  /* pick up again after parent's #include line. */
+        } else if (token == TOKEN_INCOMPLETE_STRING_LITERAL) {
+            fail(ctx, "Incomplete string literal");
+            continue;  /* will return at top of loop. */
         } else if (token == TOKEN_INCOMPLETE_COMMENT) {
             fail(ctx, "Incomplete multiline comment");
             continue;  /* will return at top of loop. */

@@ -74,6 +74,7 @@ Token preprocessor_lexer(IncludeState *s)
     PP = "#" [ \t]*;
     NEWLINE = ("\r\n" | "\r" | "\n");
     WHITESPACE = [ \t\v\f]+;
+    QUOTE = ["];
 */
 
     // preprocessor directives are only valid at start of line.
@@ -97,6 +98,7 @@ scanner_loop:
 
     "/*"            { goto multilinecomment; }
     "//"            { goto singlelinecomment; }
+    QUOTE           { goto stringliteral; }
 
     L (L|D)*        { RET(TOKEN_IDENTIFIER); }
     
@@ -106,9 +108,6 @@ scanner_loop:
     
     (D+ E FS?) | (D* "." D+ E? FS?) | (D+ "." D* E? FS?)
                     { RET(TOKEN_FLOAT_LITERAL); }
-    
-    (["] (ESC|ANY\[\r\n\\"])* ["])
-                    { RET(TOKEN_STRING_LITERAL); }
 
     ">>="           { RET(TOKEN_RSHIFTASSIGN); }
     "<<="           { RET(TOKEN_LSHIFTASSIGN); }
@@ -165,10 +164,27 @@ scanner_loop:
     ANY             { goto bad_chars; }
 */
 
+stringliteral:
+    /* !!! FIXME: forbid newlines in string literals? */
+    /* !!! FIXME: the ANY section used to be `(ESC|ANY\[\r\n\\"])` ...is that redundant or was it like that for a reason? */
+    if (YYLIMIT == YYCURSOR) { YYFILL(1); }
+/*!re2c
+    QUOTE           { RET(TOKEN_STRING_LITERAL); }
+
+    "\000"          {
+                        if (eoi) {
+                            RET(TOKEN_INCOMPLETE_STRING_LITERAL);
+                        }
+                        goto stringliteral;
+                    }
+
+    ANY             { goto stringliteral; }
+*/
+
 multilinecomment:
     if (YYLIMIT == YYCURSOR) { YYFILL(1); }
     matchptr = cursor;
-// The "*\/" is just to avoid screwing up text editor syntax highlighting.
+/* The "*\/" is just to avoid screwing up text editor syntax highlighting. */
 /*!re2c
     "*\/"           { RET(TOKEN_MULTI_COMMENT); }
     NEWLINE         {
@@ -243,7 +259,7 @@ bad_chars:
 
     SDL_assert(0 && "Shouldn't hit this code");
     RET(TOKEN_UNKNOWN);
-} // preprocessor_lexer
+}
 
-// end of mojoshader_lexer.re (or .c) ...
+/* end of SDL_shader_lexer.re (or .c) ... */
 
