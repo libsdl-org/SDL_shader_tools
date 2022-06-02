@@ -718,7 +718,7 @@ static int preprocess(const char *fname, const char *buf, size_t len,
     const SDL_SHADER_PreprocessData *pd;
     int retval = 0;
 
-    pd = SDL_SHADER_Preprocess(fname, buf, len, defs, defcount, NULL, 0, include_paths, include_path_count, NULL, NULL, Malloc, Free, NULL);
+    pd = SDL_SHADER_Preprocess(fname, buf, len, SDL_TRUE, defs, defcount, NULL, 0, include_paths, include_path_count, NULL, NULL, Malloc, Free, NULL);
 
     if (pd->error_count > 0) {
         int i;
@@ -873,7 +873,7 @@ int main(int argc, char **argv)
                 val = ptr + 1;
             }
 
-            defs = (SDL_SHADER_PreprocessorDefine *) realloc(defs,
+            defs = (SDL_SHADER_PreprocessorDefine *) SDL_realloc(defs,
                        (defcount+1) * sizeof (SDL_SHADER_PreprocessorDefine));
             defs[defcount].identifier = ident;
             defs[defcount].definition = val;

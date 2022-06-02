@@ -256,7 +256,6 @@ typedef struct IncludeState
     SDL_bool pushedback;
     const unsigned char *lexer_marker;
     SDL_bool report_whitespace;
-    SDL_bool report_comments;
     SDL_bool asm_comments;
     size_t orig_length;
     size_t bytes_left;

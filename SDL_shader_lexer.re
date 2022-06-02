@@ -81,6 +81,13 @@ Token preprocessor_lexer(IncludeState *s)
         goto ppdirective;  // may jump back to scanner_loop.
     }
 
+    // Microsoft's preprocessor (and GCC!) allows multiline comments
+    //  before a preprocessor directive, even though C/C++
+    //  doesn't. See if we've hit this case.
+    if (s->tokenval == TOKEN_MULTI_COMMENT) {
+        goto ppdirective;  // may jump back to scanner_loop.
+    }
+
 scanner_loop:
     if (YYLIMIT == YYCURSOR) { YYFILL(1); }
     token = cursor;
@@ -163,14 +170,7 @@ multilinecomment:
     matchptr = cursor;
 // The "*\/" is just to avoid screwing up text editor syntax highlighting.
 /*!re2c
-    "*\/"           {
-                        if (s->report_comments) {
-                            RET(TOKEN_MULTI_COMMENT);
-                        } else if (s->report_whitespace) {
-                            RET(' ');
-                        }
-                        goto scanner_loop;
-                    }
+    "*\/"           { RET(TOKEN_MULTI_COMMENT); }
     NEWLINE         {
                         s->line++;
                         goto multilinecomment;
@@ -189,23 +189,12 @@ singlelinecomment:
     matchptr = cursor;
 /*!re2c
     NEWLINE         {
-                        if (s->report_comments) {
-                            cursor = matchptr;  // so we RET('\n') next.
-                            RET(TOKEN_SINGLE_COMMENT);
-                        }
-                        s->line++;
-                        token = matchptr;
-                        RET('\n');
+                        cursor = matchptr;  // so we RET('\n') next.
+                        RET(TOKEN_SINGLE_COMMENT);
                     }
     "\000"          {
-                        if (eoi) {
-                            if (s->report_comments) {
-                                RET(TOKEN_SINGLE_COMMENT);
-                            } else {
-                                RET(TOKEN_EOI);
-                            }
-                        }
-                        goto singlelinecomment;
+                        cursor = matchptr;  // so we RET(TOKEN_EOI) next.
+                        RET(TOKEN_SINGLE_COMMENT);
                     }
     ANY             { goto singlelinecomment; }
 */

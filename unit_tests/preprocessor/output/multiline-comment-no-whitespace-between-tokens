@@ -1,0 +1,2 @@
+// should produce "RIGHT RIGHT" and not "RIGHTRIGHT".
+RIGHT/*comment*/RIGHT

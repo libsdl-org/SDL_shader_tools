@@ -1,5 +1,6 @@
-// Before hg changeset 91c22d2de774, the preprocessor incorrect thought
-//  that the '+' is a unary operator and would fail to parse the expression.
+// Before git changeset d731fb1079464d341a5933f9917d54f96f6f1e76, the
+//  preprocessor incorrect thought that the '+' is a unary operator and
+//  would fail to parse the expression.
 #if ((1) + (0) < 12)
 RIGHT
 #else

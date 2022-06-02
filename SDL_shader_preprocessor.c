@@ -1927,12 +1927,10 @@ static inline const char *_preprocessor_nexttoken(Preprocessor *_ctx, size_t *_l
         skipping = ((cond != NULL) && (cond->skipping)) ? SDL_TRUE : SDL_FALSE;
 
         state->report_whitespace = SDL_TRUE;
-        state->report_comments = SDL_TRUE;
 
         token = lexer(state);
 
         state->report_whitespace = SDL_FALSE;
-        state->report_comments = SDL_FALSE;
 
         if (token != TOKEN_IDENTIFIER) {
             ctx->recursion_count = 0;
@@ -1997,7 +1995,7 @@ static inline const char *_preprocessor_nexttoken(Preprocessor *_ctx, size_t *_l
             if (handle_pp_identifier(ctx)) {
                 continue;  /* pushed the include_stack. */
             }
-        } else if ((token == TOKEN_SINGLE_COMMENT) || (token == TOKEN_MULTI_COMMENT)) {  /* you don't ever see these unless you enable state->report_comments. */
+        } else if ((token == TOKEN_SINGLE_COMMENT) || (token == TOKEN_MULTI_COMMENT)) {
             print_debug_lexing_position(state);
         } else if (token == ((Token) '\n')) {
             print_debug_lexing_position(state);
@@ -2048,6 +2046,7 @@ static const SDL_SHADER_PreprocessData out_of_mem_data_preprocessor = {
 
 const SDL_SHADER_PreprocessData *SDL_SHADER_Preprocess(const char *filename,
                              const char *source, size_t sourcelen,
+                             SDL_bool strip_comments,
                              const SDL_SHADER_PreprocessorDefine *defines,
                              size_t define_count,
                              const char **system_include_paths,
@@ -2064,12 +2063,13 @@ const SDL_SHADER_PreprocessData *SDL_SHADER_Preprocess(const char *filename,
     Buffer *buffer = NULL;
     Token token = TOKEN_UNKNOWN;
     const char *tokstr = NULL;
-    int nl = 1;
     int indent = 0;
     size_t len = 0;
     char *output = NULL;
     size_t errcount = 0;
     size_t total_bytes = 0;
+    Token prev_token = TOKEN_UNKNOWN;
+    SDL_bool whitespace_pending = SDL_FALSE;
 
     /* !!! FIXME: should be an error if one is NULL but the other isn't. */
     if (!m) { m = SDL_SHADER_internal_malloc; }
@@ -2097,26 +2097,46 @@ const SDL_SHADER_PreprocessData *SDL_SHADER_Preprocess(const char *filename,
     }
 
     while ((tokstr = preprocessor_nexttoken(pp, &len, &token)) != NULL) {
-        int isnewline = 0;
-
         SDL_assert(token != TOKEN_EOI);
 
         if (preprocessor_outofmemory(pp)) {
             goto preprocess_out_of_mem;
         }
 
+        if (whitespace_pending) {
+            if ( (token != ((Token) '\n')) && (token != ((Token) ' ')) ) {
+                buffer_append(buffer, " " , 1);
+            }
+            whitespace_pending = SDL_FALSE;
+        }
+
         if (token == ((Token) '\n')) {
             buffer_append(buffer, ENDLINE_STR, SDL_strlen(ENDLINE_STR));
-            isnewline = 1;
         } else if (token == TOKEN_PREPROCESSING_ERROR) {
             size_t pos = 0;
             const char *fname = preprocessor_sourcepos(pp, &pos);
             errorlist_add(errors, fname, (int) pos, tokstr);
         } else {
-            buffer_append(buffer, tokstr, len);
+            if (strip_comments && (token == TOKEN_SINGLE_COMMENT)) {
+                /* just drop this one. */
+            } else if (strip_comments && (token == TOKEN_MULTI_COMMENT)) {
+                switch (prev_token) {
+                    case ' ':
+                    case '\n':
+                    case TOKEN_MULTI_COMMENT:
+                    case TOKEN_UNKNOWN:
+                        break;  /* just drop this one */
+                    default:
+                        /* add a space (even without report_whitespace), so aMLCOMMENTb becomes a b, not ab */
+                        whitespace_pending = SDL_TRUE;
+                        break;
+                }
+            } else {
+                buffer_append(buffer, tokstr, len);  /* add this token's string. */
+            }
         }
 
-        nl = isnewline;
+        prev_token = token;
     }
     
     SDL_assert(token == TOKEN_EOI);

@@ -1,3 +1,12 @@
+// !!! FIXME: Note that GCC produces an error for this, and we probably should, too:
+// concat-operator-two-macros-with-args:2:17: error: pasting ")" and "y" does not give a valid preprocessing token
+// But GCC still produces "RIGHT RIGHT" despite the error message.
+// Also note that GCC's manual explicitly says:
+//  "However, two tokens that don't together form a valid token cannot be
+//   pasted together. For example, you cannot concatenate x with + in either
+//   order. If you try, the preprocessor issues a warning and emits the two
+//   tokens. Whether it puts white space between the tokens is undefined."
+// So I consider it okay that we report "RIGHTRIGHT" here without the space.
 #define y(a) a
 #define x(a) y(a)##y(a)
 
