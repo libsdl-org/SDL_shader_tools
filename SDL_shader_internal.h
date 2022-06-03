@@ -263,6 +263,7 @@ typedef struct IncludeState
     Uint32 line;
     Conditional *conditional_stack;
     SDL_SHADER_IncludeClose close_callback;
+    const Define *current_define;
     struct IncludeState *next;
 } IncludeState;
 

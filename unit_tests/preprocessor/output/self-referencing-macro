@@ -1,0 +1,3 @@
+// This should not create an infinite loop in the preprocessor.
+#define RIGHT RIGHT
+RIGHT

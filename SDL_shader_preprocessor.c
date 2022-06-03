@@ -487,20 +487,18 @@ static void put_all_defines(Context *ctx)
     }
 }
 
-static int push_source(Context *ctx, const char *fname, const char *source,
-                       size_t srclen, Uint32 linenum,
-                       SDL_SHADER_IncludeClose close_callback)
+static SDL_bool push_source(Context *ctx, const char *fname, const char *source, size_t srclen, Uint32 linenum, SDL_SHADER_IncludeClose close_callback)
 {
     IncludeState *state = get_include(ctx);
     if (state == NULL) {
-        return 0;
+        return SDL_FALSE;
     }
 
     if (fname != NULL) {
         state->filename = stringcache(ctx->filename_cache, fname);
         if (state->filename == NULL) {
             put_include(ctx, state);
-            return 0;
+            return SDL_FALSE;
         }
     }
 
@@ -519,7 +517,16 @@ static int push_source(Context *ctx, const char *fname, const char *source,
 
     ctx->include_stack = state;
 
-    return 1;
+    return SDL_TRUE;
+}
+
+static SDL_bool push_source_define(Context *ctx, const char *fname, const Define *def, Uint32 linenum)
+{
+    const SDL_bool retval = push_source(ctx, fname, def->definition, SDL_strlen(def->definition), linenum, NULL);
+    if (retval) {
+        ctx->include_stack->current_define = def;
+    }
+    return retval;
 }
 
 static void pop_source(Context *ctx)
@@ -1472,13 +1479,13 @@ static int handle_pp_identifier(Context *ctx)
 
     /* Is this identifier #defined? */
     def = find_define(ctx, sym);
-    if (def == NULL) {
+    if ((def == NULL) || (def == state->current_define)) {
         return 0;   /* just send the token through unchanged. */
     } else if (def->paramcount != 0) {
         return handle_macro_args(ctx, sym, def);
     }
 
-    return push_source(ctx, fname, def->definition, SDL_strlen(def->definition), line, NULL);
+    return push_source_define(ctx, fname, def, line);
 }
 
 
