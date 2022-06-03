@@ -1,0 +1,5 @@
+// This should not create an infinite loop in the preprocessor.
+// !!! FIXME: GCC doesn't introduce whitespace here, see if there was a
+// !!! FIXME: leftover from matching Microsoft's preprocessor in MojoShader.
+#define a(b,c) a(b,c)
+a(RIGHT, RIGHT)

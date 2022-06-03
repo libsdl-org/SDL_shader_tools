@@ -514,6 +514,10 @@ static SDL_bool push_source(Context *ctx, const char *fname, const char *source,
     state->next = ctx->include_stack;
     state->asm_comments = ctx->asm_comments;
 
+    if (ctx->include_stack) {
+        state->current_define = ctx->include_stack->current_define;
+    }
+
     print_debug_lexing_position(state);
 
     ctx->include_stack = state;
@@ -1200,8 +1204,7 @@ static inline void handle_pp_ifndef(Context *ctx)
     _handle_pp_ifdef(ctx, TOKEN_PP_IFNDEF);
 }
 
-static int replace_and_push_macro(Context *ctx, const Define *def,
-                                  const Define *params)
+static SDL_bool replace_and_push_macro(Context *ctx, const Define *def, const Define *params)
 {
     char *final = NULL;
     IncludeState *state;
@@ -1210,13 +1213,13 @@ static int replace_and_push_macro(Context *ctx, const Define *def,
     /* We push the #define and lex it, building a buffer with argument replacement, stringification, and concatenation. */
     buffer = buffer_create(128, MallocBridge, FreeBridge, ctx);
     if (buffer == NULL) {
-        return 0;
+        return SDL_FALSE;
     }
 
     state = ctx->include_stack;
-    if (!push_source(ctx, state->filename, def->definition, SDL_strlen(def->definition), state->line, NULL)) {
+    if (!push_source_define(ctx, state->filename, def, state->line)) {
         buffer_destroy(buffer);
-        return 0;
+        return SDL_FALSE;
     }
 
     state = ctx->include_stack;
@@ -1295,21 +1298,23 @@ static int replace_and_push_macro(Context *ctx, const Define *def,
     state = ctx->include_stack;
     if (!push_source(ctx, state->filename, final, SDL_strlen(final), state->line, close_define_include)) {
         Free(ctx, final);
-        return 0;
+        return SDL_FALSE;
     }
 
-    return 1;
+    ctx->include_stack->current_define = def;
+
+    return SDL_TRUE;
 
 replace_and_push_macro_failed:
     pop_source(ctx);
     buffer_destroy(buffer);
-    return 0;
+    return SDL_FALSE;
 }
 
 
-static int handle_macro_args(Context *ctx, const char *sym, const Define *def)
+static SDL_bool handle_macro_args(Context *ctx, const char *sym, const Define *def)
 {
-    int retval = 0;
+    SDL_bool retval = SDL_FALSE;
     IncludeState *state = ctx->include_stack;
     Define *params = NULL;
     const int expected = (def->paramcount < 0) ? 0 : def->paramcount;
@@ -1462,7 +1467,7 @@ handle_macro_args_failed:
 }
 
 
-static int handle_pp_identifier(Context *ctx)
+static SDL_bool handle_pp_identifier(Context *ctx)
 {
     IncludeState *state = ctx->include_stack;
     const char *fname = state->filename;
@@ -1472,7 +1477,7 @@ static int handle_pp_identifier(Context *ctx)
 
     if (ctx->recursion_count++ >= 256) {  /* !!! FIXME: gcc can figure this out. */
         fail(ctx, "Recursing macros");
-        return 0;
+        return SDL_FALSE;
     }
 
     SDL_memcpy(sym, state->token, state->tokenlen);
@@ -1480,8 +1485,9 @@ static int handle_pp_identifier(Context *ctx)
 
     /* Is this identifier #defined? */
     def = find_define(ctx, sym);
+
     if ((def == NULL) || (def == state->current_define)) {
-        return 0;   /* just send the token through unchanged. */
+        return SDL_FALSE;   /* just send the token through unchanged. */
     } else if (def->paramcount != 0) {
         return handle_macro_args(ctx, sym, def);
     }
