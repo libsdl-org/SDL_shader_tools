@@ -411,7 +411,7 @@ static const Define *find_define(Context *ctx, const char *sym)
     if ( (hash == filestrhash) && (ctx->file_macro) && (SDL_strcmp(sym, "__FILE__") == 0) ) {
         const IncludeState *state = ctx->include_stack;
         const char *fname = state ? state->filename : "";
-        const size_t len = SDL_strlen(fname) + 2;
+        const size_t len = SDL_strlen(fname) + 3;
         char *str;
 
         Free(ctx, (char *) ctx->file_macro->definition);
@@ -420,8 +420,9 @@ static const Define *find_define(Context *ctx, const char *sym)
             return NULL;
         }
         str[0] = '\"';
-        SDL_memcpy(str + 1, fname, len - 2);
-        str[len - 1] = '\"';
+        SDL_memcpy(str + 1, fname, len - 3);
+        str[len - 2] = '\"';
+        str[len - 1] = '\0';
         ctx->file_macro->definition = str;
         return ctx->file_macro;
     } else if ( (hash == linestrhash) && (ctx->line_macro) && (SDL_strcmp(sym, "__LINE__") == 0) ) {
