@@ -61,7 +61,7 @@ Token preprocessor_lexer(IncludeState *s)
     int eoi = 0;
 
 /*!re2c
-    ANY = [\000-\377];
+    ANY = [\001-\377];
     ANYLEGAL = [a-zA-Z0-9_/'*=+%^&|!#<>()[{}.,~^:;? \t\v\f\r\n\-\]\\];
     O = [0-7];
     D = [0-9];
@@ -90,7 +90,7 @@ Token preprocessor_lexer(IncludeState *s)
     }
 
 scanner_loop:
-    if (YYLIMIT == YYCURSOR) { YYFILL(1); }
+    if (YYLIMIT <= YYCURSOR) { YYFILL(1); }
     token = cursor;
 
 /*!re2c
@@ -167,7 +167,7 @@ scanner_loop:
 stringliteral:
     /* !!! FIXME: forbid newlines in string literals? */
     /* !!! FIXME: the ANY section used to be `(ESC|ANY\[\r\n\\"])` ...is that redundant or was it like that for a reason? */
-    if (YYLIMIT == YYCURSOR) { YYFILL(1); }
+    if (YYLIMIT <= YYCURSOR) { YYFILL(1); }
 /*!re2c
     QUOTE           { RET(TOKEN_STRING_LITERAL); }
 
@@ -182,7 +182,7 @@ stringliteral:
 */
 
 multilinecomment:
-    if (YYLIMIT == YYCURSOR) { YYFILL(1); }
+    if (YYLIMIT <= YYCURSOR) { YYFILL(1); }
     matchptr = cursor;
 /* The "*\/" is just to avoid screwing up text editor syntax highlighting. */
 /*!re2c
@@ -201,7 +201,7 @@ multilinecomment:
 */
 
 singlelinecomment:
-    if (YYLIMIT == YYCURSOR) { YYFILL(1); }
+    if (YYLIMIT <= YYCURSOR) { YYFILL(1); }
     matchptr = cursor;
 /*!re2c
     NEWLINE         {
@@ -216,7 +216,7 @@ singlelinecomment:
 */
 
 ppdirective:
-    if (YYLIMIT == YYCURSOR) { YYFILL(1); }
+    if (YYLIMIT <= YYCURSOR) { YYFILL(1); }
 /*!re2c
         PP "include"    { RET(TOKEN_PP_INCLUDE); }
         PP "line"       { RET(TOKEN_PP_LINE); }
@@ -240,7 +240,7 @@ ppdirective:
 */
 
 bad_chars:
-    if (YYLIMIT == YYCURSOR) { YYFILL(1); }
+    if (YYLIMIT <= YYCURSOR) { YYFILL(1); }
 /*!re2c
     ANYLEGAL        { cursor--; RET(TOKEN_BAD_CHARS); }
     "\000"          {
