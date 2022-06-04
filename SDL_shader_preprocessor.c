@@ -1528,7 +1528,27 @@ static int find_precedence(const Token token)
     return -1;
 }
 
-/* !!! FIXME: we're using way too much stack space here... */
+#define DECLARE_RPN_ARRAY(name, typ, initial_stack_count) \
+    typ name##_stacked[initial_stack_count]; \
+    typ *name##_malloced = NULL; \
+    typ *name = name##_stacked; \
+    size_t name##_allocsize = initial_stack_count; \
+    size_t name##_size = 0;
+
+#define VERIFY_RPN_ARRAY_ALLOCATION(name, typ, increase, run_if_oom) \
+    if (name##_size >= name##_allocsize) { \
+        void *ptr = SDL_realloc(name##_malloced, sizeof (typ) * (name##_allocsize + increase)); \
+            if (!ptr) { run_if_oom; } \
+            if (name##_malloced == NULL) {  /* moving from stack to heap? */ \
+                SDL_memcpy(ptr, name##_stacked, sizeof (typ) * name##_size); \
+            } \
+            name = name##_malloced = (typ *) ptr; \
+            name##_allocsize += increase; \
+        } \
+
+#define FREE_RPN_ARRAY(name) \
+    SDL_free(name##_malloced);
+
 typedef struct RpnTokens
 {
     int isoperator;
@@ -1537,28 +1557,27 @@ typedef struct RpnTokens
 
 static long interpret_rpn(const RpnTokens *tokens, int tokencount, SDL_bool *_error)
 {
-    long stack[128];
-    size_t stacksize = 0;
-
+    DECLARE_RPN_ARRAY(stack, long, 16);
+    long retval = 0;
     *_error = SDL_TRUE;  /* by default */
 
-    #define NEED_X_TOKENS(x) do { if (stacksize < x) return 0; } while (SDL_FALSE)
+    #define NEED_X_TOKENS(x) do { if (stack_size < x) return 0; } while (SDL_FALSE)
 
     #define BINARY_OPERATION(op) do { \
         NEED_X_TOKENS(2); \
-        stack[stacksize-2] = stack[stacksize-2] op stack[stacksize-1]; \
-        stacksize--; \
+        stack[stack_size-2] = stack[stack_size-2] op stack[stack_size-1]; \
+        stack_size--; \
     } while (SDL_FALSE)
 
     #define UNARY_OPERATION(op) do { \
         NEED_X_TOKENS(1); \
-        stack[stacksize-1] = op stack[stacksize-1]; \
+        stack[stack_size-1] = op stack[stack_size-1]; \
     } while (SDL_FALSE)
 
     while (tokencount-- > 0) {
         if (!tokens->isoperator) {
-            SDL_assert(stacksize < SDL_arraysize(stack));
-            stack[stacksize++] = (long) tokens->value;
+            VERIFY_RPN_ARRAY_ALLOCATION(stack, long, 128, { FREE_RPN_ARRAY(stack); return 0; });
+            stack[stack_size++] = (long) tokens->value;
             tokens++;
             continue;
         }
@@ -1588,7 +1607,7 @@ static long interpret_rpn(const RpnTokens *tokens, int tokencount, SDL_bool *_er
 
             case '/':
                 NEED_X_TOKENS(2);
-                if (stack[stacksize-1] == 0) {
+                if (stack[stack_size-1] == 0) {
                     return 0;  // division by zero. !!! FIXME: report this error.
                 }
                 BINARY_OPERATION(/);
@@ -1596,7 +1615,7 @@ static long interpret_rpn(const RpnTokens *tokens, int tokencount, SDL_bool *_er
 
             case '%':
                 NEED_X_TOKENS(2);
-                if (stack[stacksize-1] == 0) {
+                if (stack[stack_size-1] == 0) {
                     return 0;  // division by zero. !!! FIXME: report this error.
                 }
                 BINARY_OPERATION(%);
@@ -1612,12 +1631,14 @@ static long interpret_rpn(const RpnTokens *tokens, int tokencount, SDL_bool *_er
     #undef BINARY_OPERATION
     #undef UNARY_OPERATION
 
-    if (stacksize != 1) {
-        return 0;
+    if (stack_size == 1) {
+        retval = stack[0];
+        *_error = SDL_FALSE;
     }
 
-    *_error = SDL_FALSE;
-    return stack[0];
+    FREE_RPN_ARRAY(stack);
+
+    return retval;
 }
 
 /* https://wikipedia.org/wiki/Shunting_yard_algorithm
@@ -1629,26 +1650,25 @@ static long interpret_rpn(const RpnTokens *tokens, int tokencount, SDL_bool *_er
 static int reduce_pp_expression(Context *ctx)
 {
     IncludeState *orig_state = ctx->include_stack;
-    RpnTokens output[128];
-    Token stack[64];
+    DECLARE_RPN_ARRAY(output, RpnTokens, 16);
+    DECLARE_RPN_ARRAY(stack, Token, 16);
     Token previous_token = TOKEN_UNKNOWN;
-    size_t outputsize = 0;
-    size_t stacksize = 0;
     SDL_bool error = SDL_FALSE;
     SDL_bool matched = SDL_FALSE;
     SDL_bool done = SDL_FALSE;
+    int retval = -1;
     long val;
 
     #define ADD_TO_OUTPUT(op, val) \
-        SDL_assert(outputsize < SDL_arraysize(output)); \
-        output[outputsize].isoperator = op; \
-        output[outputsize].value = val; \
-        outputsize++;
+        VERIFY_RPN_ARRAY_ALLOCATION(output, RpnTokens, 128, { out_of_memory(ctx); goto reduce_pp_expression_failed; }) \
+        output[output_size].isoperator = op; \
+        output[output_size].value = val; \
+        output_size++;
 
     #define PUSH_TO_STACK(t) \
-        SDL_assert(stacksize < SDL_arraysize(stack)); \
-        stack[stacksize] = t; \
-        stacksize++;
+        VERIFY_RPN_ARRAY_ALLOCATION(stack, Token, 128, { out_of_memory(ctx); goto reduce_pp_expression_failed; }) \
+        stack[stack_size] = t; \
+        stack_size++;
 
     while (!done) {
         IncludeState *state = ctx->include_stack;
@@ -1696,7 +1716,7 @@ static int reduce_pp_expression(Context *ctx)
                     }
                     if (token != TOKEN_IDENTIFIER) {
                         fail(ctx, "operator 'defined' requires an identifier");
-                        return -1;
+                        goto reduce_pp_expression_failed;
                     }
 
                     found = (find_define_by_token(ctx) != NULL);
@@ -1704,7 +1724,7 @@ static int reduce_pp_expression(Context *ctx)
                     if (paren) {
                         if (lexer(state) != ((Token) ')')) {
                             fail(ctx, "Unmatched ')'");
-                            return -1;
+                            goto reduce_pp_expression_failed;
                         }
                     }
 
@@ -1727,8 +1747,8 @@ static int reduce_pp_expression(Context *ctx)
 
             case ((Token) ')'):
                 matched = SDL_FALSE;
-                while (stacksize > 0) {
-                    const Token t = stack[--stacksize];
+                while (stack_size > 0) {
+                    const Token t = stack[--stack_size];
                     if (t == ((Token) '(')) {
                         matched = SDL_TRUE;
                         break;
@@ -1738,7 +1758,7 @@ static int reduce_pp_expression(Context *ctx)
 
                 if (!matched) {
                     fail(ctx, "Unmatched ')'");
-                    return -1;
+                    goto reduce_pp_expression_failed;
                 }
                 break;
 
@@ -1748,15 +1768,15 @@ static int reduce_pp_expression(Context *ctx)
                 if (precedence < 0) {
                     pushback(state);
                     fail(ctx, "Invalid expression");
-                    return -1;
+                    goto reduce_pp_expression_failed;
                 } else { /* it's an operator. */
-                    while (stacksize > 0) {
-                        const Token t = stack[stacksize-1];
+                    while (stack_size > 0) {
+                        const Token t = stack[stack_size-1];
                         const int p = find_precedence(t);
                         if ( (p >= 0) &&
                              ( ((isleft) && (precedence <= p)) ||
                                ((!isleft) && (precedence < p)) ) ) {
-                            stacksize--;
+                            stack_size--;
                             ADD_TO_OUTPUT(1, t);
                         } else {
                             break;
@@ -1769,11 +1789,11 @@ static int reduce_pp_expression(Context *ctx)
         previous_token = token;
     }
 
-    while (stacksize > 0) {
-        const Token t = stack[--stacksize];
+    while (stack_size > 0) {
+        const Token t = stack[--stack_size];
         if (t == ((Token) '(')) {
             fail(ctx, "Unmatched ')'");
-            return -1;
+            goto reduce_pp_expression_failed;
         }
         ADD_TO_OUTPUT(1, t);
     }
@@ -1786,7 +1806,7 @@ static int reduce_pp_expression(Context *ctx)
     printf("PREPROCESSOR EXPRESSION RPN:");
     {
         int i;
-        for (i = 0; i < outputsize; i++) {
+        for (i = 0; i < output_size; i++) {
             if (!output[i].isoperator) {
                 printf(" %d", output[i].value);
             } else {
@@ -1809,7 +1829,7 @@ static int reduce_pp_expression(Context *ctx)
     printf("\n");
     #endif
 
-    val = interpret_rpn(output, outputsize, &error);
+    val = interpret_rpn(output, output_size, &error);
 
     #if DEBUG_PREPROCESSOR
     printf("PREPROCESSOR RPN RESULT: %ld%s\n", val, error ? " (ERROR)" : "");
@@ -1817,11 +1837,21 @@ static int reduce_pp_expression(Context *ctx)
 
     if (error) {
         fail(ctx, "Invalid expression");
-        return -1;
+        goto reduce_pp_expression_failed;
     }
 
-    return ((val) ? 1 : 0);
+    retval = ((val) ? 1 : 0);
+
+reduce_pp_expression_failed:
+    FREE_RPN_ARRAY(output);
+    FREE_RPN_ARRAY(stack);
+    return retval;
 }
+
+#undef DECLARE_RPN_ARRAY
+#undef VERIFY_RPN_ARRAY_ALLOCATION
+#undef FREE_RPN_ARRAY
+
 
 static Conditional *handle_pp_if(Context *ctx)
 {
