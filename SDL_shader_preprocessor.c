@@ -1576,9 +1576,24 @@ static long interpret_rpn(const RpnTokens *tokens, int tokencount, SDL_bool *_er
             case TOKEN_RSHIFT: BINARY_OPERATION(>>); break;
             case '-': BINARY_OPERATION(-); break;
             case '+': BINARY_OPERATION(+); break;
-            case '%': BINARY_OPERATION(%); break;
-            case '/': BINARY_OPERATION(/); break;
             case '*': BINARY_OPERATION(*); break;
+
+            case '/':
+                NEED_X_TOKENS(2);
+                if (stack[stacksize-1] == 0) {
+                    return 0;  // division by zero. !!! FIXME: report this error.
+                }
+                BINARY_OPERATION(/);
+                break;
+
+            case '%':
+                NEED_X_TOKENS(2);
+                if (stack[stacksize-1] == 0) {
+                    return 0;  // division by zero. !!! FIXME: report this error.
+                }
+                BINARY_OPERATION(%);
+                break;
+
             default: return 0;
         }
 
