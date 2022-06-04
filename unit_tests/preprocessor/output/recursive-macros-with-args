@@ -1,0 +1,4 @@
+// This should not create an infinite loop in the preprocessor.
+#define a(x,y) b(x,y)
+#define b(w,z) a(w,z)
+b(1, 2)

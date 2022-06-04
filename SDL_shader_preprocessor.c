@@ -42,7 +42,6 @@ typedef struct Context
     SDL_bool isfail;
     SDL_bool out_of_memory;
     char failstr[256];
-    int recursion_count;
     SDL_bool asm_comments;
     SDL_bool parsing_pragma;
     Conditional *conditional_pool;
@@ -495,6 +494,8 @@ static SDL_bool push_source(Context *ctx, const char *fname, const char *source,
         return SDL_FALSE;
     }
 
+    /*printf("PUSH SOURCE [fname='%s' linenum=%u, source='%s']\n", fname, (uint) linenum, source);*/
+
     if (fname != NULL) {
         state->filename = stringcache(ctx->filename_cache, fname);
         if (state->filename == NULL) {
@@ -538,6 +539,8 @@ static void pop_source(Context *ctx)
 {
     IncludeState *state = ctx->include_stack;
     Conditional *cond;
+
+    /*printf("POP SOURCE\n");*/
 
     SDL_assert(state != NULL);  /* more pops than pushes! */
     if (state == NULL) {
@@ -1466,6 +1469,16 @@ handle_macro_args_failed:
     return retval;
 }
 
+static SDL_bool currently_preprocessing_macro(Context *ctx, const Define *def)
+{
+    IncludeState *i;
+    for (i = ctx->include_stack; i != NULL; i = i->next) {
+        if (i->current_define == def) {
+            return SDL_TRUE;
+        }
+    }
+    return SDL_FALSE;
+}
 
 static SDL_bool handle_pp_identifier(Context *ctx)
 {
@@ -1475,18 +1488,13 @@ static SDL_bool handle_pp_identifier(Context *ctx)
     char *sym = (char *) alloca(state->tokenlen+1);
     const Define *def;
 
-    if (ctx->recursion_count++ >= 256) {  /* !!! FIXME: gcc can figure this out. */
-        fail(ctx, "Recursing macros");
-        return SDL_FALSE;
-    }
-
     SDL_memcpy(sym, state->token, state->tokenlen);
     sym[state->tokenlen] = '\0';
 
     /* Is this identifier #defined? */
     def = find_define(ctx, sym);
 
-    if ((def == NULL) || (def == state->current_define)) {
+    if ((def == NULL) || currently_preprocessing_macro(ctx, def)) {
         return SDL_FALSE;   /* just send the token through unchanged. */
     } else if (def->paramcount != 0) {
         return handle_macro_args(ctx, sym, def);
@@ -1660,10 +1668,6 @@ static int reduce_pp_expression(Context *ctx)
             if (!isleft) {
                 token = TOKEN_PP_UNARY_PLUS;
             }
-        }
-
-        if (token != TOKEN_IDENTIFIER) {
-            ctx->recursion_count = 0;
         }
 
         switch (token) {
@@ -1964,10 +1968,6 @@ static inline const char *_preprocessor_nexttoken(Preprocessor *_ctx, size_t *_l
         token = lexer(state);
 
         state->report_whitespace = SDL_FALSE;
-
-        if (token != TOKEN_IDENTIFIER) {
-            ctx->recursion_count = 0;
-        }
 
         if (token == TOKEN_EOI) {
             SDL_assert(state->bytes_left == 0);

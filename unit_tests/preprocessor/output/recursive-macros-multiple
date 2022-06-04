@@ -1,0 +1,6 @@
+// This should not create an infinite loop in the preprocessor.
+#define a b
+#define b a
+#define c b
+#define d c a b
+d
