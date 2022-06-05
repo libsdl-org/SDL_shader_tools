@@ -1265,29 +1265,31 @@ static SDL_bool replace_and_push_macro(Context *ctx, const Define *def, const De
         len = state->tokenlen;
 
         if (state->tokenval == TOKEN_HASH) { /* stringify? */
+            SDL_bool valid = SDL_TRUE;
+
             lexer(state);
-            SDL_assert(state->tokenval != TOKEN_EOI);  /* we checked for this. */
-
-            if (!buffer_append(buffer, "\"", 1)) {
-                goto replace_and_push_macro_failed;
-            }
-
-            if (state->tokenval == TOKEN_IDENTIFIER) {
+            if (state->tokenval == TOKEN_EOI) {
+                valid = SDL_FALSE;
+            } else if (state->tokenval == TOKEN_IDENTIFIER) {
                 arg = find_macro_arg(state, params);
-                if (arg != NULL) {
+                if (arg == NULL) {
+                    valid = SDL_FALSE;
+                } else {
                     data = arg->original;
                     len = SDL_strlen(data);
                 }
             }
 
-            if (!buffer_append(buffer, data, len)) {
-                goto replace_and_push_macro_failed;
+            if (!valid) {
+                fail(ctx, "'#' without a valid macro parameter");
+            } else {
+                if ( !buffer_append(buffer, "\"", 1) ||
+                     !buffer_append(buffer, data, len) ||
+                     !buffer_append(buffer, "\"", 1) ) {
+                    goto replace_and_push_macro_failed;
+                }
+                continue;
             }
-
-            if (!buffer_append(buffer, "\"", 1)) {
-                goto replace_and_push_macro_failed;
-            }
-            continue;
         }
 
         if (state->tokenval == TOKEN_IDENTIFIER) {
