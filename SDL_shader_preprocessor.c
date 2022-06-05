@@ -966,18 +966,34 @@ static void handle_pp_define(Context *ctx)
         lexer(state);  /* skip it. */
     } else if (state->tokenval == ((Token) '(')) {
         IncludeState saved;
+        SDL_bool invalid = SDL_FALSE;
+
         SDL_memcpy(&saved, state, sizeof (IncludeState));
-        while (SDL_TRUE) {
-            if (lexer(state) != TOKEN_IDENTIFIER) {
-                break;
-            }
-            params++;
-            if (lexer(state) != ((Token) ',')) {
-                break;
+
+        if (lexer(state) != ((Token) ')')) {
+            pushback(state);
+            while (SDL_TRUE) {
+                lexer(state);
+                if (state->tokenval != TOKEN_IDENTIFIER) {
+                    invalid = SDL_TRUE;
+                    break;
+                }
+
+                params++;
+
+                lexer(state);
+                if (state->tokenval == ((Token) ')')) {
+                    break;  /* we're done! */
+                }
+
+                if (state->tokenval != ((Token) ',')) {
+                    invalid = SDL_TRUE;
+                    break;
+                }
             }
         }
 
-        if (state->tokenval != ((Token) ')')) {
+        if (invalid) {
             fail(ctx, "syntax error in macro parameter list");
             goto handle_pp_define_failed;
         }

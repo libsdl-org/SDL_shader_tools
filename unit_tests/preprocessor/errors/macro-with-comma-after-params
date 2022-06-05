@@ -1,0 +1,2 @@
+// this is invalid syntax and should report an error.
+#define a(b,) c
