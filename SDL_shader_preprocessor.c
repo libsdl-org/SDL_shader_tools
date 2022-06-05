@@ -1390,16 +1390,22 @@ static SDL_bool handle_macro_args(Context *ctx, const char *sym, const Define *d
             } else if ((t == TOKEN_INCOMPLETE_STRING_LITERAL) || (t == TOKEN_INCOMPLETE_COMMENT) || (t == TOKEN_EOI)) {
                 pushback(state);
                 fail(ctx, "Unterminated macro list");
+                buffer_destroy(origbuffer);
+                buffer_destroy(buffer);
                 goto handle_macro_args_failed;
             }
 
             SDL_assert(expr != NULL);
 
             if (!buffer_append(buffer, expr, exprlen)) {
+                buffer_destroy(origbuffer);
+                buffer_destroy(buffer);
                 goto handle_macro_args_failed;
             }
 
             if (!buffer_append(origbuffer, origexpr, origexprlen)) {
+                buffer_destroy(origbuffer);
+                buffer_destroy(buffer);
                 goto handle_macro_args_failed;
             }
 
@@ -1577,7 +1583,7 @@ static long interpret_rpn(const RpnTokens *tokens, int tokencount, SDL_bool *_er
     long retval = 0;
     *_error = SDL_TRUE;  /* by default */
 
-    #define NEED_X_TOKENS(x) do { if (stack_size < x) return 0; } while (SDL_FALSE)
+    #define NEED_X_TOKENS(x) do { if (stack_size < x) goto interpret_rpn_failed; } while (SDL_FALSE)
 
     #define BINARY_OPERATION(op) do { \
         NEED_X_TOKENS(2); \
@@ -1592,7 +1598,7 @@ static long interpret_rpn(const RpnTokens *tokens, int tokencount, SDL_bool *_er
 
     while (tokencount-- > 0) {
         if (!tokens->isoperator) {
-            VERIFY_RPN_ARRAY_ALLOCATION(stack, long, 128, { FREE_RPN_ARRAY(stack); return 0; });
+            VERIFY_RPN_ARRAY_ALLOCATION(stack, long, 128, { goto interpret_rpn_failed; });
             stack[stack_size++] = (long) tokens->value;
             tokens++;
             continue;
@@ -1624,7 +1630,7 @@ static long interpret_rpn(const RpnTokens *tokens, int tokencount, SDL_bool *_er
             case '/':
                 NEED_X_TOKENS(2);
                 if (stack[stack_size-1] == 0) {
-                    return 0;  // division by zero. !!! FIXME: report this error.
+                    goto interpret_rpn_failed;  // division by zero. !!! FIXME: report this error.
                 }
                 BINARY_OPERATION(/);
                 break;
@@ -1632,12 +1638,12 @@ static long interpret_rpn(const RpnTokens *tokens, int tokencount, SDL_bool *_er
             case '%':
                 NEED_X_TOKENS(2);
                 if (stack[stack_size-1] == 0) {
-                    return 0;  // division by zero. !!! FIXME: report this error.
+                    goto interpret_rpn_failed;  // division by zero. !!! FIXME: report this error.
                 }
                 BINARY_OPERATION(%);
                 break;
 
-            default: return 0;
+            default: goto interpret_rpn_failed;
         }
 
         tokens++;
@@ -1651,6 +1657,8 @@ static long interpret_rpn(const RpnTokens *tokens, int tokencount, SDL_bool *_er
         retval = stack[0];
         *_error = SDL_FALSE;
     }
+
+interpret_rpn_failed:
 
     FREE_RPN_ARRAY(stack);
 
