@@ -723,7 +723,24 @@ static Token lexer(IncludeState *state)
 /* !!! FIXME: parsing fails on preprocessor directives should skip rest of line. */
 static int require_newline(IncludeState *state)
 {
-    const Token token = lexer(state);
+    Token token;
+    while (SDL_TRUE) {
+        token = lexer(state);
+        if (token == ((Token) ' ')) {
+            continue;  /* whitespace, keep looking */
+        } else if (token == TOKEN_MULTI_COMMENT) {
+            if (MemChr(state->token, '\n', state->tokenlen) != NULL) {  /* there was a newline in the comment, it counts. */
+                pushback(state);
+                return 1;
+            }
+            continue;
+        } else if (token == TOKEN_SINGLE_COMMENT) {  /* should drop a newline next call. */
+            continue;
+        } else {
+            break;
+        }
+    }
+
     pushback(state);  /* rewind no matter what. */
     return ( (token == TOKEN_INCOMPLETE_STRING_LITERAL) || /* call it an eol. */
              (token == TOKEN_INCOMPLETE_COMMENT) || /* call it an eol. */
@@ -1702,7 +1719,14 @@ static int reduce_pp_expression(Context *ctx)
         SDL_bool isleft = SDL_TRUE;
         int precedence = -1;
 
-        if ( (token == ((Token) '!')) || (token == ((Token) '~')) ) {
+        if (token == TOKEN_SINGLE_COMMENT) {
+            continue;  /* dump it. */
+        } else if (token == TOKEN_MULTI_COMMENT) {
+            if (MemChr(state->token, '\n', state->tokenlen) != NULL) {  /* there was a newline in the comment, it counts. */
+                done = SDL_TRUE;
+                break;  /* we're done! */
+            }
+        } else if ( (token == ((Token) '!')) || (token == ((Token) '~')) ) {
             isleft = SDL_FALSE;
         } else if (token == ((Token) '-')) {
             isleft = ((previous_token == TOKEN_INT_LITERAL) || (previous_token == ((Token) ')'))) ? SDL_TRUE : SDL_FALSE;

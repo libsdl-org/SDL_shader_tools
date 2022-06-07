@@ -1,0 +1,11 @@
+#if 1  // this comment should not cause an error.
+RIGHT
+#endif  /* this comment should be okay, too. */
+
+#if 0 /*
+and this one.
+*/
+WRONG
+#endif
+
+

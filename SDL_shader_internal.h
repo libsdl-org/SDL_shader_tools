@@ -290,6 +290,9 @@ const char *preprocessor_sourcepos(Preprocessor *pp, size_t *pos);
 
 void SDL_SHADER_print_debug_token(const char *subsystem, const char *token, const size_t tokenlen, const Token tokenval);
 
+/* somehow there isn't an SDL_memchr ... */
+const void *MemChr(const void *buf, const Uint8 b, size_t buflen);
+
 #endif  /* _INCLUDE_SDL_SHADER_INTERNAL_H_ */
 
 /* end of SDL_shader_internal.h ... */

@@ -931,7 +931,7 @@ static SDL_bool blockscmp(BufferBlock *item, const Uint8 *data, size_t len)
     return SDL_FALSE;  /* not a complete match. */
 }
 
-static const void *MemChr(const void *buf, const Uint8 b, size_t buflen)
+const void *MemChr(const void *buf, const Uint8 b, size_t buflen)
 {
     const Uint8 *ptr = (const Uint8 *) buf;
     while (buflen--) {
