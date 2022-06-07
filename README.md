@@ -21,9 +21,27 @@ Which is to say that a non-goal is:
 There is much work to be done here, and so much to build, so please be
 patient as things fall into place and decisions are made.
 
+# Current status: preprocessing!
+
+Build the project with CMake, and then you should have a program named
+"sdl-shader-compiler" ...run it like this to see it preprocess stuff,
+like a C compiler's preprocessor does:
+
+```bash
+./sdl-shader-compiler -P -I some_dir -DSOME_DEFINE=SOME_VALUE some_source.c
+```
+
+# Questions?
+
 If you have questions, please open an issue on the GitHub repository, or
 feel free to hit me up [on Twitter](https://twitter.com/icculus) or just
 [email me](mailto:icculus@icculus.org).
+
+# Pay me.
+
+Want to help fund this work?
+- [Become my patron on Patreon](https://patreon.com/icculus), or
+- [Sponsor me on GitHub](https://github.com/sponsors/icculus)
 
 Thanks!
 
