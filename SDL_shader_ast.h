@@ -784,7 +784,7 @@ typedef struct SDL_SHADER_AstData
  *  why you need it without hesitation. This is almost certainly only good for
  *  building code analysis tools on top of.
  *
- * This is intended to parse HLSL source code, turning it into an abstract
+ * This is intended to parse SDLSL source code, turning it into an abstract
  *  syntax tree.
  *
  * (srcprofile) specifies the source language of the shader. You can specify

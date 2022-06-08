@@ -315,10 +315,10 @@ typedef struct SDL_SHADER_CompileData
 
 
 /*
- * Use this function to compile high-level shader programs.
+ * Use this function to compile shader program source code.
  *
- * (srcprofile) specifies the source language of the shader. You can specify
- *  a shader model with this, too. See SDL_SHADER_SRC_PROFILE_* constants.
+ * (srcprofile) specifies the source language of the shader. For now, this
+ *  must be NULL to signify a default.
  *
  * (filename) is a NULL-terminated UTF-8 filename. It can be NULL. We do not
  *  actually access this file, as we obtain our data from (source). This

@@ -745,7 +745,6 @@ static int preprocess(const char *fname, const char *buf, size_t len,
     return retval;
 }
 
-#if 0
 static int ast(const char *fname, const char *buf, size_t len,
                const char *outfile, const SDL_SHADER_PreprocessorDefine *defs,
                size_t defcount, FILE *io)
@@ -779,6 +778,7 @@ static int ast(const char *fname, const char *buf, size_t len,
     return retval;
 }
 
+#if 0
 static int compile(const char *fname, const char *buf, size_t len,
                     const char *outfile,
                     const SDL_SHADER_PreprocessorDefine *defs,

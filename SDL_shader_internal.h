@@ -53,6 +53,12 @@ typedef unsigned int uint;  /* this is a printf() helper. don't use for code. */
 #endif
 
 
+/*
+ * Source profile strings. !!! FIXME: put in public API eventually.
+ */
+#define SDL_SHADER_SRC_SDLSL_1_0 "sdlsl_1_0"
+
+
 /* Hashtables... */
 
 typedef struct HashTable HashTable;
