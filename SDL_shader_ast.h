@@ -742,7 +742,7 @@ typedef struct SDL_SHADER_AstData
      *  fail to compile will pass here without error, if they are syntactically
      *  correct!
      */
-    SDL_SHADER_Error *errors;
+    const SDL_SHADER_Error *errors;
 
     /*
      * The name of the source profile used to parse the shader. Will be NULL
@@ -832,15 +832,19 @@ typedef struct SDL_SHADER_AstData
  *  call. This allows you to parse several shaders on separate CPU cores
  *  at the same time.
  */
-extern DECLSPEC const SDL_SHADER_AstData *SDL_SHADER_parseAst(const char *srcprofile,
+extern DECLSPEC const SDL_SHADER_AstData * SDLCALL SDL_SHADER_ParseAst(const char *srcprofile,
                                     const char *filename, const char *source,
                                     size_t sourcelen,
-                                    const SDL_SHADER_PreprocessorDefine *defs,
-                                    size_t define_count,
+                                    const char **system_include_paths,
+                                    size_t system_include_path_count,
+                                    const char **local_include_paths,
+                                    size_t local_include_path_count,
                                     SDL_SHADER_IncludeOpen include_open,
                                     SDL_SHADER_IncludeClose include_close,
-                                    SDL_SHADER_Malloc m, SDL_SHADER_Free f,
-                                    void *d);
+                                    const SDL_SHADER_PreprocessorDefine *defines,
+                                    size_t define_count,
+                                    SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d);
+
 
 
 /* !!! FIXME: expose semantic analysis to the public API? */
@@ -855,7 +859,7 @@ extern DECLSPEC const SDL_SHADER_AstData *SDL_SHADER_parseAst(const char *srcpro
  * This function is thread safe, so long as any allocator you passed into
  *  SDL_SHADER_parseAst() is, too.
  */
-extern DECLSPEC void SDL_SHADER_FreeAstData(const SDL_SHADER_AstData *data);
+extern DECLSPEC void SDLCALL SDL_SHADER_FreeAstData(const SDL_SHADER_AstData *data);
 
 #endif
 

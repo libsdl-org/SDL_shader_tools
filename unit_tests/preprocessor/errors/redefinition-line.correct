@@ -1,1 +1,1 @@
-preprocessor/errors/redefinition-line:2: ERROR: '__LINE__' already defined
+preprocessor/errors/redefinition-line:1: warning: '__LINE__' already defined

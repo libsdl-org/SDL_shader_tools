@@ -1,1 +1,1 @@
-preprocessor/errors/macro-with-comma-after-params:2: ERROR: syntax error in macro parameter list
+preprocessor/errors/macro-with-comma-after-params:2: error: syntax error in macro parameter list

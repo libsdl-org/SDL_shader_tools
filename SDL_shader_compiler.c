@@ -83,150 +83,11 @@ typedef struct LoopLabels
     struct LoopLabels *prev;
 } LoopLabels;
 
-// Compile state, passed around all over the place.
 
-typedef struct Context
-{
-    int isfail;
-    int out_of_memory;
-    MOJOSHADER_malloc malloc;
-    MOJOSHADER_free free;
-    void *malloc_data;
-    ErrorList *errors;
-    ErrorList *warnings;
-    StringCache *strcache;
-    const char *sourcefile;  // current source file that we're parsing.
-    size_t sourceline; // current line in sourcefile that we're parsing.
-    SymbolMap usertypes;
-    SymbolMap variables;
-    MOJOSHADER_astNode *ast;  // Abstract Syntax Tree
-    const char *source_profile;
-    int is_func_scope; // non-zero if semantic analysis is in function scope.
-    int loop_count;
-    int switch_count;
-    int var_index;  // next variable index for current function.
-    int global_var_index;  // next variable index for global scope.
-    int user_func_index;  // next function index for user-defined functions.
-    int intrinsic_func_index;  // next function index for intrinsic functions.
-
-    MOJOSHADER_irStatement **ir;  // intermediate representation.
-    int ir_label_count;  // next unused IR label index.
-    int ir_temp_count;  // next unused IR temporary value index.
-    int ir_end; // current function's end label during IR build.
-    int ir_ret; // temp that holds current function's retval during IR build.
-    LoopLabels *ir_loop;  // nested loop boundary labels during IR build.
-
-    // Cache intrinsic types for fast lookup and consistent pointer values.
-    MOJOSHADER_astDataType dt_none;
-    MOJOSHADER_astDataType dt_bool;
-    MOJOSHADER_astDataType dt_int;
-    MOJOSHADER_astDataType dt_uint;
-    MOJOSHADER_astDataType dt_float;
-    MOJOSHADER_astDataType dt_float_snorm;
-    MOJOSHADER_astDataType dt_float_unorm;
-    MOJOSHADER_astDataType dt_half;
-    MOJOSHADER_astDataType dt_double;
-    MOJOSHADER_astDataType dt_string;
-    MOJOSHADER_astDataType dt_sampler1d;
-    MOJOSHADER_astDataType dt_sampler2d;
-    MOJOSHADER_astDataType dt_sampler3d;
-    MOJOSHADER_astDataType dt_samplercube;
-    MOJOSHADER_astDataType dt_samplerstate;
-    MOJOSHADER_astDataType dt_samplercompstate;
-    MOJOSHADER_astDataType dt_buf_bool;
-    MOJOSHADER_astDataType dt_buf_int;
-    MOJOSHADER_astDataType dt_buf_uint;
-    MOJOSHADER_astDataType dt_buf_half;
-    MOJOSHADER_astDataType dt_buf_float;
-    MOJOSHADER_astDataType dt_buf_double;
-    MOJOSHADER_astDataType dt_buf_float_snorm;
-    MOJOSHADER_astDataType dt_buf_float_unorm;
-
-    Buffer *garbage;  // this is sort of hacky.
-} Context;
-
-
-// !!! FIXME: cut and paste between every damned source file follows...
-// !!! FIXME: We need to make some sort of ContextBase that applies to all
-// !!! FIXME:  files and move this stuff to mojoshader_common.c ...
-
-// Convenience functions for allocators...
-
-static inline void out_of_memory(Context *ctx)
-{
-    ctx->isfail = ctx->out_of_memory = 1;
-} // out_of_memory
-
-static inline void *Malloc(Context *ctx, const size_t len)
-{
-    void *retval = ctx->malloc((int) len, ctx->malloc_data);
-    if (retval == NULL)
-        out_of_memory(ctx);
-    return retval;
-} // Malloc
-
-static inline char *StrDup(Context *ctx, const char *str)
-{
-    char *retval = (char *) Malloc(ctx, strlen(str) + 1);
-    if (retval != NULL)
-        strcpy(retval, str);
-    return retval;
-} // StrDup
-
-static inline void Free(Context *ctx, void *ptr)
-{
-    ctx->free(ptr, ctx->malloc_data);
-} // Free
-
-static void *MallocBridge(int bytes, void *data)
-{
-    return Malloc((Context *) data, (size_t) bytes);
-} // MallocBridge
-
-static void FreeBridge(void *ptr, void *data)
-{
-    Free((Context *) data, ptr);
-} // FreeBridge
-
-static void failf(Context *ctx, const char *fmt, ...) ISPRINTF(2,3);
-static void failf(Context *ctx, const char *fmt, ...)
-{
-    ctx->isfail = 1;
-    if (ctx->out_of_memory)
-        return;
-
-    va_list ap;
-    va_start(ap, fmt);
-    errorlist_add_va(ctx->errors, ctx->sourcefile, ctx->sourceline, fmt, ap);
-    va_end(ap);
-} // failf
-
-static inline void fail(Context *ctx, const char *reason)
-{
-    failf(ctx, "%s", reason);
-} // fail
-
-static void warnf(Context *ctx, const char *fmt, ...) ISPRINTF(2,3);
-static void warnf(Context *ctx, const char *fmt, ...)
-{
-    if (ctx->out_of_memory)
-        return;
-
-    va_list ap;
-    va_start(ap, fmt);
-    errorlist_add_va(ctx->warnings, ctx->sourcefile, ctx->sourceline, fmt, ap);
-    va_end(ap);
-} // warnf
-
-static inline void warn(Context *ctx, const char *reason)
-{
-    warnf(ctx, "%s", reason);
-} // warn
-
-static inline int isfail(const Context *ctx)
+static inline SDL_bool isfail(const Context *ctx)
 {
     return ctx->isfail;
-} // isfail
+}
 
 
 static void symbolmap_nuke(const void *k, const void *v, void *d) {/*no-op*/}
@@ -3097,7 +2958,7 @@ static const MOJOSHADER_astDataType *type_check_ast(Context *ctx, void *_ast)
             {
                 assert(ctx->loop_count == 0);
                 assert(ctx->switch_count == 0);
-                ctx->is_func_scope = 1;
+                ctx->is_func_scope = SDL_TRUE;
                 ctx->var_index = 0;  // reset this every function.
                 push_scope(ctx);  // so function params are in function scope.
                 // repush the parameters before checking the actual function.
@@ -3106,7 +2967,7 @@ static const MOJOSHADER_astDataType *type_check_ast(Context *ctx, void *_ast)
                     push_variable(ctx, param->identifier, param->datatype);
                 type_check_ast(ctx, ast->funcunit.definition);
                 pop_scope(ctx);
-                ctx->is_func_scope = 0;
+                ctx->is_func_scope = SDL_FALSE;
                 assert(ctx->loop_count == 0);
                 assert(ctx->switch_count == 0);
             } // else
@@ -3403,10 +3264,9 @@ static int is_semantic(const Context *ctx, const char *token,
 
 static void delete_ir(Context *ctx, void *_ir);  // !!! FIXME: move this code around.
 
-static void destroy_context(Context *ctx)
+void compiler_end(Context *ctx)
 {
-    if (ctx != NULL)
-    {
+    if (ctx && ctx->uses_compiler) {
         MOJOSHADER_free f = ((ctx->free != NULL) ? ctx->free : MOJOSHADER_internal_free);
         void *d = ctx->malloc_data;
         size_t i = 0;
@@ -3425,25 +3285,22 @@ static void destroy_context(Context *ctx)
         } // if
         buffer_destroy(ctx->garbage);
 
-        delete_compilation_unit(ctx, (MOJOSHADER_astCompilationUnit*)ctx->ast);
         destroy_symbolmap(ctx, &ctx->usertypes);
         destroy_symbolmap(ctx, &ctx->variables);
         stringcache_destroy(ctx->strcache);
-        errorlist_destroy(ctx->errors);
-        errorlist_destroy(ctx->warnings);
 
         if (ctx->ir != NULL)
         {
             for (i = 0; i <= ctx->user_func_index; i++)
                 delete_ir(ctx, ctx->ir[i]);
             f(ctx->ir, d);
-        } // if
+        }
 
         // !!! FIXME: more to clean up here, now.
 
-        f(ctx, d);
-    } // if
-} // destroy_context
+        ctx->uses_compiler = SDL_FALSE;
+    }
+}
 
 static Context *build_context(MOJOSHADER_malloc m, MOJOSHADER_free f, void *d)
 {

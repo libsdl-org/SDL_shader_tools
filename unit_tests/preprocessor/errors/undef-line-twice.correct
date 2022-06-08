@@ -1,1 +1,1 @@
-preprocessor/errors/undef-line-twice:3: ERROR: undefining "__LINE__"
+preprocessor/errors/undef-line-twice:2: warning: undefining "__LINE__"

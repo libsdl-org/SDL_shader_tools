@@ -23,7 +23,7 @@ void SDLCALL SDL_SHADER_internal_free(void *ptr, void *d)
 }
 
 SDL_SHADER_Error SDL_SHADER_out_of_mem_error = {
-    "Out of memory", NULL, SDL_SHADER_POSITION_NONE
+    SDL_TRUE, "Out of memory", NULL, SDL_SHADER_POSITION_NONE
 };
 
 typedef struct HashItem
@@ -508,24 +508,24 @@ ErrorList *errorlist_create(SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d)
     return retval;
 }
 
-SDL_bool errorlist_add(ErrorList *list, const char *fname, const int errpos, const char *str)
+SDL_bool errorlist_add(ErrorList *list, const SDL_bool is_error, const char *fname, const int errpos, const char *str)
 {
-    return errorlist_add_fmt(list, fname, errpos, "%s", str);
+    return errorlist_add_fmt(list, is_error, fname, errpos, "%s", str);
 }
 
 
-SDL_bool errorlist_add_fmt(ErrorList *list, const char *fname, const int errpos, const char *fmt, ...)
+SDL_bool errorlist_add_fmt(ErrorList *list, const SDL_bool is_error, const char *fname, const int errpos, const char *fmt, ...)
 {
     size_t retval;
     va_list ap;
     va_start(ap, fmt);
-    retval = errorlist_add_va(list, fname, errpos, fmt, ap);
+    retval = errorlist_add_va(list, is_error, fname, errpos, fmt, ap);
     va_end(ap);
     return retval;
 }
 
 
-SDL_bool errorlist_add_va(ErrorList *list, const char *_fname, const int errpos, const char *fmt, va_list va)
+SDL_bool errorlist_add_va(ErrorList *list, const SDL_bool is_error, const char *_fname, const int errpos, const char *fmt, va_list va)
 {
     ErrorItem *error = (ErrorItem *) list->m(sizeof (ErrorItem), list->d);
     char *fname = NULL;
@@ -569,7 +569,8 @@ SDL_bool errorlist_add_va(ErrorList *list, const char *_fname, const int errpos,
         va_end(ap);
     }
 
-    error->error.error = failstr;
+    error->error.is_error = is_error;
+    error->error.message = failstr;
     error->error.filename = fname;
     error->error.error_position = errpos;
     error->next = NULL;
@@ -578,6 +579,7 @@ SDL_bool errorlist_add_va(ErrorList *list, const char *_fname, const int errpos,
     list->tail = error;
 
     list->count++;
+
     return SDL_TRUE;
 }
 
@@ -623,7 +625,7 @@ void errorlist_destroy(ErrorList *list)
         ErrorItem *item = list->head.next;
         while (item != NULL) {
             ErrorItem *next = item->next;
-            f((void *) item->error.error, d);
+            f((void *) item->error.message, d);
             f((void *) item->error.filename, d);
             f(item, d);
             item = next;
@@ -1010,6 +1012,116 @@ ssize_t buffer_find(Buffer *buffer, const size_t start, const void *_data, const
     }
 
     return -1;  /* no match found. */
+}
+
+void *Malloc(Context *ctx, const size_t len)
+{
+    void *retval = ctx->malloc((int) len, ctx->malloc_data);
+    if (retval == NULL) {
+        ctx->isfail = SDL_TRUE;
+        ctx->out_of_memory = SDL_TRUE;
+    }
+    return retval;
+}
+
+void Free(Context *ctx, void *ptr)
+{
+    ctx->free(ptr, ctx->malloc_data);
+}
+
+void *MallocContextBridge(size_t bytes, void *data)
+{
+    return Malloc((Context *) data, bytes);
+}
+
+void FreeContextBridge(void *ptr, void *data)
+{
+    Free((Context *) data, ptr);
+}
+
+char *StrDup(Context *ctx, const char *str)
+{
+    const size_t slen = SDL_strlen(str) + 1;
+    char *retval = (char *) Malloc(ctx, slen);
+    if (retval != NULL) {
+        SDL_strlcpy(retval, str, slen);
+    }
+    return retval;
+}
+
+void fail(Context *ctx, const char *reason)
+{
+    ctx->isfail = SDL_TRUE;
+    errorlist_add(ctx->errors, SDL_TRUE, ctx->filename, ctx->position, reason);
+}
+
+void failf(Context *ctx, const char *fmt, ...)
+{
+    va_list ap;
+    ctx->isfail = SDL_TRUE;
+    va_start(ap, fmt);
+    errorlist_add_va(ctx->errors, SDL_TRUE, ctx->filename, ctx->position, fmt, ap);
+    va_end(ap);
+}
+
+void warn(Context *ctx, const char *reason)
+{
+    errorlist_add(ctx->errors, SDL_FALSE, ctx->filename, ctx->position, reason);
+}
+
+void warnf(Context *ctx, const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    errorlist_add_va(ctx->errors, SDL_FALSE, ctx->filename, ctx->position, fmt, ap);
+    va_end(ap);
+}
+
+
+Context *context_create(SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d)
+{
+    Context *ctx;
+
+    if ((m == NULL) != (f == NULL)) {
+        return NULL;
+    }
+
+    if (!m) { m = SDL_SHADER_internal_malloc; }
+    if (!f) { f = SDL_SHADER_internal_free; }
+
+    ctx = (Context *) m(sizeof (Context), d);
+    if (ctx == NULL) {
+        return NULL;
+    }
+
+    SDL_zerop(ctx);
+    ctx->malloc = m;
+    ctx->free = f;
+    ctx->malloc_data = d;
+
+    ctx->errors = errorlist_create(MallocContextBridge, FreeContextBridge, ctx);
+    if (!ctx->errors) { goto context_create_failed; }
+
+    return ctx;
+
+context_create_failed:
+    context_destroy(ctx);
+    return NULL;
+}
+
+void context_destroy(Context *ctx)
+{
+    if (ctx) {
+        SDL_SHADER_Free f = ctx->free;
+        void *d = ctx->malloc_data;
+
+        errorlist_destroy(ctx->errors);
+        preprocessor_end(ctx);
+        /* !!! FIXME: ast_end(ctx); */ SDL_assert(!ctx->uses_ast);
+        /* !!! FIXME: compiler_end(ctx); */ SDL_assert(!ctx->uses_compiler);
+
+        f(ctx, d);
+    }
 }
 
 /* end of SDL_shader_common.c ... */

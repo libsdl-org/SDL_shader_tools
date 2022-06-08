@@ -53,48 +53,6 @@
 } while (0)
 
 
-/* !!! FIXME: Unify Context and remove the function duplicates! */
-
-/* Convenience functions for allocators... */
-
-static inline void out_of_memory(Context *ctx)
-{
-    ctx->out_of_memory = SDL_TRUE;
-}
-
-static inline void *Malloc(Context *ctx, const size_t len)
-{
-    void *retval = ctx->malloc((int) len, ctx->malloc_data);
-    if (retval == NULL) {
-        out_of_memory(ctx);
-    }
-    return retval;
-}
-
-static inline void Free(Context *ctx, void *ptr)
-{
-    ctx->free(ptr, ctx->malloc_data);
-}
-
-static void *MallocBridge(size_t bytes, void *data)
-{
-    return Malloc((Context *) data, bytes);
-}
-
-static void FreeBridge(void *ptr, void *data)
-{
-    Free((Context *) data, ptr);
-}
-
-static inline char *StrDup(Context *ctx, const char *str)
-{
-    char *retval = (char *) Malloc(ctx, SDL_strlen(str) + 1);
-    if (retval != NULL) {
-        SDL_strcpy(retval, str);
-    }
-    return retval;
-}
-
 static void delete_compilation_unit(Context*, SDL_SHADER_astCompilationUnit*);
 static void delete_statement(Context *ctx, SDL_SHADER_astStatement *stmt);
 
@@ -1058,10 +1016,14 @@ static int convert_to_lemon_token(Context *ctx, const char *token, size_t tokenl
 /* parse the source code into an AST. */
 static void parse_source(Context *ctx, const char *filename,
                          const char *source, size_t sourcelen,
+                         const char **system_include_paths,
+                         size_t system_include_path_count,
+                         const char **local_include_paths,
+                         size_t local_include_path_count,
+                         SDL_SHADER_includeOpen include_open,
+                         SDL_SHADER_includeClose include_close,
                          const SDL_SHADER_preprocessorDefine *defines,
-                         size_t define_count,
-                         SDL_SHADER_IncludeOpen include_open,
-                         SDL_SHADER_IncludeClose include_close)
+                         size_t define_count)
 {
     TokenData data;
     size_t tokenlen;
@@ -1069,25 +1031,22 @@ static void parse_source(Context *ctx, const char *filename,
     const char *token;
     int lemon_token;
     const char *fname;
-    Preprocessor *pp;
     void *parser;
 
-    /* !!! FIXME: should be an error if one is NULL but the other isn't. */
-    if (!include_open) { include_open = SDL_SHADER_internal_include_open; }
-    if (!include_close) { include_close = SDL_SHADER_internal_include_close; }
-
-    pp = preprocessor_start(filename, source, sourcelen, include_open,
-                            include_close, defines, define_count, 0,
-                            MallocBridge, FreeBridge, ctx);
-    if (pp == NULL) {
+    if (!preprocessor_start(ctx, filename, source, sourcelen,
+                            system_include_paths, system_include_path_count,
+                            local_include_paths, local_include_path_count,
+                            include_open, include_close,
+                            defines, define_count, SDL_FALSE)) {
+        SDL_assert(ctx->isfail);
         SDL_assert(ctx->out_of_memory);  /* shouldn't fail for any other reason. */
         return;
     }
 
     parser = ParseSDLSLAlloc(ctx->malloc, ctx->malloc_data);
     if (parser == NULL) {
+        SDL_assert(ctx->isfail);
         SDL_assert(ctx->out_of_memory);  /* shouldn't fail for any other reason. */
-        preprocessor_end(pp);
         return;
     }
 
@@ -1109,18 +1068,12 @@ static void parse_source(Context *ctx, const char *filename,
             break;
         }
 
-        fname = preprocessor_sourcepos(pp, &ctx->sourceline);
-        ctx->sourcefile = fname ? stringcache(ctx->strcache, fname) : 0;
-
         if ((tokenval == TOKEN_HASH) || (tokenval == TOKEN_HASHHASH)) {
             tokenval = TOKEN_BAD_CHARS;
         }
 
         if (tokenval == TOKEN_BAD_CHARS) {
             fail(ctx, "Bad characters in source file");
-            continue;
-        } else if (tokenval == TOKEN_PREPROCESSING_ERROR) {
-            fail(ctx, token);  /* this happens to be null-terminated. */
             continue;
         } else if (tokenval == TOKEN_PP_PRAGMA) {
             SDL_assert(!is_pragma);
@@ -1184,7 +1137,7 @@ static void parse_source(Context *ctx, const char *filename,
 }
 
 
-static SDL_SHADER_astData SDL_SHADER_out_of_mem_ast_data = {
+static SDL_SHADER_astData SDL_SHADER_out_of_mem_data_ast = {
     1, &SDL_SHADER_out_of_mem_error, 0, 0, 0, 0, 0, 0
 };
 
@@ -1192,16 +1145,16 @@ static SDL_SHADER_astData SDL_SHADER_out_of_mem_ast_data = {
 /* !!! FIXME: cut and paste from assembler. */
 static const SDL_SHADER_astData *build_failed_ast(Context *ctx)
 {
-    SDL_assert(isfail(ctx));
+    SDL_assert(ctx->isfail);
 
     if (ctx->out_of_memory) {
-        return &SDL_SHADER_out_of_mem_ast_data;
+        return &SDL_SHADER_out_of_mem_data_ast;
     }
 
     SDL_SHADER_astData *retval = NULL;
     retval = (SDL_SHADER_astData *) Malloc(ctx, sizeof (SDL_SHADER_astData));
     if (retval == NULL) {
-        return &SDL_SHADER_out_of_mem_ast_data;
+        return &SDL_SHADER_out_of_mem_data_ast;
     }
 
     SDL_zerop(retval);
@@ -1214,7 +1167,7 @@ static const SDL_SHADER_astData *build_failed_ast(Context *ctx)
 
     if (ctx->out_of_memory) {
         Free(ctx, retval);
-        return &SDL_SHADER_out_of_mem_ast_data;
+        return &SDL_SHADER_out_of_mem_data_ast;
     }
 
     return retval;
@@ -1226,12 +1179,12 @@ static const SDL_SHADER_astData *build_astdata(Context *ctx)
     SDL_SHADER_astData *retval = NULL;
 
     if (ctx->out_of_memory) {
-        return &SDL_SHADER_out_of_mem_ast_data;
+        return &SDL_SHADER_out_of_mem_data_ast;
     }
 
     retval = (SDL_SHADER_astData *) Malloc(ctx, sizeof (SDL_SHADER_astData));
     if (retval == NULL) {
-        return &SDL_SHADER_out_of_mem_ast_data;
+        return &SDL_SHADER_out_of_mem_data_ast;
     }
 
     SDL_zerop(retval);
@@ -1239,7 +1192,7 @@ static const SDL_SHADER_astData *build_astdata(Context *ctx)
     retval->free = (ctx->free == SDL_SHADER_internal_free) ? NULL : ctx->free;
     retval->malloc_data = ctx->malloc_data;
 
-    if (!isfail(ctx)) {
+    if (!ctx->isfail) {
         retval->source_profile = ctx->source_profile;
         retval->ast = ctx->ast;
     }
@@ -1248,7 +1201,7 @@ static const SDL_SHADER_astData *build_astdata(Context *ctx)
     retval->errors = errorlist_flatten(ctx->errors);
     if (ctx->out_of_memory) {
         Free(ctx, retval);
-        return &SDL_SHADER_out_of_mem_ast_data;
+        return &SDL_SHADER_out_of_mem_data_ast;
     }
 
     retval->opaque = ctx;
@@ -1273,40 +1226,49 @@ static void choose_src_profile(Context *ctx, const char *srcprofile)
     #undef TEST_PROFILE
 
     fail(ctx, "Unknown profile");
-    
 }
+
+void ast_end(Context *ctx)
+{
+    if (!ctx || !ctx->uses_ast) {
+        return;
+    }
+
+    delete_compilation_unit(ctx, (SDL_SHADER_astCompilationUnit *) ctx->ast);
+
+    ctx->uses_ast = SDL_FALSE;
+}
+
 
 /* API entry point... */
 
-const SDL_SHADER_astData *SDL_SHADER_parseAst(const char *srcprofile,
+const SDL_SHADER_AstData *SDL_SHADER_ParseAst(const char *srcprofile,
                                     const char *filename, const char *source,
                                     size_t sourcelen,
-                                    const SDL_SHADER_preprocessorDefine *defs,
-                                    size_t define_count,
+                                    const char **system_include_paths,
+                                    size_t system_include_path_count,
+                                    const char **local_include_paths,
+                                    size_t local_include_path_count,
                                     SDL_SHADER_includeOpen include_open,
                                     SDL_SHADER_includeClose include_close,
+                                    const SDL_SHADER_preprocessorDefine *defines,
+                                    size_t define_count,
                                     SDL_SHADER_malloc m, SDL_SHADER_free f, void *d)
+
 {
     const SDL_SHADER_astData *retval = NULL;
-    Context *ctx = NULL;
-
-    if ( ((m == NULL) && (f != NULL)) || ((m != NULL) && (f == NULL)) ) {
-        return &SDL_SHADER_out_of_mem_ast_data;  /* supply both or neither. */
-    }
-
-    ctx = build_context(m, f, d);
+    Context *ctx = context_create(m, f, d);
     if (ctx == NULL) {
-        return &SDL_SHADER_out_of_mem_ast_data;
+        return &SDL_SHADER_out_of_mem_data_ast;
     }
 
     choose_src_profile(ctx, srcprofile);
 
-    if (!isfail(ctx)) {
-        parse_source(ctx, filename, source, sourcelen, defs, define_count,
-                     include_open, include_close);
+    if (!ctx->isfail) {
+        parse_source(ctx, filename, source, sourcelen, system_include_paths, system_include_path_count, local_include_paths, local_include_path_count, include_open, include_close, defines, define_count);
     }
 
-    if (!isfail(ctx)) {
+    if (!ctx->isfail) {
         retval = build_astdata(ctx);  /* ctx isn't destroyed yet! */
     } else {
         retval = (SDL_SHADER_astData *) build_failed_ast(ctx);
@@ -1320,7 +1282,7 @@ const SDL_SHADER_astData *SDL_SHADER_parseAst(const char *srcprofile,
 void SDL_SHADER_freeAstData(const SDL_SHADER_astData *_data)
 {
     SDL_SHADER_astData *data = (SDL_SHADER_astData *) _data;
-    if ((data != NULL) && (data != &SDL_SHADER_out_of_mem_ast_data)) {
+    if ((data != NULL) && (data != &SDL_SHADER_out_of_mem_data_ast)) {
         /* !!! FIXME: this needs to live for deleting the stringcache and the ast. */
         Context *ctx = (Context *) data->opaque;
         SDL_SHADER_free f = (data->free == NULL) ? SDL_SHADER_internal_free : data->free;
@@ -1330,7 +1292,7 @@ void SDL_SHADER_freeAstData(const SDL_SHADER_astData *_data)
         /* we don't f(data->source_profile), because that's internal static data. */
 
         for (i = 0; i < data->error_count; i++) {
-            f((void *) data->errors[i].error, d);
+            f((void *) data->errors[i].message, d);
             f((void *) data->errors[i].filename, d);
         }
         f((void *) data->errors, d);

@@ -17,6 +17,7 @@
 #include <stdarg.h>
 
 #include "SDL_shader_compiler.h"
+#include "SDL_shader_ast.h"
 
 #define DEBUG_LEXER 0
 #define DEBUG_PREPROCESSOR 0
@@ -108,9 +109,9 @@ void stringcache_destroy(StringCache *cache);
 
 typedef struct ErrorList ErrorList;
 ErrorList *errorlist_create(SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d);
-SDL_bool errorlist_add(ErrorList *list, const char *fname, const int errpos, const char *str);
-SDL_bool errorlist_add_fmt(ErrorList *list, const char *fname, const int errpos, SDL_PRINTF_FORMAT_STRING const char *fmt, ...) SDL_PRINTF_VARARG_FUNC(4);
-SDL_bool errorlist_add_va(ErrorList *list, const char *_fname, const int errpos, SDL_PRINTF_FORMAT_STRING const char *fmt, va_list va);
+SDL_bool errorlist_add(ErrorList *list, const SDL_bool is_error, const char *fname, const Sint32 errpos, const char *str);
+SDL_bool errorlist_add_fmt(ErrorList *list, const SDL_bool is_error, const char *fname, const Sint32 errpos, SDL_PRINTF_FORMAT_STRING const char *fmt, ...) SDL_PRINTF_VARARG_FUNC(5);
+SDL_bool errorlist_add_va(ErrorList *list, const SDL_bool is_error, const char *_fname, const Sint32 errpos, SDL_PRINTF_FORMAT_STRING const char *fmt, va_list va);
 size_t errorlist_count(ErrorList *list);
 SDL_SHADER_Error *errorlist_flatten(ErrorList *list); // resets the list!
 void errorlist_destroy(ErrorList *list);
@@ -201,12 +202,6 @@ typedef enum
        bogus syntax without explicitly checking for this token. */
     TOKEN_BAD_CHARS,
 
-    /* This is returned if there's an error condition (the error is returned
-       as a NULL-terminated string from preprocessor_nexttoken(), instead
-       of actual token data). You can continue getting tokens after this
-       is reported. It happens for things like missing #includes, etc. */
-    TOKEN_PREPROCESSING_ERROR,
-
     /* These are all caught by the preprocessor. Caller won't ever see them,
        except TOKEN_PP_PRAGMA.
        They control the preprocessor (#includes new files, etc). */
@@ -266,18 +261,104 @@ typedef struct IncludeState
     SDL_bool asm_comments;
     size_t orig_length;
     size_t bytes_left;
-    Uint32 line;
+    Sint32 line;
     Conditional *conditional_stack;
     SDL_SHADER_IncludeClose close_callback;
     const Define *current_define;
     struct IncludeState *next;
 } IncludeState;
 
-Token preprocessor_lexer(IncludeState *s);
+Token preprocessor_lexer(IncludeState *s);  /* this is the interface to the re2c-generated code. */
+
+void SDL_SHADER_print_debug_token(const char *subsystem, const char *token, const size_t tokenlen, const Token tokenval);
+
+
+typedef struct Context
+{
+    SDL_bool isfail;
+    SDL_bool out_of_memory;
+    SDL_SHADER_Malloc malloc;
+    SDL_SHADER_Free free;
+    void *malloc_data;
+    const char *filename;  /* comes from a stringcache, don't free or modify it! */
+    Sint32 position;
+    ErrorList *errors;
+
+    /* preprocessor stuff... */
+    SDL_bool uses_preprocessor;
+    SDL_bool asm_comments;
+    SDL_bool parsing_pragma;
+    Conditional *conditional_pool;
+    IncludeState *include_stack;
+    IncludeState *include_pool;
+    Define *define_hashtable[256];
+    Define *define_pool;
+    Define *file_macro;
+    Define *line_macro;
+    StringCache *filename_cache;
+    const char **system_include_paths;
+    size_t system_include_path_count;
+    const char **local_include_paths;
+    size_t local_include_path_count;
+    SDL_SHADER_IncludeOpen open_callback;
+    SDL_SHADER_IncludeClose close_callback;
+
+    /* AST stuff ... */
+    SDL_bool uses_ast;
+    const char *source_profile;  /* static string, don't free */
+    SDL_SHADER_AstNode *ast;  /* Abstract Syntax Tree */
+
+    /* compiler stuff... */
+    SDL_bool uses_compiler;
+#if 0 /* !!! FIXME, compiler code isn't built into the project yet! */
+    StringCache *strcache;
+    SymbolMap usertypes;
+    SymbolMap variables;
+
+    SDL_bool is_func_scope; // SDL_TRUE if semantic analysis is in function scope.
+    Uint32 loop_count;
+    Uint32 switch_count;
+    Sint32 var_index;  // next variable index for current function.
+    Sint32 global_var_index;  // next variable index for global scope.
+    Sint32 user_func_index;  // next function index for user-defined functions.
+    Sint32 intrinsic_func_index;  // next function index for intrinsic functions.
+
+    /* Cache intrinsic types for fast lookup and consistent pointer values. */
+    SDL_SHADER_AstDataType dt_none;
+    SDL_SHADER_AstDataType dt_bool;
+    SDL_SHADER_AstDataType dt_int;
+    SDL_SHADER_AstDataType dt_uint;
+    SDL_SHADER_AstDataType dt_float;
+    SDL_SHADER_AstDataType dt_float_snorm;
+    SDL_SHADER_AstDataType dt_float_unorm;
+    SDL_SHADER_AstDataType dt_half;
+    SDL_SHADER_AstDataType dt_double;
+    SDL_SHADER_AstDataType dt_string;
+    SDL_SHADER_AstDataType dt_sampler1d;
+    SDL_SHADER_AstDataType dt_sampler2d;
+    SDL_SHADER_AstDataType dt_sampler3d;
+    SDL_SHADER_AstDataType dt_samplercube;
+    SDL_SHADER_AstDataType dt_samplerstate;
+    SDL_SHADER_AstDataType dt_samplercompstate;
+    SDL_SHADER_AstDataType dt_buf_bool;
+    SDL_SHADER_AstDataType dt_buf_int;
+    SDL_SHADER_AstDataType dt_buf_uint;
+    SDL_SHADER_AstDataType dt_buf_half;
+    SDL_SHADER_AstDataType dt_buf_float;
+    SDL_SHADER_AstDataType dt_buf_double;
+    SDL_SHADER_AstDataType dt_buf_float_snorm;
+    SDL_SHADER_AstDataType dt_buf_float_unorm;
+
+    Buffer *garbage;  // this is sort of hacky.
+#endif
+} Context;
+
+Context *context_create(SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d);
+void context_destroy(Context *ctx);
 
 /* This will only fail if the allocator fails, so it doesn't return any error code...NULL on failure. */
-Preprocessor *preprocessor_start(const char *fname, const char *source,
-                            size_t sourcelen,
+SDL_bool preprocessor_start(Context *ctx, const char *fname,
+                            const char *source, size_t sourcelen,
                             const char **system_include_paths,
                             size_t system_include_path_count,
                             const char **local_include_paths,
@@ -285,19 +366,34 @@ Preprocessor *preprocessor_start(const char *fname, const char *source,
                             SDL_SHADER_IncludeOpen open_callback,
                             SDL_SHADER_IncludeClose close_callback,
                             const SDL_SHADER_PreprocessorDefine *defines,
-                            size_t define_count, SDL_bool asm_comments,
-                            SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d);
+                            size_t define_count, SDL_bool asm_comments);
 
-void preprocessor_end(Preprocessor *pp);
-SDL_bool preprocessor_outofmemory(Preprocessor *pp);
-const char *preprocessor_nexttoken(Preprocessor *_ctx, size_t *_len, Token *_token);
-const char *preprocessor_sourcepos(Preprocessor *pp, size_t *pos);
+void preprocessor_end(Context *ctx);  /* destroying the context will call this for you, too. Safe to call directly as well. */
+const char *preprocessor_nexttoken(Context *ctx, size_t *_len, Token *_token);
+
+void ast_end(Context *ctx);
+void compiler_end(Context *ctx);
 
 
-void SDL_SHADER_print_debug_token(const char *subsystem, const char *token, const size_t tokenlen, const Token tokenval);
-
-/* somehow there isn't an SDL_memchr ... */
+/* Somehow there isn't an SDL_memchr ... */
 const void *MemChr(const void *buf, const Uint8 b, size_t buflen);
+
+/* Can't use SDL_strdup because we need to handle custom allocators and Context::out_of_memory */
+char *StrDup(Context *ctx, const char *str);
+
+/* Helpers for memory allocation inside a Context */
+void *Malloc(Context *ctx, const size_t len);
+void Free(Context *ctx, void *ptr);
+
+/* These are for things that need SDL_SHADER_Malloc/Free and want to use a Context's
+   existing allocators. The "data" must be the Context pointer. */
+void *MallocContextBridge(size_t bytes, void *data);
+void FreeContextBridge(void *ptr, void *data);
+
+void fail(Context *ctx, const char *reason);
+void failf(Context *ctx, SDL_PRINTF_FORMAT_STRING const char *fmt, ...) SDL_PRINTF_VARARG_FUNC(2);
+void warn(Context *ctx, const char *reason);
+void warnf(Context *ctx, SDL_PRINTF_FORMAT_STRING const char *fmt, ...) SDL_PRINTF_VARARG_FUNC(2);
 
 #endif  /* _INCLUDE_SDL_SHADER_INTERNAL_H_ */
 

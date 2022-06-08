@@ -1,1 +1,1 @@
-preprocessor/errors/undef-file-twice:3: ERROR: undefining "__FILE__"
+preprocessor/errors/undef-file-twice:2: warning: undefining "__FILE__"

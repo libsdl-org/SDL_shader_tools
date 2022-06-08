@@ -723,10 +723,11 @@ static int preprocess(const char *fname, const char *buf, size_t len,
     if (pd->error_count > 0) {
         int i;
         for (i = 0; i < pd->error_count; i++) {
-            fprintf(stderr, "%s:%d: ERROR: %s\n",
+            fprintf(stderr, "%s:%d: %s: %s\n",
                     pd->errors[i].filename ? pd->errors[i].filename : "???",
                     pd->errors[i].error_position,
-                    pd->errors[i].error);
+                    pd->errors[i].is_error ? "error" : "warning",
+                    pd->errors[i].message);
         }
     } else {
         if (pd->output != NULL) {
@@ -745,6 +746,7 @@ static int preprocess(const char *fname, const char *buf, size_t len,
     return retval;
 }
 
+#if 0
 static int ast(const char *fname, const char *buf, size_t len,
                const char *outfile, const SDL_SHADER_PreprocessorDefine *defs,
                size_t defcount, FILE *io)
@@ -760,9 +762,10 @@ static int ast(const char *fname, const char *buf, size_t len,
     if (ad->error_count > 0) {
         int i;
         for (i = 0; i < ad->error_count; i++) {
-            fprintf(stderr, "%s:%d: ERROR: %s\n",
+            fprintf(stderr, "%s:%d: %s: %s\n",
                     ad->errors[i].filename ? ad->errors[i].filename : "???",
                     ad->errors[i].error_position,
+                    ad->errors[i].is_error ? "error" : "warning",
                     ad->errors[i].error);
         }
     } else {
@@ -778,7 +781,6 @@ static int ast(const char *fname, const char *buf, size_t len,
     return retval;
 }
 
-#if 0
 static int compile(const char *fname, const char *buf, size_t len,
                     const char *outfile,
                     const SDL_SHADER_PreprocessorDefine *defs,

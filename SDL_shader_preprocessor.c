@@ -27,98 +27,13 @@ static Token debug_preprocessor_lexer(IncludeState *s)
 #endif
 
 #if DEBUG_TOKENIZER
-static void print_debug_lexing_position(IncludeState *s)
+static void print_debug_lexing_position(const Context *ctx)
 {
-    if (s != NULL) {
-        printf("NOW LEXING %s:%d ...\n", s->filename, s->line);
-    }
+    printf("NOW LEXING %s:%d ...\n", ctx->filename, (int) ctx->position);
 }
 #else
 #define print_debug_lexing_position(s)
 #endif
-
-typedef struct Context
-{
-    SDL_bool isfail;
-    SDL_bool out_of_memory;
-    char failstr[256];
-    SDL_bool asm_comments;
-    SDL_bool parsing_pragma;
-    Conditional *conditional_pool;
-    IncludeState *include_stack;
-    IncludeState *include_pool;
-    Define *define_hashtable[256];
-    Define *define_pool;
-    Define *file_macro;
-    Define *line_macro;
-    StringCache *filename_cache;
-    const char **system_include_paths;
-    size_t system_include_path_count;
-    const char **local_include_paths;
-    size_t local_include_path_count;
-    SDL_SHADER_IncludeOpen open_callback;
-    SDL_SHADER_IncludeClose close_callback;
-    SDL_SHADER_Malloc malloc;
-    SDL_SHADER_Free free;
-    void *malloc_data;
-} Context;
-
-
-/* Convenience functions for allocators... */
-
-static inline void out_of_memory(Context *ctx)
-{
-    ctx->out_of_memory = SDL_TRUE;
-}
-
-static inline void *Malloc(Context *ctx, const size_t len)
-{
-    void *retval = ctx->malloc((int) len, ctx->malloc_data);
-    if (retval == NULL) {
-        out_of_memory(ctx);
-    }
-    return retval;
-}
-
-static inline void Free(Context *ctx, void *ptr)
-{
-    ctx->free(ptr, ctx->malloc_data);
-}
-
-static void *MallocBridge(size_t bytes, void *data)
-{
-    return Malloc((Context *) data, bytes);
-}
-
-static void FreeBridge(void *ptr, void *data)
-{
-    Free((Context *) data, ptr);
-}
-
-static inline char *StrDup(Context *ctx, const char *str)
-{
-    char *retval = (char *) Malloc(ctx, SDL_strlen(str) + 1);
-    if (retval != NULL) {
-        strcpy(retval, str);
-    }
-    return retval;
-}
-
-static void failf(Context *ctx, SDL_PRINTF_FORMAT_STRING const char *fmt, ...) SDL_PRINTF_VARARG_FUNC(2);
-static void failf(Context *ctx, const char *fmt, ...)
-{
-    ctx->isfail = SDL_TRUE;
-    va_list ap;
-    va_start(ap, fmt);
-    SDL_vsnprintf(ctx->failstr, sizeof (ctx->failstr), fmt, ap);
-    va_end(ap);
-}
-
-static inline void fail(Context *ctx, const char *reason)
-{
-    failf(ctx, "%s", reason);
-}
-
 
 #if DEBUG_TOKENIZER
 void SDL_SHADER_print_debug_token(const char *subsystem, const char *token,
@@ -181,7 +96,6 @@ void SDL_SHADER_print_debug_token(const char *subsystem, const char *token,
         TOKENCASE(TOKEN_SINGLE_COMMENT);
         TOKENCASE(TOKEN_MULTI_COMMENT);
         TOKENCASE(TOKEN_EOI);
-        TOKENCASE(TOKEN_PREPROCESSING_ERROR);
         #undef TOKENCASE
 
         case ((Token) '\n'):
@@ -333,7 +247,7 @@ static int add_define(Context *ctx, const char *sym, const char *val,
     Define *bucket = ctx->define_hashtable[hash];
     while (bucket) {
         if (SDL_strcmp(bucket->identifier, sym) == 0) {
-            failf(ctx, "'%s' already defined", sym); /* !!! FIXME: warning? */
+            warnf(ctx, "'%s' already defined", sym);
             /* !!! FIXME: gcc reports the location of previous #define here. */
             return 0;
         }
@@ -487,7 +401,7 @@ static void put_all_defines(Context *ctx)
     }
 }
 
-static SDL_bool push_source(Context *ctx, const char *fname, const char *source, size_t srclen, Uint32 linenum, SDL_SHADER_IncludeClose close_callback)
+static SDL_bool push_source(Context *ctx, const char *fname, const char *source, size_t srclen, Sint32 linenum, SDL_SHADER_IncludeClose close_callback)
 {
     IncludeState *state = get_include(ctx);
     if (state == NULL) {
@@ -519,9 +433,12 @@ static SDL_bool push_source(Context *ctx, const char *fname, const char *source,
         state->current_define = ctx->include_stack->current_define;
     }
 
-    print_debug_lexing_position(state);
-
     ctx->include_stack = state;
+
+    ctx->filename = state->filename;
+    ctx->position = linenum;
+
+    print_debug_lexing_position(ctx);
 
     return SDL_TRUE;
 }
@@ -562,8 +479,10 @@ static void pop_source(Context *ctx)
     }
 
     ctx->include_stack = state->next;
+    ctx->filename = ctx->include_stack ? ctx->include_stack->filename : NULL;
+    ctx->position = ctx->include_stack ? ctx->include_stack->line : 0;
 
-    print_debug_lexing_position(ctx->include_stack);
+    print_debug_lexing_position(ctx);
 
     put_include(ctx, state);
 }
@@ -576,35 +495,29 @@ static void close_define_include(const char *data, SDL_SHADER_Malloc m,
 }
 
 
-Preprocessor *preprocessor_start(const char *fname, const char *source,
-                                 size_t sourcelen,
-                                 const char **system_include_paths,
-                                 size_t system_include_path_count,
-                                 const char **local_include_paths,
-                                 size_t local_include_path_count,
-                                 SDL_SHADER_IncludeOpen open_callback,
-                                 SDL_SHADER_IncludeClose close_callback,
-                                 const SDL_SHADER_PreprocessorDefine *defines,
-                                 size_t define_count, SDL_bool asm_comments,
-                                 SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d)
+SDL_bool preprocessor_start(Context *ctx, const char *fname,
+                            const char *source, size_t sourcelen,
+                            const char **system_include_paths,
+                            size_t system_include_path_count,
+                            const char **local_include_paths,
+                            size_t local_include_path_count,
+                            SDL_SHADER_IncludeOpen open_callback,
+                            SDL_SHADER_IncludeClose close_callback,
+                            const SDL_SHADER_PreprocessorDefine *defines,
+                            size_t define_count, SDL_bool asm_comments)
 {
     int okay = 1;
     size_t i = 0;
 
-    /* the preprocessor is internal-only, so we verify all these are != NULL. */
-    SDL_assert(m != NULL);
-    SDL_assert(f != NULL);
-
-    Context *ctx = (Context *) m(sizeof (Context), d);
-    if (ctx == NULL) {
-        return NULL;
+    if ((open_callback == NULL) != (close_callback == NULL)) {
+        return SDL_FALSE;
     }
 
+    if (!open_callback) { open_callback = SDL_SHADER_internal_include_open; }
+    if (!close_callback) { close_callback = SDL_SHADER_internal_include_close; }
+
     /* we don't own the *_include_paths arrays, don't free them. */
-    SDL_zerop(ctx);
-    ctx->malloc = m;
-    ctx->free = f;
-    ctx->malloc_data = d;
+    ctx->uses_preprocessor = SDL_TRUE;
     ctx->system_include_paths = system_include_paths;
     ctx->system_include_path_count = system_include_path_count;
     ctx->local_include_paths = local_include_paths;
@@ -613,7 +526,7 @@ Preprocessor *preprocessor_start(const char *fname, const char *source,
     ctx->close_callback = close_callback;
     ctx->asm_comments = asm_comments;
 
-    ctx->filename_cache = stringcache_create(MallocBridge, FreeBridge, ctx);
+    ctx->filename_cache = stringcache_create(MallocContextBridge, FreeContextBridge, ctx);
     okay = ((okay) && (ctx->filename_cache != NULL));
 
     ctx->file_macro = get_define(ctx);
@@ -632,7 +545,7 @@ Preprocessor *preprocessor_start(const char *fname, const char *source,
     char *define_include = NULL;
     size_t define_include_len = 0;
     if ((okay) && (define_count > 0)) {
-        Buffer *predefbuf = buffer_create(256, MallocBridge, FreeBridge, ctx);
+        Buffer *predefbuf = buffer_create(256, MallocContextBridge, FreeContextBridge, ctx);
         okay = okay && (predefbuf != NULL);
         for (i = 0; okay && (i < define_count); i++) {
             okay = okay && buffer_append_fmt(predefbuf, "#define %s %s\n",
@@ -647,29 +560,26 @@ Preprocessor *preprocessor_start(const char *fname, const char *source,
         buffer_destroy(predefbuf);
     }
 
-    if ((okay) && (!push_source(ctx,fname,source,sourcelen,1,NULL))) {
+    if ((okay) && (!push_source(ctx, fname, source, sourcelen, 1, NULL))) {
         okay = 0;
     }
 
     if ((okay) && (define_include_len > 0)) {
         SDL_assert(define_include != NULL);
         okay = push_source(ctx, "<predefined macros>", define_include,
-                           define_include_len, 1, close_define_include);
+                           define_include_len, SDL_SHADER_POSITION_BEFORE, close_define_include);
     }
 
     if (!okay) {
-        preprocessor_end((Preprocessor *) ctx);
-        return NULL;
+        return SDL_FALSE;
     }
 
-    return (Preprocessor *) ctx;
+    return SDL_TRUE;
 }
 
-
-void preprocessor_end(Preprocessor *_ctx)
+void preprocessor_end(Context *ctx)
 {
-    Context *ctx = (Context *) _ctx;
-    if (ctx == NULL) {
+    if (!ctx || !ctx->uses_preprocessor) {
         return;
     }
 
@@ -689,14 +599,7 @@ void preprocessor_end(Preprocessor *_ctx)
     free_conditional_pool(ctx);
     free_include_pool(ctx);
 
-    Free(ctx, ctx);
-}
-
-
-SDL_bool preprocessor_outofmemory(Preprocessor *_ctx)
-{
-    Context *ctx = (Context *) _ctx;
-    return ctx->out_of_memory;
+    ctx->uses_preprocessor = SDL_FALSE;
 }
 
 
@@ -761,6 +664,7 @@ static int token_to_int(IncludeState *state)
 
 static void handle_pp_include(Context *ctx)
 {
+    char failstr[128];
     IncludeState *state = ctx->include_stack;
     Token token = lexer(state);
     SDL_SHADER_IncludeType incltype;
@@ -816,15 +720,12 @@ static void handle_pp_include(Context *ctx)
     SDL_assert(ctx->open_callback != NULL);
     SDL_assert(ctx->close_callback != NULL);
 
-    ctx->failstr[0] = '\0';
+    failstr[0] = '\0';
     if (!ctx->open_callback(incltype, filename, state->source_base,
                             &newdata, &newbytes, include_paths, include_path_count,
-                            ctx->failstr, sizeof (ctx->failstr),
+                            failstr, sizeof (failstr),
                             ctx->malloc, ctx->free, ctx->malloc_data)) {
-        ctx->isfail = SDL_TRUE;
-        if (ctx->failstr[0] == '\0') {
-            SDL_strlcpy(ctx->failstr, "Include callback failed", sizeof (ctx->failstr));  /* in case the callback doesn't set this */
-        }
+        fail(ctx, failstr[0] ? failstr : "Include callback failed");
         return;
     }
 
@@ -838,7 +739,7 @@ static void handle_pp_include(Context *ctx)
 static void handle_pp_line(Context *ctx)
 {
     IncludeState *state = ctx->include_stack;
-    char *filename = NULL;
+    const char *filename = NULL;
     int linenum = 0;
     int bogus = 0;
 
@@ -859,35 +760,36 @@ static void handle_pp_line(Context *ctx)
 
     if (!bogus) {
         state->token++;  /* skip '\"'... */
-        filename = (char *) alloca(state->tokenlen);
-        SDL_memcpy(filename, state->token, state->tokenlen-1);
-        filename[state->tokenlen-1] = '\0';
+        filename = stringcache_len(ctx->filename_cache, state->token, state->tokenlen-1);  /* may be NULL if stringcache() failed. */
+        if (!filename) {
+            return;
+        }
         bogus = !require_newline(state);
     }
 
     if (bogus) {
         fail(ctx, "Invalid #line directive");
-        return;
+    } else {
+        ctx->filename = state->filename = filename;  /* already stringcache'd. */
+        ctx->position = state->line = linenum;
     }
-
-    state->filename = stringcache(ctx->filename_cache, filename);  /* may be NULL if stringcache() failed. */
-    state->line = linenum;
 }
 
 
 static void handle_pp_error(Context *ctx)
 {
     IncludeState *state = ctx->include_stack;
-    char *ptr = ctx->failstr;
-    int avail = sizeof (ctx->failstr);
-    int cpy = 0;
-    SDL_bool done = SDL_FALSE;
-
     const char *prefix = "#error";
     const size_t prefixlen = SDL_strlen(prefix);
-    SDL_strlcpy(ctx->failstr, prefix, avail);
-    avail -= prefixlen + 1;
-    ptr += prefixlen;
+    char failstr[256];
+    size_t avail = sizeof (failstr);
+    size_t cpy = 0;
+    SDL_bool done = SDL_FALSE;
+    char *ptr;
+
+    SDL_strlcpy(failstr, prefix, avail);
+    avail -= prefixlen + 1;  /* +1 for the null terminator */
+    ptr = failstr + prefixlen;
 
     state->report_whitespace = SDL_TRUE;
     while (!done) {
@@ -912,7 +814,7 @@ static void handle_pp_error(Context *ctx)
                 break;
 
             default:
-                cpy = SDL_min(avail, (int) state->tokenlen);
+                cpy = SDL_min(avail, state->tokenlen);
                 if (cpy) {
                     SDL_memcpy(ptr, state->token, cpy);
                 }
@@ -924,7 +826,8 @@ static void handle_pp_error(Context *ctx)
 
     *ptr = '\0';
     state->report_whitespace = SDL_FALSE;
-    ctx->isfail = SDL_TRUE;
+
+    fail(ctx, failstr);
 }
 
 
@@ -962,13 +865,13 @@ static void handle_pp_define(Context *ctx)
     /* Don't treat these symbols as special anymore if they get (re)#defined. */
     if (SDL_strcmp(sym, "__FILE__") == 0) {
         if (ctx->file_macro) {
-            failf(ctx, "'%s' already defined", sym); /* !!! FIXME: warning? */
+            warnf(ctx, "'%s' already defined", sym);
             free_define(ctx, ctx->file_macro);
             ctx->file_macro = NULL;
         }
     } else if (SDL_strcmp(sym, "__LINE__") == 0) {
         if (ctx->line_macro) {
-            failf(ctx, "'%s' already defined", sym); /* !!! FIXME: warning? */
+            warnf(ctx, "'%s' already defined", sym);
             free_define(ctx, ctx->line_macro);
             ctx->line_macro = NULL;
         }
@@ -1063,7 +966,7 @@ static void handle_pp_define(Context *ctx)
 
     pushback(state);
 
-    buffer = buffer_create(128, MallocBridge, FreeBridge, ctx);
+    buffer = buffer_create(128, MallocContextBridge, FreeContextBridge, ctx);
 
     state->report_whitespace = SDL_TRUE;
     while ((!done) && (!ctx->out_of_memory)) {
@@ -1167,13 +1070,13 @@ static void handle_pp_undef(Context *ctx)
 
     if (SDL_strcmp(sym, "__FILE__") == 0) {
         if (ctx->file_macro) {
-            failf(ctx, "undefining \"%s\"", sym);  /* !!! FIXME: should be warning. */
+            warnf(ctx, "undefining \"%s\"", sym);
             free_define(ctx, ctx->file_macro);
             ctx->file_macro = NULL;
         }
     } else if (SDL_strcmp(sym, "__LINE__") == 0) {
         if (ctx->line_macro) {
-            failf(ctx, "undefining \"%s\"", sym);  /* !!! FIXME: should be warning. */
+            warnf(ctx, "undefining \"%s\"", sym);
             free_define(ctx, ctx->line_macro);
             ctx->line_macro = NULL;
         }
@@ -1247,7 +1150,7 @@ static SDL_bool replace_and_push_macro(Context *ctx, const Define *def, const De
     Buffer *buffer;
 
     /* We push the #define and lex it, building a buffer with argument replacement, stringification, and concatenation. */
-    buffer = buffer_create(128, MallocBridge, FreeBridge, ctx);
+    buffer = buffer_create(128, MallocContextBridge, FreeContextBridge, ctx);
     if (buffer == NULL) {
         return SDL_FALSE;
     }
@@ -1370,8 +1273,8 @@ static SDL_bool handle_macro_args(Context *ctx, const char *sym, const Define *d
     state->report_whitespace = SDL_TRUE;
 
     while (paren > 0) {
-        Buffer *buffer = buffer_create(128, MallocBridge, FreeBridge, ctx);
-        Buffer *origbuffer = buffer_create(128, MallocBridge, FreeBridge, ctx);
+        Buffer *buffer = buffer_create(128, MallocContextBridge, FreeContextBridge, ctx);
+        Buffer *origbuffer = buffer_create(128, MallocContextBridge, FreeContextBridge, ctx);
 
         Token t = lexer(state);
 
@@ -1578,17 +1481,19 @@ static int find_precedence(const Token token)
 
 #define VERIFY_RPN_ARRAY_ALLOCATION(name, typ, increase, run_if_oom) \
     if (name##_size >= name##_allocsize) { \
-        void *ptr = SDL_realloc(name##_malloced, sizeof (typ) * (name##_allocsize + increase)); \
-            if (!ptr) { run_if_oom; } \
-            if (name##_malloced == NULL) {  /* moving from stack to heap? */ \
-                SDL_memcpy(ptr, name##_stacked, sizeof (typ) * name##_size); \
-            } \
+        void *ptr = Malloc(ctx, sizeof (typ) * (name##_allocsize + increase)); \
+        if (!ptr) { \
+            run_if_oom; \
+        } else { \
+            SDL_memcpy(ptr, name##_malloced ? name##_malloced : name##_stacked, sizeof (typ) * name##_size); \
+            Free(ctx, name##_malloced); \
             name = name##_malloced = (typ *) ptr; \
             name##_allocsize += increase; \
         } \
+    }
 
 #define FREE_RPN_ARRAY(name) \
-    SDL_free(name##_malloced);
+    Free(ctx, name##_malloced);
 
 typedef struct RpnTokens
 {
@@ -1596,7 +1501,7 @@ typedef struct RpnTokens
     int value;
 } RpnTokens;
 
-static long interpret_rpn(const RpnTokens *tokens, int tokencount, SDL_bool *_error)
+static long interpret_rpn(Context *ctx, const RpnTokens *tokens, int tokencount, SDL_bool *_error)
 {
     DECLARE_RPN_ARRAY(stack, long, 16);
     long retval = 0;
@@ -1703,13 +1608,13 @@ static int reduce_pp_expression(Context *ctx)
     long val;
 
     #define ADD_TO_OUTPUT(op, val) \
-        VERIFY_RPN_ARRAY_ALLOCATION(output, RpnTokens, 128, { out_of_memory(ctx); goto reduce_pp_expression_failed; }) \
+        VERIFY_RPN_ARRAY_ALLOCATION(output, RpnTokens, 128, { goto reduce_pp_expression_failed; }) \
         output[output_size].isoperator = op; \
         output[output_size].value = val; \
         output_size++;
 
     #define PUSH_TO_STACK(t) \
-        VERIFY_RPN_ARRAY_ALLOCATION(stack, Token, 128, { out_of_memory(ctx); goto reduce_pp_expression_failed; }) \
+        VERIFY_RPN_ARRAY_ALLOCATION(stack, Token, 128, { goto reduce_pp_expression_failed; }) \
         stack[stack_size] = t; \
         stack_size++;
 
@@ -1879,7 +1784,7 @@ static int reduce_pp_expression(Context *ctx)
     printf("\n");
     #endif
 
-    val = interpret_rpn(output, output_size, &error);
+    val = interpret_rpn(ctx, output, output_size, &error);
 
     #if DEBUG_PREPROCESSOR
     printf("PREPROCESSOR RPN RESULT: %ld%s\n", val, error ? " (ERROR)" : "");
@@ -2017,28 +1922,22 @@ static void unterminated_pp_condition(Context *ctx)
     put_conditional(ctx, cond);
 }
 
-static inline const char *_preprocessor_nexttoken(Preprocessor *_ctx, size_t *_len, Token *_token)
+static inline const char *_preprocessor_nexttoken(Context *ctx, size_t *_len, Token *_token)
 {
-    Context *ctx = (Context *) _ctx;
-
     while (SDL_TRUE) {
         IncludeState *state = ctx->include_stack;
         const Conditional *cond;
         SDL_bool skipping;
         Token token;
 
-        if (ctx->isfail) {
-            ctx->isfail = SDL_FALSE;
-            *_token = TOKEN_PREPROCESSING_ERROR;
-            *_len = SDL_strlen(ctx->failstr);
-            return ctx->failstr;
-        }
-
         if (state == NULL) {
             *_token = TOKEN_EOI;
             *_len = 0;
             return NULL;  /* we're done! */
         }
+
+        ctx->position = state->line;
+        SDL_assert(ctx->filename == state->filename);  /* should be same pointer in a stringcache */
 
         cond = state->conditional_stack;
         skipping = ((cond != NULL) && (cond->skipping)) ? SDL_TRUE : SDL_FALSE;
@@ -2112,9 +2011,11 @@ static inline const char *_preprocessor_nexttoken(Preprocessor *_ctx, size_t *_l
                 continue;  /* pushed the include_stack. */
             }
         } else if ((token == TOKEN_SINGLE_COMMENT) || (token == TOKEN_MULTI_COMMENT)) {
-            print_debug_lexing_position(state);
+            ctx->position = state->line;  /* in case line changed in a multicomment. */
+            print_debug_lexing_position(ctx);
         } else if (token == ((Token) '\n')) {
-            print_debug_lexing_position(state);
+            ctx->position = state->line;
+            print_debug_lexing_position(ctx);
             if (ctx->parsing_pragma) {  /* let this one through. */
                 ctx->parsing_pragma = SDL_FALSE;
             }
@@ -2133,25 +2034,13 @@ static inline const char *_preprocessor_nexttoken(Preprocessor *_ctx, size_t *_l
 }
 
 
-const char *preprocessor_nexttoken(Preprocessor *ctx, size_t *len, Token *token)
+const char *preprocessor_nexttoken(Context *ctx, size_t *len, Token *token)
 {
     const char *retval = _preprocessor_nexttoken(ctx, len, token);
     print_debug_token(retval, *len, *token);
     return retval;
 }
 
-
-const char *preprocessor_sourcepos(Preprocessor *_ctx, size_t *pos)
-{
-    Context *ctx = (Context *) _ctx;
-    if (ctx->include_stack == NULL) {
-        *pos = 0;
-        return NULL;
-    }
-
-    *pos = ctx->include_stack->line;
-    return ctx->include_stack->filename;
-}
 
 static const SDL_SHADER_PreprocessData out_of_mem_data_preprocessor = {
     1, &SDL_SHADER_out_of_mem_error, 0, 0, 0, 0, 0
@@ -2174,8 +2063,7 @@ const SDL_SHADER_PreprocessData *SDL_SHADER_Preprocess(const char *filename,
                              SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d)
 {
     SDL_SHADER_PreprocessData *retval = NULL;
-    Preprocessor *pp = NULL;
-    ErrorList *errors = NULL;
+    Context *ctx = NULL;
     Buffer *buffer = NULL;
     Token token = TOKEN_UNKNOWN;
     const char *tokstr = NULL;
@@ -2187,35 +2075,28 @@ const SDL_SHADER_PreprocessData *SDL_SHADER_Preprocess(const char *filename,
     Token prev_token = TOKEN_UNKNOWN;
     SDL_bool whitespace_pending = SDL_FALSE;
 
-    /* !!! FIXME: should be an error if one is NULL but the other isn't. */
-    if (!m) { m = SDL_SHADER_internal_malloc; }
-    if (!f) { f = SDL_SHADER_internal_free; }
-    if (!include_open) { include_open = SDL_SHADER_internal_include_open; }
-    if (!include_close) { include_close = SDL_SHADER_internal_include_close; }
+    ctx = context_create(m, f, d);
+    if (ctx == NULL) {
+        return &out_of_mem_data_preprocessor;
+    }
 
-    pp = preprocessor_start(filename, source, sourcelen,
+    if (!preprocessor_start(ctx, filename, source, sourcelen,
                             system_include_paths, system_include_path_count,
                             local_include_paths, local_include_path_count,
                             include_open, include_close,
-                            defines, define_count, 0, m, f, d);
-    if (pp == NULL) {
+                            defines, define_count, SDL_FALSE)) {
         goto preprocess_out_of_mem;
     }
 
-    errors = errorlist_create(MallocBridge, FreeBridge, pp);
-    if (errors == NULL) {
-        goto preprocess_out_of_mem;
-    }
-
-    buffer = buffer_create(4096, MallocBridge, FreeBridge, pp);
+    buffer = buffer_create(4096, MallocContextBridge, FreeContextBridge, ctx);
     if (buffer == NULL) {
         goto preprocess_out_of_mem;
     }
 
-    while ((tokstr = preprocessor_nexttoken(pp, &len, &token)) != NULL) {
+    while ((tokstr = preprocessor_nexttoken(ctx, &len, &token)) != NULL) {
         SDL_assert(token != TOKEN_EOI);
 
-        if (preprocessor_outofmemory(pp)) {
+        if (ctx->out_of_memory) {
             goto preprocess_out_of_mem;
         }
 
@@ -2228,10 +2109,6 @@ const SDL_SHADER_PreprocessData *SDL_SHADER_Preprocess(const char *filename,
 
         if (token == ((Token) '\n')) {
             buffer_append(buffer, ENDLINE_STR, SDL_strlen(ENDLINE_STR));
-        } else if (token == TOKEN_PREPROCESSING_ERROR) {
-            size_t pos = 0;
-            const char *fname = preprocessor_sourcepos(pp, &pos);
-            errorlist_add(errors, fname, (int) pos, tokstr);
         } else {
             if (strip_comments && (token == TOKEN_SINGLE_COMMENT)) {
                 /* just drop this one. */
@@ -2266,18 +2143,19 @@ const SDL_SHADER_PreprocessData *SDL_SHADER_Preprocess(const char *filename,
         goto preprocess_out_of_mem;
     }
 
-    retval = (SDL_SHADER_PreprocessData *) m(sizeof (*retval), d);
+    retval = (SDL_SHADER_PreprocessData *) Malloc(ctx, sizeof (*retval));
     if (retval == NULL) {
         goto preprocess_out_of_mem;
     }
 
     SDL_zerop(retval);
-    errcount = errorlist_count(errors);
+    errcount = errorlist_count(ctx->errors);
     if (errcount > 0) {
         retval->error_count = errcount;
-        retval->errors = errorlist_flatten(errors);
-        if (retval->errors == NULL)
+        retval->errors = errorlist_flatten(ctx->errors);
+        if (retval->errors == NULL) {
             goto preprocess_out_of_mem;
+        }
     }
 
     retval->output = output;
@@ -2286,18 +2164,23 @@ const SDL_SHADER_PreprocessData *SDL_SHADER_Preprocess(const char *filename,
     retval->free = f;
     retval->malloc_data = d;
 
-    errorlist_destroy(errors);
-    preprocessor_end(pp);
+    context_destroy(ctx);
+
     return retval;
 
 preprocess_out_of_mem:
-    if (retval != NULL)
-        f(retval->errors, d);
-    f(retval, d);
-    f(output, d);
+    SDL_assert(ctx != NULL);
+    if (retval != NULL) {
+        size_t i;
+        for (i = 0; i < retval->error_count; i++) {
+            Free(ctx, (void *) retval->errors[i].message);
+            Free(ctx, (void *) retval->errors[i].filename);
+        }
+        Free(ctx, retval);
+    }
+    Free(ctx, output);
     buffer_destroy(buffer);
-    errorlist_destroy(errors);
-    preprocessor_end(pp);
+    context_destroy(ctx);
     return &out_of_mem_data_preprocessor;
 }
 
@@ -2318,10 +2201,10 @@ void SDL_SHADER_FreePreprocessData(const SDL_SHADER_PreprocessData *_data)
     f((void *) data->output, d);
 
     for (i = 0; i < data->error_count; i++) {
-        f((void *) data->errors[i].error, d);
+        f((void *) data->errors[i].message, d);
         f((void *) data->errors[i].filename, d);
     }
-    f(data->errors, d);
+    f((void *) data->errors, d);
 
     f(data, d);
 }

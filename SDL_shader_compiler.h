@@ -37,11 +37,16 @@ typedef void (SDLCALL *SDL_SHADER_Free)(void *ptr, void *data);
 typedef struct SDL_SHADER_Error
 {
     /*
-     * Human-readable error, if there is one. Will be NULL if there was no
+     * SDL_TRUE if an error, SDL_FALSE if a warning.
+     */
+    SDL_bool is_error;
+
+    /*
+     * Human-readable error message, if there is one. Will be NULL if there was no
      *  error. The string will be UTF-8 encoded, and English only. Most of
      *  these shouldn't be shown to the end-user anyhow.
      */
-    const char *error;
+    const char *message;
 
     /*
      * Filename where error happened. This can be NULL if the information
@@ -94,7 +99,7 @@ typedef struct SDL_SHADER_PreprocessData
      *  by parsing this shader.
      * This can be NULL if there were no errors or if (error_count) is zero.
      */
-    SDL_SHADER_Error *errors;
+    const SDL_SHADER_Error *errors;
 
     /*
      * Bytes of output from preprocessing. This is a UTF-8 string. We
@@ -223,7 +228,8 @@ typedef void (SDLCALL *SDL_SHADER_IncludeClose)(const char *data,
  *  call. This allows you to preprocess several shaders on separate CPU cores
  *  at the same time.
  */
-extern DECLSPEC const SDL_SHADER_PreprocessData *SDL_SHADER_Preprocess(const char *filename,
+/* !!! FIXME: put all these args in a struct */
+extern DECLSPEC const SDL_SHADER_PreprocessData * SDLCALL SDL_SHADER_Preprocess(const char *filename,
                              const char *source, size_t sourcelen,
                              SDL_bool strip_comments,
                              const SDL_SHADER_PreprocessorDefine *defines,
@@ -246,7 +252,7 @@ extern DECLSPEC const SDL_SHADER_PreprocessData *SDL_SHADER_Preprocess(const cha
  * This function is thread safe, so long as any allocator you passed into
  *  SDL_SHADER_Preprocess() is, too.
  */
-extern DECLSPEC void SDL_SHADER_FreePreprocessData(const SDL_SHADER_PreprocessData *data);
+extern DECLSPEC void SDLCALL SDL_SHADER_FreePreprocessData(const SDL_SHADER_PreprocessData *data);
 
 
 /* Compiler interface... */
@@ -361,7 +367,7 @@ typedef struct SDL_SHADER_CompileData
  *  call. This allows you to compile several shaders on separate CPU cores
  *  at the same time.
  */
-extern DECLSPEC const SDL_SHADER_CompileData *SDL_SHADER_Compile(const char *srcprofile,
+extern DECLSPEC const SDL_SHADER_CompileData * SDLCALL SDL_SHADER_Compile(const char *srcprofile,
                                     const char *filename, const char *source,
                                     size_t sourcelen,
                                     const SDL_SHADER_PreprocessorDefine *defs,
@@ -385,7 +391,7 @@ extern DECLSPEC const SDL_SHADER_CompileData *SDL_SHADER_Compile(const char *src
  * This function is thread safe, so long as any allocator you passed into
  *  SDL_SHADER_Compile() is, too.
  */
-extern DECLSPEC void SDL_SHADER_FreeCompileData(const SDL_SHADER_CompileData *data);
+extern DECLSPEC void SDLCALL SDL_SHADER_FreeCompileData(const SDL_SHADER_CompileData *data);
 
 #ifdef __cplusplus
 }
