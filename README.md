@@ -21,11 +21,22 @@ Which is to say that a non-goal is:
 There is much work to be done here, and so much to build, so please be
 patient as things fall into place and decisions are made.
 
-# Current status: preprocessing!
+# Current status: parsing!
+
+We have a first draft of the syntax we're aiming for, and a parser that
+can handle it.
 
 Build the project with CMake, and then you should have a program named
-"sdl-shader-compiler" ...run it like this to see it preprocess stuff,
-like a C compiler's preprocessor does:
+"sdl-shader-compiler" ...run it like this to see it spit out the
+Abstract Syntax Tree (AST) of a shader (which at the moment just looks
+much like the shader itself with mild reformatting, because it will output
+source code from the AST that it generated)...
+
+```bash
+./sdl-shader-compiler -T -I some_dir -DSOME_DEFINE=SOME_VALUE some_source.c
+```
+
+If you just want to see it preprocess stuff, like a C preprocessor does:
 
 ```bash
 ./sdl-shader-compiler -P -I some_dir -DSOME_DEFINE=SOME_VALUE some_source.c

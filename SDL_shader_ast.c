@@ -4,10 +4,6 @@
  * Please see the file LICENSE.txt in the source's root directory.
  */
 
-/* !!! FIXME: this needs to be split into separate source files:
-   !!! FIXME:  parse, AST, IR, etc. The problem is we need to deal with the
-   !!! FIXME:  "Context" struct being passed around everywhere. */
-
 #define __SDL_SHADER_INTERNAL__ 1
 #include "SDL_shader_internal.h"
 
@@ -15,24 +11,6 @@
 #define LEMON_SUPPORT_TRACING 1
 #endif
 
-/* !!! FIXME: I'd like to lose this. It's really inefficient. Just keep a
-   !!! FIXME:  (tail) on these list structures instead? */
-#define REVERSE_LINKED_LIST(typ, head) { \
-    if ((head) && (head->next)) { \
-        typ *tmp = NULL; \
-        typ *tmp1 = NULL; \
-        while (head != NULL) { \
-            tmp = head; \
-            head = head->next; \
-            tmp->next = tmp1; \
-            tmp1 = tmp; \
-        } \
-        head = tmp; \
-    } \
-}
-
-
-/* !!! FIXME: new_* and delete_* should take an allocator, not a context. */
 
 /* These functions are mostly for construction and cleanup of nodes in the
    parse tree. Mostly this is simple allocation and initialization, so we
@@ -44,843 +22,883 @@
     do { \
         if (retval == NULL) { return NULL; } \
         retval->ast.type = typ; \
-        retval->ast.filename = ctx->sourcefile; \
-        retval->ast.line = ctx->sourceline; \
+        retval->ast.filename = ctx->filename; \
+        retval->ast.line = ctx->position; \
     } while (0)
 
 #define DELETE_AST_NODE(cls) do { \
     if (!cls) return; \
 } while (0)
 
+#define NEW_AST_LIST(retval, cls, first) \
+    cls *retval = (cls *) Malloc(ctx, sizeof (cls)); \
+    do { \
+        if (retval == NULL) { return NULL; } \
+        retval->head = retval->tail = first; \
+    } while (0)
 
-static void delete_compilation_unit(Context*, SDL_SHADER_astCompilationUnit*);
-static void delete_statement(Context *ctx, SDL_SHADER_astStatement *stmt);
+#define DELETE_AST_LIST(list, listedcls, deletefn) do { \
+    listedcls *i; \
+    listedcls *next; \
+    if (!list) return; \
+    for (i = list->head; i != NULL; i = next) { \
+        next = i->next; \
+        i->next = NULL; \
+        deletefn(ctx, i); \
+    } \
+    Free(ctx, list); \
+} while (0)
 
-static SDL_SHADER_astExpression *new_identifier_expr(Context *ctx, const char *string)
+#define NEW_AST_STATEMENT_NODE(retval, cls, typ) \
+    NEW_AST_NODE(retval, cls, typ); \
+    retval->next = NULL;
+
+#define DELETE_AST_STATEMENT_NODE(stmt) do { \
+    DELETE_AST_NODE(stmt); \
+    delete_statement(ctx, stmt->next); \
+} while (0)
+
+static SDL_INLINE SDL_bool operator_is_unary(const SDL_SHADER_AstNodeType op)
 {
-    NEW_AST_NODE(retval, SDL_SHADER_astExpressionIdentifier, SDL_SHADER_AST_OP_IDENTIFIER);
-    retval->datatype = NULL;
-    retval->identifier = string;  /* cached; don't copy string. */
-    retval->index = 0;
-    return (SDL_SHADER_astExpression *) retval;
+    return ( (op > SDL_SHADER_AST_OP_START_RANGE_UNARY) && (op < SDL_SHADER_AST_OP_END_RANGE_UNARY) ) ? SDL_TRUE : SDL_FALSE;
 }
 
-static SDL_SHADER_astExpression *new_callfunc_expr(Context *ctx,
-                                        const char *identifier,
-                                        SDL_SHADER_astArguments *args)
+static SDL_INLINE int operator_is_binary(const SDL_SHADER_AstNodeType op)
 {
-    NEW_AST_NODE(retval, SDL_SHADER_astExpressionCallFunction, SDL_SHADER_AST_OP_CALLFUNC);
-    SDL_SHADER_astExpression *expr = new_identifier_expr(ctx, identifier);
-    retval->datatype = NULL;
-    retval->identifier = (SDL_SHADER_astExpressionIdentifier *) expr;
-    retval->args = args;
-    return (SDL_SHADER_astExpression *) retval;
+    return ( (op > SDL_SHADER_AST_OP_START_RANGE_BINARY) && (op < SDL_SHADER_AST_OP_END_RANGE_BINARY) ) ? SDL_TRUE : SDL_FALSE;
 }
 
-static SDL_SHADER_astExpression *new_constructor_expr(Context *ctx,
-                                            const SDL_SHADER_astDataType *dt,
-                                            SDL_SHADER_astArguments *args)
+static inline int operator_is_ternary(const SDL_SHADER_AstNodeType op)
 {
-    NEW_AST_NODE(retval, SDL_SHADER_astExpressionConstructor, SDL_SHADER_AST_OP_CONSTRUCTOR);
-    retval->datatype = dt;
-    retval->args = args;
-    return (SDL_SHADER_astExpression *) retval;
+    return ( (op > SDL_SHADER_AST_OP_START_RANGE_TERNARY) && (op < SDL_SHADER_AST_OP_END_RANGE_TERNARY) ) ? SDL_TRUE : SDL_FALSE;
 }
 
-static SDL_SHADER_astExpression *new_cast_expr(Context *ctx, const SDL_SHADER_astDataType *dt, SDL_SHADER_astExpression *operand)
+
+typedef union TokenData
 {
-    NEW_AST_NODE(retval, SDL_SHADER_astExpressionCast, SDL_SHADER_AST_OP_CAST);
-    retval->datatype = dt;
-    retval->operand = operand;
-    return (SDL_SHADER_astExpression *) retval;
-}
+    Sint64 i64;
+    double dbl;
+    const char *string;
+} TokenData;
 
-static SDL_SHADER_astExpression *new_unary_expr(Context *ctx,
-                                            const SDL_SHADER_astNodeType op,
-                                            SDL_SHADER_astExpression *operand)
+
+// these functions create and delete AST nodes, moving the work out of the lemon parser code.
+
+static void delete_expression(Context *ctx, SDL_SHADER_AstExpression *expr);
+static void delete_statement(Context *ctx, SDL_SHADER_AstStatement *stmt);
+static void delete_assignment_statement(Context *ctx, SDL_SHADER_AstAssignStatement *asstmt);  /* !!! FIXME: stupid for-loop! */
+static void delete_translation_unit(Context *ctx, SDL_SHADER_AstTranslationUnit *unit);
+
+static SDL_SHADER_AstAtAttribute *new_at_attribute(Context *ctx, const char *name, const Sint64 *argument)
 {
-    NEW_AST_NODE(retval, SDL_SHADER_astExpressionUnary, op);
-    SDL_assert(operator_is_unary(op));
-    retval->datatype = NULL;
-    retval->operand = operand;
-    return (SDL_SHADER_astExpression *) retval;
-}
-
-static SDL_SHADER_astExpression *new_binary_expr(Context *ctx,
-                                            const SDL_SHADER_astNodeType op,
-                                            SDL_SHADER_astExpression *left,
-                                            SDL_SHADER_astExpression *right)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astExpressionBinary, op);
-    SDL_assert(operator_is_binary(op));
-    retval->datatype = NULL;
-    retval->left = left;
-    retval->right = right;
-    return (SDL_SHADER_astExpression *) retval;
-}
-
-static SDL_SHADER_astExpression *new_ternary_expr(Context *ctx,
-                                            const SDL_SHADER_astNodeType op,
-                                            SDL_SHADER_astExpression *left,
-                                            SDL_SHADER_astExpression *center,
-                                            SDL_SHADER_astExpression *right)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astExpressionTernary, op);
-    SDL_assert(operator_is_ternary(op));
-    SDL_assert(op == SDL_SHADER_AST_OP_CONDITIONAL);
-    retval->datatype = &ctx->dt_bool;
-    retval->left = left;
-    retval->center = center;
-    retval->right = right;
-    return (SDL_SHADER_astExpression *) retval;
-}
-
-static SDL_SHADER_astExpression *new_deref_struct_expr(Context *ctx,
-                                        SDL_SHADER_astExpression *identifier,
-                                        const char *member)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astExpressionDerefStruct, SDL_SHADER_AST_OP_DEREF_STRUCT);
-    retval->datatype = NULL;
-    retval->identifier = identifier;
-    retval->member = member;  /* cached; don't copy string. */
-    retval->isswizzle = 0;  /* may change during semantic analysis. */
-    retval->member_index = 0;  /* set during semantic analysis. */
-    return (SDL_SHADER_astExpression *) retval;
-}
-
-static SDL_SHADER_astExpression *new_literal_int_expr(Context *ctx, const int value)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astExpressionIntLiteral, SDL_SHADER_AST_OP_INT_LITERAL);
-    retval->datatype = &ctx->dt_int;
-    retval->value = value;
-    return (SDL_SHADER_astExpression *) retval;
-}
-
-static SDL_SHADER_astExpression *new_literal_float_expr(Context *ctx, const double dbl)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astExpressionFloatLiteral, SDL_SHADER_AST_OP_FLOAT_LITERAL);
-    retval->datatype = &ctx->dt_float;
-    retval->value = dbl;
-    return (SDL_SHADER_astExpression *) retval;
-}
-
-static SDL_SHADER_astExpression *new_literal_string_expr(Context *ctx, const char *string)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astExpressionStringLiteral, SDL_SHADER_AST_OP_STRING_LITERAL);
-    retval->datatype = &ctx->dt_string;
-    retval->string = string;  /* cached; don't copy string. */
-    return (SDL_SHADER_astExpression *) retval;
-}
-
-static SDL_SHADER_astExpression *new_literal_boolean_expr(Context *ctx,
-                                                          const int value)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astExpressionBooleanLiteral, SDL_SHADER_AST_OP_BOOLEAN_LITERAL);
-    retval->datatype = &ctx->dt_bool;
-    retval->value = value;
-    return (SDL_SHADER_astExpression *) retval;
-}
-
-static void delete_arguments(Context *ctx, SDL_SHADER_astArguments *args);
-
-static void delete_expr(Context *ctx, SDL_SHADER_astExpression *_expr)
-{
-    SDL_SHADER_astNode *expr = (SDL_SHADER_astNode *) _expr;
-
-    DELETE_AST_NODE(expr);
-
-    if (expr->ast.type == SDL_SHADER_AST_OP_CAST) {
-        delete_expr(ctx, expr->cast.operand);
-    } else if (expr->ast.type == SDL_SHADER_AST_OP_CONSTRUCTOR) {
-        delete_arguments(ctx, expr->constructor.args);
-    } else if (expr->ast.type == SDL_SHADER_AST_OP_DEREF_STRUCT) {
-        delete_expr(ctx, expr->derefstruct.identifier);
-    } else if (operator_is_unary(expr->ast.type)) {
-        delete_expr(ctx, expr->unary.operand);
-    } else if (operator_is_binary(expr->ast.type)) {
-        delete_expr(ctx, expr->binary.left);
-        delete_expr(ctx, expr->binary.right);
-    } else if (operator_is_ternary(expr->ast.type)) {
-        delete_expr(ctx, expr->ternary.left);
-        delete_expr(ctx, expr->ternary.center);
-        delete_expr(ctx, expr->ternary.right);
-    } else if (expr->ast.type == SDL_SHADER_AST_OP_CALLFUNC) {
-        delete_expr(ctx, (SDL_SHADER_astExpression*)expr->callfunc.identifier);
-        delete_arguments(ctx, expr->callfunc.args);
+    NEW_AST_NODE(retval, SDL_SHADER_AstAtAttribute, SDL_SHADER_AST_AT_ATTRIBUTE);
+    retval->name = name;  /* strcache'd */
+    if (argument != NULL) {
+        retval->has_argument = SDL_TRUE;
+        retval->argument = *argument;
+    } else {
+        retval->has_argument = SDL_FALSE;
+        retval->argument = 0;
     }
+    return retval;
+}
 
-    /* rest of operators don't have extra data to free. */
+static void delete_at_attribute(Context *ctx, SDL_SHADER_AstAtAttribute *atattr)
+{
+    DELETE_AST_NODE(atattr);
+    Free(ctx, atattr);
+}
 
+static SDL_SHADER_AstExpression *new_identifier_expression(Context *ctx, const char *name)
+{
+    NEW_AST_NODE(retval, SDL_SHADER_AstIdentifierExpression, SDL_SHADER_AST_OP_IDENTIFIER);
+    retval->name = name;  /* strcache'd */
+    return (SDL_SHADER_AstExpression *) retval;
+}
+
+static void delete_identifier_expression(Context *ctx, SDL_SHADER_AstIdentifierExpression *expr)
+{
+    DELETE_AST_NODE(expr);
     Free(ctx, expr);
 }
 
-static SDL_SHADER_astArguments *new_argument(Context *ctx, SDL_SHADER_astExpression *arg)
+static SDL_SHADER_AstExpression *new_int_expression(Context *ctx, Sint64 value)
 {
-    NEW_AST_NODE(retval, SDL_SHADER_astArguments, SDL_SHADER_AST_ARGUMENTS);
-    retval->argument = arg;
-    retval->next = NULL;
+    NEW_AST_NODE(retval, SDL_SHADER_AstIntLiteralExpression, SDL_SHADER_AST_OP_INT_LITERAL);
+    retval->value = value;
+    return (SDL_SHADER_AstExpression *) retval;
+}
+
+static void delete_int_expression(Context *ctx, SDL_SHADER_AstIntLiteralExpression *expr)
+{
+    DELETE_AST_NODE(expr);
+    Free(ctx, expr);
+}
+
+static SDL_SHADER_AstExpression *new_float_expression(Context *ctx, double value)
+{
+    NEW_AST_NODE(retval, SDL_SHADER_AstFloatLiteralExpression, SDL_SHADER_AST_OP_FLOAT_LITERAL);
+    retval->value = value;
+    return (SDL_SHADER_AstExpression *) retval;
+}
+
+static void delete_float_expression(Context *ctx, SDL_SHADER_AstFloatLiteralExpression *expr)
+{
+    DELETE_AST_NODE(expr);
+    Free(ctx, expr);
+}
+
+static SDL_SHADER_AstExpression *new_bool_expression(Context *ctx, int value)
+{
+    NEW_AST_NODE(retval, SDL_SHADER_AstBooleanLiteralExpression, SDL_SHADER_AST_OP_BOOLEAN_LITERAL);
+    retval->value = value ? SDL_TRUE : SDL_FALSE;
+    return (SDL_SHADER_AstExpression *) retval;
+}
+
+static void delete_bool_expression(Context *ctx, SDL_SHADER_AstBooleanLiteralExpression *expr)
+{
+    DELETE_AST_NODE(expr);
+    Free(ctx, expr);
+}
+
+static SDL_SHADER_AstArgument *new_argument(Context *ctx, SDL_SHADER_AstExpression *arg)
+{
+    SDL_SHADER_AstArgument *retval = (SDL_SHADER_AstArgument *) Malloc(ctx, sizeof (SDL_SHADER_AstArgument));
+    if (retval) {
+        retval->arg = arg;
+        retval->next = NULL;
+    }
     return retval;
 }
 
-static void delete_arguments(Context *ctx, SDL_SHADER_astArguments *args)
+static void delete_argument(Context *ctx, SDL_SHADER_AstArgument *arg)
 {
-    DELETE_AST_NODE(args);
-    delete_arguments(ctx, args->next);
-    delete_expr(ctx, args->argument);
-    Free(ctx, args);
+    if (arg) {
+        delete_expression(ctx, arg->arg);
+        delete_argument(ctx, arg->next);
+        Free(ctx, arg);
+    }
 }
 
-static SDL_SHADER_astFunctionParameters *new_function_param(Context *ctx,
-                        const SDL_SHADER_astInputModifier inputmod,
-                        const SDL_SHADER_astDataType *dt,
-                        const char *identifier, const char *semantic,
-                        const SDL_SHADER_astInterpolationModifier interpmod,
-                        SDL_SHADER_astExpression *initializer)
+static SDL_SHADER_AstArguments *new_arguments(Context *ctx, SDL_SHADER_AstArgument *first)
 {
-    NEW_AST_NODE(retval, SDL_SHADER_astFunctionParameters, SDL_SHADER_AST_FUNCTION_PARAMS);
-    retval->datatype = dt;
-    retval->input_modifier = inputmod;
-    retval->identifier = identifier;
-    retval->semantic = semantic;
-    retval->interpolation_modifier = interpmod;
+    NEW_AST_LIST(retval, SDL_SHADER_AstArguments, first);
+    return retval;
+}
+
+static void delete_arguments(Context *ctx, SDL_SHADER_AstArguments *arguments)
+{
+    DELETE_AST_LIST(arguments, SDL_SHADER_AstArgument, delete_argument);
+}
+
+static SDL_SHADER_AstExpression *new_fncall_expression(Context *ctx, const char *fnname, SDL_SHADER_AstArguments *arguments)
+{
+    NEW_AST_NODE(retval, SDL_SHADER_AstFunctionCallExpression, SDL_SHADER_AST_OP_CALLFUNC);
+    retval->fnname = fnname;  /* strcache'd */
+    retval->arguments = arguments;
+    return (SDL_SHADER_AstExpression *) retval;
+}
+
+static void delete_fncall_expression(Context *ctx, SDL_SHADER_AstFunctionCallExpression *expr)
+{
+    DELETE_AST_NODE(expr);
+    delete_arguments(ctx, expr->arguments);
+    Free(ctx, expr);
+}
+
+static SDL_SHADER_AstExpression *new_unary_expression(Context *ctx, SDL_SHADER_AstNodeType asttype, SDL_SHADER_AstExpression *operand)
+{
+    NEW_AST_NODE(retval, SDL_SHADER_AstUnaryExpression, asttype);
+    retval->operand = operand;
+    return (SDL_SHADER_AstExpression *) retval;
+}
+
+static void delete_unary_expression(Context *ctx, SDL_SHADER_AstUnaryExpression *expr)
+{
+    DELETE_AST_NODE(expr);
+    delete_expression(ctx, expr->operand);
+    Free(ctx, expr);
+}
+
+static SDL_SHADER_AstExpression *new_unaryminus_expression(Context *ctx, SDL_SHADER_AstExpression *operand) { return new_unary_expression(ctx, SDL_SHADER_AST_OP_NEGATE, operand); }
+static SDL_SHADER_AstExpression *new_unaryplus_expression(Context *ctx, SDL_SHADER_AstExpression *operand) { return new_unary_expression(ctx, SDL_SHADER_AST_OP_POSITIVE, operand); }
+static SDL_SHADER_AstExpression *new_unarycompl_expression(Context *ctx, SDL_SHADER_AstExpression *operand) { return new_unary_expression(ctx, SDL_SHADER_AST_OP_COMPLEMENT, operand); }
+static SDL_SHADER_AstExpression *new_unarynot_expression(Context *ctx, SDL_SHADER_AstExpression *operand) { return new_unary_expression(ctx, SDL_SHADER_AST_OP_NOT, operand); }
+static SDL_SHADER_AstExpression *new_preincrement_expression(Context *ctx, SDL_SHADER_AstExpression *operand) { return new_unary_expression(ctx, SDL_SHADER_AST_OP_PREINCREMENT, operand); }
+static SDL_SHADER_AstExpression *new_predecrement_expression(Context *ctx, SDL_SHADER_AstExpression *operand) { return new_unary_expression(ctx, SDL_SHADER_AST_OP_PREDECREMENT, operand); }
+static SDL_SHADER_AstExpression *new_postincrement_expression(Context *ctx, SDL_SHADER_AstExpression *operand) { return new_unary_expression(ctx, SDL_SHADER_AST_OP_POSTINCREMENT, operand); }
+static SDL_SHADER_AstExpression *new_postdecrement_expression(Context *ctx, SDL_SHADER_AstExpression *operand) { return new_unary_expression(ctx, SDL_SHADER_AST_OP_POSTDECREMENT, operand); }
+static SDL_SHADER_AstExpression *new_parentheses_expression(Context *ctx, SDL_SHADER_AstExpression *operand) { return new_unary_expression(ctx, SDL_SHADER_AST_OP_PARENTHESES, operand); }
+
+static SDL_SHADER_AstExpression *new_binary_expression(Context *ctx, SDL_SHADER_AstNodeType asttype, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *right)
+{
+    NEW_AST_NODE(retval, SDL_SHADER_AstBinaryExpression, asttype);
+    retval->left = left;
+    retval->right = right;
+    return (SDL_SHADER_AstExpression *) retval;
+}
+
+static void delete_binary_expression(Context *ctx, SDL_SHADER_AstBinaryExpression *expr)
+{
+    DELETE_AST_NODE(expr);
+    delete_expression(ctx, expr->left);
+    delete_expression(ctx, expr->right);
+    Free(ctx, expr);
+}
+
+static SDL_SHADER_AstExpression *new_multiply_expression(Context *ctx, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *right) { return new_binary_expression(ctx, SDL_SHADER_AST_OP_MULTIPLY, left, right); }
+static SDL_SHADER_AstExpression *new_divide_expression(Context *ctx, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *right) { return new_binary_expression(ctx, SDL_SHADER_AST_OP_DIVIDE, left, right); }
+static SDL_SHADER_AstExpression *new_mod_expression(Context *ctx, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *right) { return new_binary_expression(ctx, SDL_SHADER_AST_OP_MODULO, left, right); }
+static SDL_SHADER_AstExpression *new_addition_expression(Context *ctx, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *right) { return new_binary_expression(ctx, SDL_SHADER_AST_OP_ADD, left, right); }
+static SDL_SHADER_AstExpression *new_subtraction_expression(Context *ctx, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *right) { return new_binary_expression(ctx, SDL_SHADER_AST_OP_SUBTRACT, left, right); }
+static SDL_SHADER_AstExpression *new_lshift_expression(Context *ctx, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *right) { return new_binary_expression(ctx, SDL_SHADER_AST_OP_LSHIFT, left, right); }
+static SDL_SHADER_AstExpression *new_rshift_expression(Context *ctx, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *right) { return new_binary_expression(ctx, SDL_SHADER_AST_OP_RSHIFT, left, right); }
+static SDL_SHADER_AstExpression *new_lt_expression(Context *ctx, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *right) { return new_binary_expression(ctx, SDL_SHADER_AST_OP_LESSTHAN, left, right); }
+static SDL_SHADER_AstExpression *new_gt_expression(Context *ctx, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *right) { return new_binary_expression(ctx, SDL_SHADER_AST_OP_GREATERTHAN, left, right); }
+static SDL_SHADER_AstExpression *new_leq_expression(Context *ctx, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *right) { return new_binary_expression(ctx, SDL_SHADER_AST_OP_LESSTHANOREQUAL, left, right); }
+static SDL_SHADER_AstExpression *new_geq_expression(Context *ctx, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *right) { return new_binary_expression(ctx, SDL_SHADER_AST_OP_GREATERTHANOREQUAL, left, right); }
+static SDL_SHADER_AstExpression *new_eql_expression(Context *ctx, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *right) { return new_binary_expression(ctx, SDL_SHADER_AST_OP_EQUAL, left, right); }
+static SDL_SHADER_AstExpression *new_neq_expression(Context *ctx, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *right) { return new_binary_expression(ctx, SDL_SHADER_AST_OP_NOTEQUAL, left, right); }
+static SDL_SHADER_AstExpression *new_and_expression(Context *ctx, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *right) { return new_binary_expression(ctx, SDL_SHADER_AST_OP_BINARYAND, left, right); }
+static SDL_SHADER_AstExpression *new_xor_expression(Context *ctx, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *right) { return new_binary_expression(ctx, SDL_SHADER_AST_OP_BINARYXOR, left, right); }
+static SDL_SHADER_AstExpression *new_or_expression(Context *ctx, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *right) { return new_binary_expression(ctx, SDL_SHADER_AST_OP_BINARYOR, left, right); }
+static SDL_SHADER_AstExpression *new_andand_expression(Context *ctx, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *right) { return new_binary_expression(ctx, SDL_SHADER_AST_OP_LOGICALAND, left, right); }
+static SDL_SHADER_AstExpression *new_oror_expression(Context *ctx, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *right) { return new_binary_expression(ctx, SDL_SHADER_AST_OP_LOGICALOR, left, right); }
+static SDL_SHADER_AstExpression *new_array_dereference_expression(Context *ctx, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *right) { return new_binary_expression(ctx, SDL_SHADER_AST_OP_DEREF_ARRAY, left, right); }
+static SDL_SHADER_AstExpression *new_ternary_expression(Context *ctx, SDL_SHADER_AstNodeType asttype, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *center, SDL_SHADER_AstExpression *right)
+{
+    NEW_AST_NODE(retval, SDL_SHADER_AstTernaryExpression, asttype);
+    retval->left = left;
+    retval->center = center;
+    retval->right = right;
+    return (SDL_SHADER_AstExpression *) retval;
+}
+
+static void delete_ternary_expression(Context *ctx, SDL_SHADER_AstTernaryExpression *expr)
+{
+    DELETE_AST_NODE(expr);
+    delete_expression(ctx, expr->left);
+    delete_expression(ctx, expr->center);
+    delete_expression(ctx, expr->right);
+    Free(ctx, expr);
+}
+
+static SDL_SHADER_AstExpression *new_conditional_expression(Context *ctx, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *center, SDL_SHADER_AstExpression *right) { return new_ternary_expression(ctx, SDL_SHADER_AST_OP_CONDITIONAL, left, center, right); }
+
+static SDL_SHADER_AstExpression *new_struct_dereference_expression(Context *ctx, SDL_SHADER_AstExpression *expr, const char *field)
+{
+    NEW_AST_NODE(retval, SDL_SHADER_AstStructDerefExpression, SDL_SHADER_AST_OP_DEREF_STRUCT);
+    retval->expr = expr;
+    retval->field = field;  /* strcache'd */
+    return (SDL_SHADER_AstExpression *) retval;
+}
+
+static void delete_struct_dereference_expression(Context *ctx, SDL_SHADER_AstStructDerefExpression *expr)
+{
+    DELETE_AST_NODE(expr);
+    delete_expression(ctx, expr->expr);
+    Free(ctx, expr);
+}
+
+static void delete_expression(Context *ctx, SDL_SHADER_AstExpression *expr)
+{
+    if (!expr) {
+        return;
+    } else if (operator_is_binary(expr->ast.type)) {
+        delete_binary_expression(ctx, (SDL_SHADER_AstBinaryExpression *) expr);
+    } else if (operator_is_unary(expr->ast.type)) {
+        delete_unary_expression(ctx, (SDL_SHADER_AstUnaryExpression *) expr);
+    } else if (operator_is_ternary(expr->ast.type)) {
+        delete_ternary_expression(ctx, (SDL_SHADER_AstTernaryExpression *) expr);
+    } else {
+        switch (expr->ast.type) {
+            case SDL_SHADER_AST_OP_IDENTIFIER: delete_identifier_expression(ctx, (SDL_SHADER_AstIdentifierExpression *) expr); return;
+            case SDL_SHADER_AST_OP_INT_LITERAL: delete_int_expression(ctx, (SDL_SHADER_AstIntLiteralExpression *) expr); return;
+            case SDL_SHADER_AST_OP_FLOAT_LITERAL: delete_float_expression(ctx, (SDL_SHADER_AstFloatLiteralExpression *) expr); return;
+            case SDL_SHADER_AST_OP_BOOLEAN_LITERAL: delete_bool_expression(ctx, (SDL_SHADER_AstBooleanLiteralExpression *) expr); return;
+            case SDL_SHADER_AST_OP_CALLFUNC: delete_fncall_expression(ctx, (SDL_SHADER_AstFunctionCallExpression *) expr); return;
+            case SDL_SHADER_AST_OP_DEREF_STRUCT: delete_struct_dereference_expression(ctx, (SDL_SHADER_AstStructDerefExpression *) expr); return;
+            default: break;
+        }
+        SDL_assert(!"Unexpected statement type");
+    }
+}
+
+static SDL_SHADER_AstStatement *new_simple_statement(Context *ctx, SDL_SHADER_AstNodeType asttype)
+{
+    NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstSimpleStatement, asttype);
+    return (SDL_SHADER_AstStatement *) retval;
+}
+
+static void delete_simple_statement(Context *ctx, SDL_SHADER_AstSimpleStatement *simple)
+{
+    DELETE_AST_STATEMENT_NODE(simple);
+    delete_statement(ctx, simple->next);
+    Free(ctx, simple);
+}
+
+static SDL_SHADER_AstStatement *new_empty_statement(Context *ctx) { return new_simple_statement(ctx, SDL_SHADER_AST_STATEMENT_EMPTY); }
+static SDL_SHADER_AstStatement *new_break_statement(Context *ctx) { return new_simple_statement(ctx, SDL_SHADER_AST_STATEMENT_BREAK); }
+static SDL_SHADER_AstStatement *new_continue_statement(Context *ctx) { return new_simple_statement(ctx, SDL_SHADER_AST_STATEMENT_CONTINUE); }
+static SDL_SHADER_AstStatement *new_discard_statement(Context *ctx) { return new_simple_statement(ctx, SDL_SHADER_AST_STATEMENT_DISCARD); }
+
+static SDL_SHADER_AstVarDeclaration *new_var_declaration(Context *ctx, const char *datatype_name, const char *name, SDL_SHADER_AstExpression *initializer)
+{
+    NEW_AST_NODE(retval, SDL_SHADER_AstVarDeclaration, SDL_SHADER_AST_VARIABLE_DECLARATION);
+    retval->datatype_name = datatype_name;  /* strcache'd */
+    retval->name = name; /* strcache'd */
     retval->initializer = initializer;
+    return retval;
+}
+
+static void delete_var_declaration(Context *ctx, SDL_SHADER_AstVarDeclaration *vardecl)
+{
+    DELETE_AST_NODE(vardecl);
+    delete_expression(ctx, vardecl->initializer);
+    Free(ctx, vardecl);
+}
+
+static SDL_SHADER_AstStatement *new_var_declaration_statement(Context *ctx, SDL_SHADER_AstVarDeclaration *vardecl)
+{
+    NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstVarDeclStatement, SDL_SHADER_AST_STATEMENT_VARDECL);
+    retval->vardecl = vardecl;
+    return (SDL_SHADER_AstStatement *) retval;
+}
+
+static void delete_var_declaration_statement(Context *ctx, SDL_SHADER_AstVarDeclStatement *vdstmt)
+{
+    DELETE_AST_STATEMENT_NODE(vdstmt);
+    delete_var_declaration(ctx, vdstmt->vardecl);
+    delete_statement(ctx, vdstmt->next);
+    Free(ctx, vdstmt);
+}
+
+static SDL_SHADER_AstStatement *new_do_statement(Context *ctx, SDL_SHADER_AstStatement *code, SDL_SHADER_AstExpression *condition)
+{
+    NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstDoStatement, SDL_SHADER_AST_STATEMENT_DO);
+    retval->code = code;
+    retval->condition = condition;
+    return (SDL_SHADER_AstStatement *) retval;
+}
+
+static void delete_do_statement(Context *ctx, SDL_SHADER_AstDoStatement *dostmt)
+{
+    DELETE_AST_STATEMENT_NODE(dostmt);
+    delete_statement(ctx, dostmt->code);
+    delete_expression(ctx, dostmt->condition);
+    delete_statement(ctx, dostmt->next);
+    Free(ctx, dostmt);
+}
+
+static SDL_SHADER_AstStatement *new_while_statement(Context *ctx, SDL_SHADER_AstExpression *condition, SDL_SHADER_AstStatement *code)
+{
+    NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstWhileStatement, SDL_SHADER_AST_STATEMENT_WHILE);
+    retval->code = code;
+    retval->condition = condition;
+    return (SDL_SHADER_AstStatement *) retval;
+}
+
+static void delete_while_statement(Context *ctx, SDL_SHADER_AstWhileStatement *wstmt)
+{
+    DELETE_AST_STATEMENT_NODE(wstmt);
+    delete_statement(ctx, wstmt->code);
+    delete_expression(ctx, wstmt->condition);
+    delete_statement(ctx, wstmt->next);
+    Free(ctx, wstmt);
+}
+
+/* !!! FIXME: this all sort of sucks, rethink for loops. */
+static SDL_SHADER_AstForInitializer *new_for_initializer_expression(Context *ctx, SDL_SHADER_AstExpression *expr)
+{
+    SDL_SHADER_AstForInitializer *retval = (SDL_SHADER_AstForInitializer *) Malloc(ctx, sizeof (SDL_SHADER_AstForInitializer));
+    if (retval) { retval->expr = expr; }
+    return retval;
+}
+
+static SDL_SHADER_AstForInitializer *new_for_initializer_var_declaration(Context *ctx, SDL_SHADER_AstVarDeclaration *vardecl)
+{
+    SDL_SHADER_AstForInitializer *retval = (SDL_SHADER_AstForInitializer *) Malloc(ctx, sizeof (SDL_SHADER_AstForInitializer));
+    if (retval) { retval->vardecl = vardecl; }
+    return retval;
+}
+
+static SDL_SHADER_AstForInitializer *new_for_initializer_assignment(Context *ctx, SDL_SHADER_AstAssignStatement *assignment)
+{
+    SDL_SHADER_AstForInitializer *retval = (SDL_SHADER_AstForInitializer *) Malloc(ctx, sizeof (SDL_SHADER_AstForInitializer));
+    if (retval) { retval->assignment = assignment; }
+    return retval;
+}
+
+static void delete_for_initializer(Context *ctx, SDL_SHADER_AstForInitializer *forinitializer)
+{
+    if (forinitializer) {
+        switch (forinitializer->ast->type) {
+            case SDL_SHADER_AST_STATEMENT_ASSIGNMENT: delete_assignment_statement(ctx, forinitializer->assignment); break;
+            case SDL_SHADER_AST_VARIABLE_DECLARATION: delete_var_declaration(ctx, forinitializer->vardecl); break;
+            default: delete_expression(ctx, forinitializer->expr); break;  /* everything else is (hopefully!) an expression */
+        }
+        Free(ctx, forinitializer);
+    }
+}
+
+static SDL_SHADER_AstForDetails *new_for_details(Context *ctx, SDL_SHADER_AstForInitializer *initializer, SDL_SHADER_AstExpression *condition, SDL_SHADER_AstExpression *step)
+{
+    SDL_SHADER_AstForDetails *retval = (SDL_SHADER_AstForDetails *) Malloc(ctx, sizeof (SDL_SHADER_AstForDetails));
+    if (retval) {
+        retval->initializer = initializer;
+        retval->condition = condition;
+        retval->step = step;
+    }
+    return retval;
+}
+
+static void delete_for_details(Context *ctx, SDL_SHADER_AstForDetails *fordetails)
+{
+    if (fordetails) {
+        delete_for_initializer(ctx, fordetails->initializer);
+        delete_expression(ctx, fordetails->condition);
+        delete_expression(ctx, fordetails->step);
+        Free(ctx, fordetails);
+    }
+}
+
+static SDL_SHADER_AstStatement *new_for_statement(Context *ctx, SDL_SHADER_AstForDetails *details, SDL_SHADER_AstStatement *code)
+{
+    NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstForStatement, SDL_SHADER_AST_STATEMENT_FOR);
+    retval->details = details;
+    retval->code = code;
+    return (SDL_SHADER_AstStatement *) retval;
+}
+
+static void delete_for_statement(Context *ctx, SDL_SHADER_AstForStatement *forstmt)
+{
+    DELETE_AST_STATEMENT_NODE(forstmt);
+    delete_for_details(ctx, forstmt->details);
+    delete_statement(ctx, forstmt->code);
+    delete_statement(ctx, forstmt->next);
+    Free(ctx, forstmt);
+}
+
+static SDL_SHADER_AstStatement *new_if_statement(Context *ctx, SDL_SHADER_AstExpression *condition, SDL_SHADER_AstStatement *code, SDL_SHADER_AstStatement *else_code)
+{
+    NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstIfStatement, SDL_SHADER_AST_STATEMENT_IF);
+    retval->condition = condition;
+    retval->code = code;
+    retval->else_code = else_code;
+    return (SDL_SHADER_AstStatement *) retval;
+}
+
+static void delete_if_statement(Context *ctx, SDL_SHADER_AstIfStatement *ifstmt)
+{
+    DELETE_AST_STATEMENT_NODE(ifstmt);
+    delete_expression(ctx, ifstmt->condition);
+    delete_statement(ctx, ifstmt->code);
+    delete_statement(ctx, ifstmt->else_code);
+    delete_statement(ctx, ifstmt->next);
+    Free(ctx, ifstmt);
+}
+
+static SDL_SHADER_AstSwitchCase *new_switch_case(Context *ctx, SDL_SHADER_AstExpression *condition, SDL_SHADER_AstStatement *code)
+{
+    NEW_AST_NODE(retval, SDL_SHADER_AstSwitchCase, SDL_SHADER_AST_SWITCH_CASE);
+    retval->condition = condition;
+    retval->code = code;
     retval->next = NULL;
     return retval;
 }
 
-static void delete_function_params(Context *ctx, SDL_SHADER_astFunctionParameters *params)
+static void delete_switch_case(Context *ctx, SDL_SHADER_AstSwitchCase *swcase)
 {
-    DELETE_AST_NODE(params);
-    delete_function_params(ctx, params->next);
-    delete_expr(ctx, params->initializer);
-    Free(ctx, params);
+    DELETE_AST_NODE(swcase);
+    delete_expression(ctx, swcase->condition);
+    delete_statement(ctx, swcase->code);
+    delete_switch_case(ctx, swcase->next);
+    Free(ctx, swcase);
 }
 
-static SDL_SHADER_astFunctionSignature *new_function_signature(Context *ctx,
-                                    const SDL_SHADER_astDataType *dt,
-                                    const char *identifier,
-                                    SDL_SHADER_astFunctionParameters *params)
+static SDL_SHADER_AstSwitchCases *new_switch_cases(Context *ctx, SDL_SHADER_AstSwitchCase *first)
 {
-    NEW_AST_NODE(retval, SDL_SHADER_astFunctionSignature, SDL_SHADER_AST_FUNCTION_SIGNATURE);
-    retval->datatype = dt;
-    retval->identifier = identifier;
-    retval->params = params;
-    retval->storage_class = SDL_SHADER_AST_FNSTORECLS_NONE;
-    retval->semantic = NULL;
+    NEW_AST_LIST(retval, SDL_SHADER_AstSwitchCases, first);
     return retval;
 }
 
-static void delete_function_signature(Context *ctx,
-                                      SDL_SHADER_astFunctionSignature *sig)
+static void delete_switch_cases(Context *ctx, SDL_SHADER_AstSwitchCases *cases)
 {
-    DELETE_AST_NODE(sig);
-    delete_function_params(ctx, sig->params);
-    Free(ctx, sig);
+    DELETE_AST_LIST(cases, SDL_SHADER_AstSwitchCase, delete_switch_case);
 }
 
-static SDL_SHADER_astCompilationUnit *new_function(Context *ctx,
-                                SDL_SHADER_astFunctionSignature *declaration,
-                                SDL_SHADER_astStatement *definition)
+static SDL_SHADER_AstStatement *new_switch_statement(Context *ctx, SDL_SHADER_AstExpression *condition, SDL_SHADER_AstSwitchCases *cases)
 {
-    NEW_AST_NODE(retval, SDL_SHADER_astCompilationUnitFunction, SDL_SHADER_AST_COMPUNIT_FUNCTION);
-    retval->next = NULL;
-    retval->declaration = declaration;
-    retval->definition = definition;
-    retval->index = 0;
-    return (SDL_SHADER_astCompilationUnit *) retval;
+    NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstSwitchStatement, SDL_SHADER_AST_STATEMENT_SWITCH);
+    retval->condition = condition;
+    retval->cases = cases;
+    return (SDL_SHADER_AstStatement *) retval;
 }
 
-static void delete_function(Context *ctx,
-                            SDL_SHADER_astCompilationUnitFunction *unitfn)
+static void delete_switch_statement(Context *ctx, SDL_SHADER_AstSwitchStatement *swstmt)
 {
-    DELETE_AST_NODE(unitfn);
-    delete_compilation_unit(ctx, unitfn->next);
-    delete_function_signature(ctx, unitfn->declaration);
-    delete_statement(ctx, unitfn->definition);
-    Free(ctx, unitfn);
+    DELETE_AST_STATEMENT_NODE(swstmt);
+    delete_expression(ctx, swstmt->condition);
+    delete_switch_cases(ctx, swstmt->cases);
+    delete_statement(ctx, swstmt->next);
+    Free(ctx, swstmt);
 }
 
-static SDL_SHADER_astScalarOrArray *new_scalar_or_array(Context *ctx,
-                                          const char *ident, const int isvec,
-                                          SDL_SHADER_astExpression *dim)
+static SDL_SHADER_AstStatement *new_return_statement(Context *ctx, SDL_SHADER_AstExpression *value)
 {
-    NEW_AST_NODE(retval, SDL_SHADER_astScalarOrArray, SDL_SHADER_AST_SCALAR_OR_ARRAY);
-    retval->identifier = ident;
-    retval->isarray = isvec;
-    retval->dimension = dim;
+    NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstReturnStatement, SDL_SHADER_AST_STATEMENT_RETURN);
+    retval->value = value;
+    return (SDL_SHADER_AstStatement *) retval;
+}
+
+static void delete_return_statement(Context *ctx, SDL_SHADER_AstReturnStatement *rtstmt)
+{
+    DELETE_AST_STATEMENT_NODE(rtstmt);
+    delete_expression(ctx, rtstmt->value);
+    delete_statement(ctx, rtstmt->next);
+    Free(ctx, rtstmt);
+}
+
+static SDL_SHADER_AstAssignment *new_assignment(Context *ctx, SDL_SHADER_AstExpression *expr)
+{
+    SDL_SHADER_AstAssignment *retval = (SDL_SHADER_AstAssignment *) Malloc(ctx, sizeof (SDL_SHADER_AstAssignment));
+    if (retval) {
+        retval->expr = expr;
+        retval->next = NULL;
+    }
     return retval;
 }
 
-static void delete_scalar_or_array(Context *ctx, SDL_SHADER_astScalarOrArray *s)
+static void delete_assignment(Context *ctx, SDL_SHADER_AstAssignment *assignment)
 {
-    DELETE_AST_NODE(s);
-    delete_expr(ctx, s->dimension);
-    Free(ctx, s);
+    if (assignment) {
+        delete_expression(ctx, assignment->expr);
+        delete_assignment(ctx, assignment->next);
+        Free(ctx, assignment);
+    }
 }
 
-static SDL_SHADER_astTypedef *new_typedef(Context *ctx, const int isconst,
-                                          const SDL_SHADER_astDataType *dt,
-                                          SDL_SHADER_astScalarOrArray *soa)
+static SDL_SHADER_AstAssignments *new_assignments(Context *ctx, SDL_SHADER_AstAssignment *first)
 {
-    /* we correct this datatype to the final version during semantic analysis. */
-    NEW_AST_NODE(retval, SDL_SHADER_astTypedef, SDL_SHADER_AST_TYPEDEF);
-    retval->datatype = dt;
-    retval->isconst = isconst;
-    retval->details = soa;
+    NEW_AST_LIST(retval, SDL_SHADER_AstAssignments, first);
     return retval;
 }
 
-static void delete_typedef(Context *ctx, SDL_SHADER_astTypedef *td)
+static void delete_assignments(Context *ctx, SDL_SHADER_AstAssignments *assignments)
 {
-    DELETE_AST_NODE(td);
-    delete_scalar_or_array(ctx, td->details);
-    Free(ctx, td);
+    DELETE_AST_LIST(assignments, SDL_SHADER_AstAssignment, delete_assignment);
 }
 
-static SDL_SHADER_astPackOffset *new_pack_offset(Context *ctx, const char *a, const char *b)
+static SDL_SHADER_AstStatement *new_assignment_statement(Context *ctx, SDL_SHADER_AstAssignments *assignments, SDL_SHADER_AstExpression *value)
 {
-    NEW_AST_NODE(retval, SDL_SHADER_astPackOffset, SDL_SHADER_AST_PACK_OFFSET);
-    retval->ident1 = a;
-    retval->ident2 = b;
+    NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstAssignStatement, SDL_SHADER_AST_STATEMENT_ASSIGNMENT);
+    retval->assignments = assignments;
+    retval->value = value;
+    return (SDL_SHADER_AstStatement *) retval;
+}
+
+static void delete_assignment_statement(Context *ctx, SDL_SHADER_AstAssignStatement *asstmt)
+{
+    DELETE_AST_STATEMENT_NODE(asstmt);
+    delete_assignments(ctx, asstmt->assignments);
+    delete_expression(ctx, asstmt->value);
+    delete_statement(ctx, asstmt->next);
+    Free(ctx, asstmt);
+}
+
+static SDL_SHADER_AstStatement *new_compound_assignment_statement(Context *ctx, SDL_SHADER_AstExpression *assignment, SDL_SHADER_AstNodeType asttype, SDL_SHADER_AstExpression *value)
+{
+    NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstCompoundAssignStatement, asttype);
+    retval->assignment = assignment;
+    retval->value = value;
+    return (SDL_SHADER_AstStatement *) retval;
+}
+
+static void delete_compound_assignment_statement(Context *ctx, SDL_SHADER_AstCompoundAssignStatement *asstmt)
+{
+    DELETE_AST_STATEMENT_NODE(asstmt);
+    delete_expression(ctx, asstmt->assignment);
+    delete_expression(ctx, asstmt->value);
+    delete_statement(ctx, asstmt->next);
+    Free(ctx, asstmt);
+}
+
+static SDL_SHADER_AstStatementBlock *new_statement_block(Context *ctx, SDL_SHADER_AstStatement *first)
+{
+    NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstStatementBlock, SDL_SHADER_AST_STATEMENT_BLOCK);
+    retval->head = retval->tail = first;
     return retval;
 }
 
-static void delete_pack_offset(Context *ctx, SDL_SHADER_astPackOffset *o)
+static void delete_statement_block(Context *ctx, SDL_SHADER_AstStatementBlock *stmtblock)
 {
-    DELETE_AST_NODE(o);
-    Free(ctx, o);
+    DELETE_AST_STATEMENT_NODE(stmtblock);
+    delete_statement(ctx, stmtblock->next);
+    DELETE_AST_LIST(stmtblock, SDL_SHADER_AstStatement, delete_statement);  /* this happens to work, but watch out if that macro changes! */
 }
 
-static SDL_SHADER_astVariableLowLevel *new_variable_lowlevel(Context *ctx, SDL_SHADER_astPackOffset *po, const char *reg)
+static void delete_statement(Context *ctx, SDL_SHADER_AstStatement *stmt)
 {
-    NEW_AST_NODE(retval, SDL_SHADER_astVariableLowLevel, SDL_SHADER_AST_VARIABLE_LOWLEVEL);
-    retval->packoffset = po;
-    retval->register_name = reg;
-    return retval;
+    if (!stmt) { return; }
+    switch (stmt->ast.type) {
+        case SDL_SHADER_AST_STATEMENT_EMPTY: delete_simple_statement(ctx, (SDL_SHADER_AstSimpleStatement *) stmt); return;
+        case SDL_SHADER_AST_STATEMENT_BREAK: delete_simple_statement(ctx, (SDL_SHADER_AstSimpleStatement *) stmt); return;
+        case SDL_SHADER_AST_STATEMENT_CONTINUE: delete_simple_statement(ctx, (SDL_SHADER_AstSimpleStatement *) stmt); return;
+        case SDL_SHADER_AST_STATEMENT_DISCARD: delete_simple_statement(ctx, (SDL_SHADER_AstSimpleStatement *) stmt); return;
+        case SDL_SHADER_AST_STATEMENT_VARDECL: delete_var_declaration_statement(ctx, (SDL_SHADER_AstVarDeclStatement *) stmt); return;
+        case SDL_SHADER_AST_STATEMENT_DO: delete_do_statement(ctx, (SDL_SHADER_AstDoStatement *) stmt); return;
+        case SDL_SHADER_AST_STATEMENT_WHILE: delete_while_statement(ctx, (SDL_SHADER_AstWhileStatement *) stmt); return;
+        case SDL_SHADER_AST_STATEMENT_FOR: delete_for_statement(ctx, (SDL_SHADER_AstForStatement *) stmt); return;
+        case SDL_SHADER_AST_STATEMENT_IF: delete_if_statement(ctx, (SDL_SHADER_AstIfStatement *) stmt); return;
+        case SDL_SHADER_AST_STATEMENT_SWITCH: delete_switch_statement(ctx, (SDL_SHADER_AstSwitchStatement *) stmt); return;
+        case SDL_SHADER_AST_STATEMENT_RETURN: delete_return_statement(ctx, (SDL_SHADER_AstReturnStatement *) stmt); return;
+        case SDL_SHADER_AST_STATEMENT_ASSIGNMENT: delete_assignment_statement(ctx, (SDL_SHADER_AstAssignStatement *) stmt); return;
+        case SDL_SHADER_AST_STATEMENT_BLOCK: delete_statement_block(ctx, (SDL_SHADER_AstStatementBlock *) stmt); return;
+
+        case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNMUL:
+        case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNDIV:
+        case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNMOD:
+        case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNADD:
+        case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNSUB:
+        case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNLSHIFT:
+        case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNRSHIFT:
+        case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNAND:
+        case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNXOR:
+        case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNOR:
+            delete_compound_assignment_statement(ctx, (SDL_SHADER_AstCompoundAssignStatement *) stmt);
+            return;
+
+        default: break;
+    }
+    SDL_assert(!"Unexpected statement type");
 }
 
-static void delete_variable_lowlevel(Context *ctx, SDL_SHADER_astVariableLowLevel *vll)
+static SDL_SHADER_AstStructMember *new_struct_member(Context *ctx, const char *datatype_name, const char *name, SDL_SHADER_AstExpression *arraysize, SDL_SHADER_AstAtAttribute *atattr)
 {
-    DELETE_AST_NODE(vll);
-    delete_pack_offset(ctx, vll->packoffset);
-    Free(ctx, vll);
-}
-
-static SDL_SHADER_astAnnotations *new_annotation(Context *ctx,
-                                        const SDL_SHADER_astDataType *dt,
-                                        SDL_SHADER_astExpression *initializer)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astAnnotations, SDL_SHADER_AST_ANNOTATION);
-    retval->datatype = dt;
-    retval->initializer = initializer;
-    retval->next = NULL;
-    return retval;
-}
-
-static void delete_annotation(Context *ctx, SDL_SHADER_astAnnotations *annos)
-{
-    DELETE_AST_NODE(annos);
-    delete_annotation(ctx, annos->next);
-    delete_expr(ctx, annos->initializer);
-    Free(ctx, annos);
-}
-
-static SDL_SHADER_astVariableDeclaration *new_variable_declaration(
-                            Context *ctx, SDL_SHADER_astScalarOrArray *soa,
-                            const char *semantic,
-                            SDL_SHADER_astAnnotations *annotations,
-                            SDL_SHADER_astExpression *init,
-                            SDL_SHADER_astVariableLowLevel *vll)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astVariableDeclaration, SDL_SHADER_AST_VARIABLE_DECLARATION);
-    retval->datatype = NULL;
-    retval->attributes = 0;
-    retval->anonymous_datatype = NULL;
-    retval->details = soa;
-    retval->semantic = semantic;
-    retval->annotations = annotations;
-    retval->initializer = init;
-    retval->lowlevel = vll;
-    retval->next = NULL;
-    return retval;
-}
-
-static void delete_variable_declaration(Context *ctx, SDL_SHADER_astVariableDeclaration *dcl)
-{
-    DELETE_AST_NODE(dcl);
-    delete_variable_declaration(ctx, dcl->next);
-    delete_scalar_or_array(ctx, dcl->details);
-    delete_annotation(ctx, dcl->annotations);
-    delete_expr(ctx, dcl->initializer);
-    delete_variable_lowlevel(ctx, dcl->lowlevel);
-    Free(ctx, dcl);
-}
-
-static SDL_SHADER_astCompilationUnit *new_global_variable(Context *ctx, SDL_SHADER_astVariableDeclaration *decl)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astCompilationUnitVariable, SDL_SHADER_AST_COMPUNIT_VARIABLE);
-    retval->next = NULL;
-    retval->declaration = decl;
-    return (SDL_SHADER_astCompilationUnit *) retval;
-}
-
-static void delete_global_variable(Context *ctx, SDL_SHADER_astCompilationUnitVariable *var)
-{
-    DELETE_AST_NODE(var);
-    delete_compilation_unit(ctx, var->next);
-    delete_variable_declaration(ctx, var->declaration);
-    Free(ctx, var);
-}
-
-static SDL_SHADER_astCompilationUnit *new_global_typedef(Context *ctx, SDL_SHADER_astTypedef *td)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astCompilationUnitTypedef, SDL_SHADER_AST_COMPUNIT_TYPEDEF);
-    retval->next = NULL;
-    retval->type_info = td;
-    return (SDL_SHADER_astCompilationUnit *) retval;
-}
-
-static void delete_global_typedef(Context *ctx, SDL_SHADER_astCompilationUnitTypedef *unit)
-{
-    DELETE_AST_NODE(unit);
-    delete_compilation_unit(ctx, unit->next);
-    delete_typedef(ctx, unit->type_info);
-    Free(ctx, unit);
-}
-
-static SDL_SHADER_astStructMembers *new_struct_member(Context *ctx, SDL_SHADER_astScalarOrArray *soa, const char *semantic)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astStructMembers, SDL_SHADER_AST_STRUCT_MEMBER);
-    retval->datatype = NULL;
-    retval->semantic = semantic;
-    retval->details = soa;
-    retval->interpolation_mod = SDL_SHADER_AST_INTERPMOD_NONE;
+    NEW_AST_NODE(retval, SDL_SHADER_AstStructMember,SDL_SHADER_AST_STRUCT_MEMBER);
+    retval->datatype_name = datatype_name;  /* strcache'd */
+    retval->name = name;  /* strcache'd */
+    retval->arraysize = arraysize;
+    retval->attribute = atattr;
     retval->next = NULL;
     return retval;
 }
 
-static void delete_struct_member(Context *ctx, SDL_SHADER_astStructMembers *member)
+static void delete_struct_member(Context *ctx, SDL_SHADER_AstStructMember *member)
 {
     DELETE_AST_NODE(member);
+    delete_expression(ctx, member->arraysize);
+    delete_at_attribute(ctx, member->attribute);
     delete_struct_member(ctx, member->next);
-    delete_scalar_or_array(ctx, member->details);
     Free(ctx, member);
 }
 
-static SDL_SHADER_astStructDeclaration *new_struct_declaration(Context *ctx, const char *name, SDL_SHADER_astStructMembers *members)
+static SDL_SHADER_AstStructMembers *new_struct_members(Context *ctx, SDL_SHADER_AstStructMember *first)
 {
-    NEW_AST_NODE(retval, SDL_SHADER_astStructDeclaration, SDL_SHADER_AST_STRUCT_DECLARATION);
-    retval->datatype = NULL;
-    retval->name = name;
+    NEW_AST_LIST(retval, SDL_SHADER_AstStructMembers, first);
+    return retval;
+}
+
+static void delete_struct_members(Context *ctx, SDL_SHADER_AstStructMembers *members)
+{
+    DELETE_AST_LIST(members, SDL_SHADER_AstStructMember, delete_struct_member);
+}
+
+static SDL_SHADER_AstStructDeclaration *new_struct_declaration(Context *ctx, const char *name, SDL_SHADER_AstStructMembers *members)
+{
+    NEW_AST_NODE(retval, SDL_SHADER_AstStructDeclaration, SDL_SHADER_AST_STRUCT_DECLARATION);
+    retval->name = name;  /* strcache'd */
     retval->members = members;
     return retval;
 }
 
-static void delete_struct_declaration(Context *ctx, SDL_SHADER_astStructDeclaration *decl)
+static void delete_struct_declaration(Context *ctx, SDL_SHADER_AstStructDeclaration *decl)
 {
     DELETE_AST_NODE(decl);
-    delete_struct_member(ctx, decl->members);
+    delete_struct_members(ctx, decl->members);
     Free(ctx, decl);
 }
 
-static SDL_SHADER_astCompilationUnit *new_global_struct(Context *ctx, SDL_SHADER_astStructDeclaration *sd)
+static SDL_SHADER_AstTranslationUnit *new_struct_declaration_unit(Context *ctx, SDL_SHADER_AstStructDeclaration *decl)
 {
-    NEW_AST_NODE(retval, SDL_SHADER_astCompilationUnitStruct, SDL_SHADER_AST_COMPUNIT_STRUCT);
+    NEW_AST_NODE(retval, SDL_SHADER_AstStructDeclarationUnit, SDL_SHADER_AST_TRANSUNIT_STRUCT);
     retval->next = NULL;
-    retval->struct_info = sd;
-    return (SDL_SHADER_astCompilationUnit *) retval;
+    retval->decl = decl;
+    return (SDL_SHADER_AstTranslationUnit *) retval;
 }
 
-static void delete_global_struct(Context *ctx, SDL_SHADER_astCompilationUnitStruct *unit)
+static void delete_struct_declaration_unit(Context *ctx, SDL_SHADER_AstStructDeclarationUnit *strunit)
 {
-    DELETE_AST_NODE(unit);
-    delete_compilation_unit(ctx, unit->next);
-    delete_struct_declaration(ctx, unit->struct_info);
-    Free(ctx, unit);
+    DELETE_AST_NODE(strunit);
+    delete_struct_declaration(ctx, strunit->decl);
+    delete_translation_unit(ctx, strunit->next);
+    Free(ctx, strunit);
 }
 
-static void delete_compilation_unit(Context *ctx, SDL_SHADER_astCompilationUnit *unit)
+static SDL_SHADER_AstFunctionParam *new_function_param(Context *ctx, const char *datatype_name, const char *name, SDL_SHADER_AstAtAttribute *atattr)
 {
-    if (!unit) {
-        return;
-    }
-
-    /* It's important to not recurse too deeply here, since you may have thousands of items in this linked list (each
-       line of a massive function, for example). To avoid this, we iterate the list here, deleting all children and
-       making them think they have no reason to recurse in their own delete methods. Please note that everyone should
-       _try_ to delete their "next" member, just in case, but hopefully this cleaned it out. */
-
-    SDL_SHADER_astCompilationUnit *i = unit->next;
-    unit->next = NULL;
-    while (i)
-    {
-        SDL_SHADER_astCompilationUnit *next = i->next;
-        i->next = NULL;
-        delete_compilation_unit(ctx, i);
-        i = next;
-    }
-
-    switch (unit->ast.type)
-    {
-        #define DELETE_UNIT(typ, cls, fn) case SDL_SHADER_AST_COMPUNIT_##typ: delete_##fn(ctx, (cls *) unit); break;
-        DELETE_UNIT(FUNCTION, SDL_SHADER_astCompilationUnitFunction, function);
-        DELETE_UNIT(TYPEDEF, SDL_SHADER_astCompilationUnitTypedef, global_typedef);
-        DELETE_UNIT(VARIABLE, SDL_SHADER_astCompilationUnitVariable, global_variable);
-        DELETE_UNIT(STRUCT, SDL_SHADER_astCompilationUnitStruct, global_struct);
-        #undef DELETE_UNIT
-        default: SDL_assert(!"missing cleanup code"); break;
-    }
-
-    /* don't free (unit) here, the class-specific functions do it. */
-}
-
-static SDL_SHADER_astStatement *new_typedef_statement(Context *ctx, SDL_SHADER_astTypedef *td)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astTypedefStatement, SDL_SHADER_AST_STATEMENT_TYPEDEF);
-    retval->next = NULL;
-    retval->type_info = td;
-    return (SDL_SHADER_astStatement *) retval;
-}
-
-static void delete_typedef_statement(Context *ctx, SDL_SHADER_astTypedefStatement *stmt)
-{
-    DELETE_AST_NODE(stmt);
-    delete_statement(ctx, stmt->next);
-    delete_typedef(ctx, stmt->type_info);
-    Free(ctx, stmt);
-}
-
-static SDL_SHADER_astStatement *new_return_statement(Context *ctx, SDL_SHADER_astExpression *expr)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astReturnStatement, SDL_SHADER_AST_STATEMENT_RETURN);
-    retval->next = NULL;
-    retval->expr = expr;
-    return (SDL_SHADER_astStatement *) retval;
-}
-
-static void delete_return_statement(Context *ctx, SDL_SHADER_astReturnStatement *stmt)
-{
-    DELETE_AST_NODE(stmt);
-    delete_statement(ctx, stmt->next);
-    delete_expr(ctx, stmt->expr);
-    Free(ctx, stmt);
-}
-
-static SDL_SHADER_astStatement *new_block_statement(Context *ctx, SDL_SHADER_astStatement *stmts)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astBlockStatement, SDL_SHADER_AST_STATEMENT_BLOCK);
-    retval->next = NULL;
-    retval->statements = stmts;
-    return (SDL_SHADER_astStatement *) retval;
-}
-
-static void delete_block_statement(Context *ctx, SDL_SHADER_astBlockStatement *stmt)
-{
-    DELETE_AST_NODE(stmt);
-    delete_statement(ctx, stmt->statements);
-    delete_statement(ctx, stmt->next);
-    Free(ctx, stmt);
-}
-
-static SDL_SHADER_astStatement *new_for_statement(Context *ctx,
-                                    SDL_SHADER_astVariableDeclaration *decl,
-                                    SDL_SHADER_astExpression *initializer,
-                                    SDL_SHADER_astExpression *looptest,
-                                    SDL_SHADER_astExpression *counter,
-                                    SDL_SHADER_astStatement *statement)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astForStatement, SDL_SHADER_AST_STATEMENT_FOR);
-    retval->next = NULL;
-    retval->unroll = -1;
-    retval->var_decl = decl;
-    retval->initializer = initializer;
-    retval->looptest = looptest;
-    retval->counter = counter;
-    retval->statement = statement;
-    return (SDL_SHADER_astStatement *) retval;
-}
-
-static void delete_for_statement(Context *ctx,SDL_SHADER_astForStatement *stmt)
-{
-    DELETE_AST_NODE(stmt);
-    delete_statement(ctx, stmt->next);
-    delete_variable_declaration(ctx, stmt->var_decl);
-    delete_expr(ctx, stmt->initializer);
-    delete_expr(ctx, stmt->looptest);
-    delete_expr(ctx, stmt->counter);
-    delete_statement(ctx, stmt->statement);
-    Free(ctx, stmt);
-}
-
-static SDL_SHADER_astStatement *new_do_statement(Context *ctx,
-                                                const int unroll,
-                                                SDL_SHADER_astStatement *stmt,
-                                                SDL_SHADER_astExpression *expr)
-{
-    NEW_AST_NODE(retval,SDL_SHADER_astDoStatement,SDL_SHADER_AST_STATEMENT_DO);
-    retval->next = NULL;
-    retval->unroll = unroll;
-    retval->expr = expr;
-    retval->statement = stmt;
-    return (SDL_SHADER_astStatement *) retval;
-}
-
-static void delete_do_statement(Context *ctx, SDL_SHADER_astDoStatement *stmt)
-{
-    DELETE_AST_NODE(stmt);
-    delete_statement(ctx, stmt->next);
-    delete_statement(ctx, stmt->statement);
-    delete_expr(ctx, stmt->expr);
-    Free(ctx, stmt);
-}
-
-static SDL_SHADER_astStatement *new_while_statement(Context *ctx,
-                                                const int unroll,
-                                                SDL_SHADER_astExpression *expr,
-                                                SDL_SHADER_astStatement *stmt)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astWhileStatement, SDL_SHADER_AST_STATEMENT_WHILE);
-    retval->next = NULL;
-    retval->unroll = unroll;
-    retval->expr = expr;
-    retval->statement = stmt;
-    return (SDL_SHADER_astStatement *) retval;
-}
-
-static void delete_while_statement(Context *ctx, SDL_SHADER_astWhileStatement *stmt)
-{
-    DELETE_AST_NODE(stmt);
-    delete_statement(ctx, stmt->next);
-    delete_statement(ctx, stmt->statement);
-    delete_expr(ctx, stmt->expr);
-    Free(ctx, stmt);
-}
-
-static SDL_SHADER_astStatement *new_if_statement(Context *ctx,
-                                            const int attr,
-                                            SDL_SHADER_astExpression *expr,
-                                            SDL_SHADER_astStatement *stmt,
-                                            SDL_SHADER_astStatement *elsestmt)
-{
-    NEW_AST_NODE(retval,SDL_SHADER_astIfStatement,SDL_SHADER_AST_STATEMENT_IF);
-    retval->next = NULL;
-    retval->attributes = attr;
-    retval->expr = expr;
-    retval->statement = stmt;
-    retval->else_statement = elsestmt;
-    return (SDL_SHADER_astStatement *) retval;
-}
-
-static void delete_if_statement(Context *ctx, SDL_SHADER_astIfStatement *stmt)
-{
-    DELETE_AST_NODE(stmt);
-    delete_statement(ctx, stmt->next);
-    delete_expr(ctx, stmt->expr);
-    delete_statement(ctx, stmt->statement);
-    delete_statement(ctx, stmt->else_statement);
-    Free(ctx, stmt);
-}
-
-static SDL_SHADER_astSwitchCases *new_switch_case(Context *ctx,
-                                                SDL_SHADER_astExpression *expr,
-                                                SDL_SHADER_astStatement *stmt)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astSwitchCases, SDL_SHADER_AST_SWITCH_CASE);
-    retval->expr = expr;
-    retval->statement = stmt;
+    NEW_AST_NODE(retval, SDL_SHADER_AstFunctionParam, SDL_SHADER_AST_FUNCTION_PARAM);
+    retval->datatype_name = datatype_name;  /* strcache'd */
+    retval->name = name;  /* strcache'd */
+    retval->attribute = atattr;
     retval->next = NULL;
     return retval;
 }
 
-static void delete_switch_case(Context *ctx, SDL_SHADER_astSwitchCases *sc)
+static void delete_function_param(Context *ctx, SDL_SHADER_AstFunctionParam *param)
 {
-    DELETE_AST_NODE(sc);
-    delete_switch_case(ctx, sc->next);
-    delete_expr(ctx, sc->expr);
-    delete_statement(ctx, sc->statement);
-    Free(ctx, sc);
+    DELETE_AST_NODE(param);
+    delete_at_attribute(ctx, param->attribute);
+    delete_function_param(ctx, param->next);
+    Free(ctx, param);
 }
 
-static SDL_SHADER_astStatement *new_empty_statement(Context *ctx)
+static SDL_SHADER_AstFunctionParams *new_function_params(Context *ctx, SDL_SHADER_AstFunctionParam *first)
 {
-    NEW_AST_NODE(retval, SDL_SHADER_astEmptyStatement, SDL_SHADER_AST_STATEMENT_EMPTY);
+    NEW_AST_LIST(retval, SDL_SHADER_AstFunctionParams, first);
+    return retval;
+}
+
+static void delete_function_params(Context *ctx, SDL_SHADER_AstFunctionParams *params)
+{
+    DELETE_AST_LIST(params, SDL_SHADER_AstFunctionParam, delete_function_param);
+}
+
+static SDL_SHADER_AstFunction *new_function(Context *ctx, const char *rettype, const char *name, SDL_SHADER_AstFunctionParams *params, SDL_SHADER_AstAtAttribute *atattr, SDL_SHADER_AstStatementBlock *code)
+{
+    NEW_AST_NODE(retval, SDL_SHADER_AstFunction, SDL_SHADER_AST_FUNCTION);
+    retval->datatype_name = rettype; /* strcache'd (or NULL for "void") */
+    retval->name = name; /* strcache'd */
+    retval->params = params;  /* NULL==void */
+    retval->attribute = atattr;
+    retval->code = code;
+    return retval;
+}
+
+static void delete_function(Context *ctx, SDL_SHADER_AstFunction *fn)
+{
+    DELETE_AST_NODE(fn);
+    delete_function_params(ctx, fn->params);
+    delete_at_attribute(ctx, fn->attribute);
+    delete_statement_block(ctx, fn->code);
+}
+
+static SDL_SHADER_AstTranslationUnit *new_function_unit(Context *ctx, SDL_SHADER_AstFunction *fn)
+{
+    NEW_AST_NODE(retval, SDL_SHADER_AstFunctionUnit, SDL_SHADER_AST_TRANSUNIT_FUNCTION);
     retval->next = NULL;
-    return (SDL_SHADER_astStatement *) retval;
+    retval->fn = fn;
+    return (SDL_SHADER_AstTranslationUnit *) retval;
 }
 
-static void delete_empty_statement(Context *ctx, SDL_SHADER_astEmptyStatement *stmt)
+static void delete_function_unit(Context *ctx, SDL_SHADER_AstFunctionUnit *fnunit)
 {
-    DELETE_AST_NODE(stmt);
-    delete_statement(ctx, stmt->next);
-    Free(ctx, stmt);
+    DELETE_AST_NODE(fnunit);
+    delete_function(ctx, fnunit->fn);
+    delete_translation_unit(ctx, fnunit->next);
+    Free(ctx, fnunit);
 }
 
-static SDL_SHADER_astStatement *new_break_statement(Context *ctx)
+static void delete_translation_unit(Context *ctx, SDL_SHADER_AstTranslationUnit *unit)
 {
-    NEW_AST_NODE(retval, SDL_SHADER_astBreakStatement, SDL_SHADER_AST_STATEMENT_BREAK);
-    retval->next = NULL;
-    return (SDL_SHADER_astStatement *) retval;
-}
-
-static void delete_break_statement(Context *ctx, SDL_SHADER_astBreakStatement *stmt)
-{
-    DELETE_AST_NODE(stmt);
-    delete_statement(ctx, stmt->next);
-    Free(ctx, stmt);
-}
-
-static SDL_SHADER_astStatement *new_continue_statement(Context *ctx)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astContinueStatement, SDL_SHADER_AST_STATEMENT_CONTINUE);
-    retval->next = NULL;
-    return (SDL_SHADER_astStatement *) retval;
-}
-
-static void delete_continue_statement(Context *ctx, SDL_SHADER_astContinueStatement *stmt)
-{
-    DELETE_AST_NODE(stmt);
-    delete_statement(ctx, stmt->next);
-    Free(ctx, stmt);
-}
-
-static SDL_SHADER_astStatement *new_discard_statement(Context *ctx)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astDiscardStatement, SDL_SHADER_AST_STATEMENT_DISCARD);
-    retval->next = NULL;
-    return (SDL_SHADER_astStatement *) retval;
-}
-
-static void delete_discard_statement(Context *ctx, SDL_SHADER_astDiscardStatement *stmt)
-{
-    DELETE_AST_NODE(stmt);
-    delete_statement(ctx, stmt->next);
-    Free(ctx, stmt);
-}
-
-static SDL_SHADER_astStatement *new_expr_statement(Context *ctx, SDL_SHADER_astExpression *expr)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astExpressionStatement, SDL_SHADER_AST_STATEMENT_EXPRESSION);
-    retval->next = NULL;
-    retval->expr = expr;
-    return (SDL_SHADER_astStatement *) retval;
-}
-
-static void delete_expr_statement(Context *ctx, SDL_SHADER_astExpressionStatement *stmt)
-{
-    DELETE_AST_NODE(stmt);
-    delete_statement(ctx, stmt->next);
-    delete_expr(ctx, stmt->expr);
-    Free(ctx, stmt);
-}
-
-static SDL_SHADER_astStatement *new_switch_statement(Context *ctx,
-                                            const int attr,
-                                            SDL_SHADER_astExpression *expr,
-                                            SDL_SHADER_astSwitchCases *cases)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astSwitchStatement, SDL_SHADER_AST_STATEMENT_SWITCH);
-    retval->next = NULL;
-    retval->attributes = attr;
-    retval->expr = expr;
-    retval->cases = cases;
-    return (SDL_SHADER_astStatement *) retval;
-}
-
-static void delete_switch_statement(Context *ctx, SDL_SHADER_astSwitchStatement *stmt)
-{
-    DELETE_AST_NODE(stmt);
-    delete_expr(ctx, stmt->expr);
-    delete_switch_case(ctx, stmt->cases);
-    Free(ctx, stmt);
-}
-
-static SDL_SHADER_astStatement *new_struct_statement(Context *ctx, SDL_SHADER_astStructDeclaration *sd)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astStructStatement, SDL_SHADER_AST_STATEMENT_STRUCT);
-    retval->next = NULL;
-    retval->struct_info = sd;
-    return (SDL_SHADER_astStatement *) retval;
-}
-
-static void delete_struct_statement(Context *ctx, SDL_SHADER_astStructStatement *stmt)
-{
-    DELETE_AST_NODE(stmt);
-    delete_statement(ctx, stmt->next);
-    delete_struct_declaration(ctx, stmt->struct_info);
-    Free(ctx, stmt);
-}
-
-static SDL_SHADER_astStatement *new_vardecl_statement(Context *ctx, SDL_SHADER_astVariableDeclaration *vd)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_astVarDeclStatement, SDL_SHADER_AST_STATEMENT_VARDECL);
-    retval->next = NULL;
-    retval->declaration = vd;
-    return (SDL_SHADER_astStatement *) retval;
-}
-
-static void delete_vardecl_statement(Context *ctx, SDL_SHADER_astVarDeclStatement *stmt)
-{
-    DELETE_AST_NODE(stmt);
-    delete_statement(ctx, stmt->next);
-    delete_variable_declaration(ctx, stmt->declaration);
-    Free(ctx, stmt);
-}
-
-static void delete_statement(Context *ctx, SDL_SHADER_astStatement *stmt)
-{
-    if (!stmt) {
-        return;
+    if (!unit) { return; }
+    switch (unit->ast.type) {
+        case SDL_SHADER_AST_TRANSUNIT_FUNCTION: delete_function_unit(ctx, (SDL_SHADER_AstFunctionUnit *) unit); return;
+        case SDL_SHADER_AST_TRANSUNIT_STRUCT: delete_struct_declaration_unit(ctx, (SDL_SHADER_AstStructDeclarationUnit *) unit); return;
+        default: break;
     }
+    SDL_assert(!"Unexpected translation unit type");
+}
 
-    /* It's important to not recurse too deeply here, since you may have thousands of items in this linked list (each
-       line of a massive function, for example). To avoid this, we iterate the list here, deleting all children and
-       making them think they have no reason to recurse in their own delete methods. Please note that everyone should
-       _try_ to delete their "next" member, just in case, but hopefully this cleaned it out. */
+static SDL_SHADER_AstTranslationUnits *new_translation_units(Context *ctx, SDL_SHADER_AstTranslationUnit *first)
+{
+    NEW_AST_LIST(retval, SDL_SHADER_AstTranslationUnits, first);
+    return retval;
+}
 
-    SDL_SHADER_astStatement *i = stmt->next;
-    stmt->next = NULL;
-    while (i) {
-        SDL_SHADER_astStatement *next = i->next;
-        i->next = NULL;
-        delete_statement(ctx, i);
-        i = next;
-    }
+static void delete_translation_units(Context *ctx, SDL_SHADER_AstTranslationUnits *units)
+{
+    DELETE_AST_LIST(units, SDL_SHADER_AstTranslationUnit, delete_translation_unit);
+}
 
-    switch (stmt->ast.type) {
-        #define DELETE_STATEMENT(typ, cls, fn) case SDL_SHADER_AST_STATEMENT_##typ: delete_##fn##_statement(ctx, (cls *) stmt); break;
-        DELETE_STATEMENT(BLOCK, SDL_SHADER_astBlockStatement, block);
-        DELETE_STATEMENT(EMPTY, SDL_SHADER_astEmptyStatement, empty);
-        DELETE_STATEMENT(IF, SDL_SHADER_astIfStatement, if);
-        DELETE_STATEMENT(SWITCH, SDL_SHADER_astSwitchStatement, switch);
-        DELETE_STATEMENT(EXPRESSION, SDL_SHADER_astExpressionStatement, expr);
-        DELETE_STATEMENT(FOR, SDL_SHADER_astForStatement, for);
-        DELETE_STATEMENT(DO, SDL_SHADER_astDoStatement, do);
-        DELETE_STATEMENT(WHILE, SDL_SHADER_astWhileStatement, while);
-        DELETE_STATEMENT(RETURN, SDL_SHADER_astReturnStatement, return);
-        DELETE_STATEMENT(BREAK, SDL_SHADER_astBreakStatement, break);
-        DELETE_STATEMENT(CONTINUE, SDL_SHADER_astContinueStatement, continue);
-        DELETE_STATEMENT(DISCARD, SDL_SHADER_astDiscardStatement, discard);
-        DELETE_STATEMENT(TYPEDEF, SDL_SHADER_astTypedefStatement, typedef);
-        DELETE_STATEMENT(STRUCT, SDL_SHADER_astStructStatement, struct);
-        DELETE_STATEMENT(VARDECL, SDL_SHADER_astVarDeclStatement, vardecl);
-        #undef DELETE_STATEMENT
-        default: SDL_assert(!"missing cleanup code"); break;
-    }
+static SDL_SHADER_AstShader *new_shader(Context *ctx, SDL_SHADER_AstTranslationUnits *units)
+{
+    NEW_AST_NODE(retval, SDL_SHADER_AstShader, SDL_SHADER_AST_SHADER);
+    retval->units = units;
+    return retval;
+}
 
-    /* don't free (stmt) here, the class-specific functions do it. */
+static void delete_shader(Context *ctx, SDL_SHADER_AstShader *shader)
+{
+    DELETE_AST_NODE(shader);
+    delete_translation_units(ctx, shader->units);
+    Free(ctx, shader);
 }
 
 
-static int convert_to_lemon_token(Context *ctx, const char *token, size_t tokenlen, const Token tokenval)
+// This is where the actual parsing happens. It's Lemon-generated!
+#define __SDL_SHADER_SDLSL_COMPILER__ 1
+#include "SDL_shader_parser.h"
+
+static Sint64 strtoi64(const char *str, const size_t slen)
 {
+    Sint64 retval = 0;
+    char buf[64];
+    if (slen < sizeof (buf)) {
+        char *endp = NULL;
+        SDL_memcpy(buf, str, slen);
+        buf[slen] = '\0';
+        retval = SDL_strtoll(buf, &endp, 0);
+        if (*endp != '\0') {
+            SDL_assert(!"Tokenizer let a bogus int64 through...?");
+            retval = 0;  /* invalid string (empty string returns zero anyhow, so that works here too). */
+        }
+    }
+    return retval;
+}
+
+static double strtodouble(const char *str, const size_t slen)
+{
+    double retval = 0.0;
+    char buf[64];
+    if (slen < sizeof (buf)) {
+        char *endp = NULL;
+        SDL_memcpy(buf, str, slen);
+        buf[slen] = '\0';
+        retval = SDL_strtod(buf, &endp);
+        if (*endp != '\0') {
+            SDL_assert(!"Tokenizer let a bogus double through...?");
+            retval = 0.0;  /* invalid string (empty string returns zero anyhow, so that works here too). */
+        }
+    }
+    return retval;
+}
+
+static int convert_to_lemon_token(Context *ctx, const char *token, size_t tokenlen, const Token tokenval, TokenData *data)
+{
+    data->i64 = 0;
+
     switch (tokenval) {
+        case ((Token) TOKEN_INT_LITERAL):
+            data->i64 = strtoi64(token, tokenlen);
+            return TOKEN_SDLSL_INT_CONSTANT;
+
+        case ((Token) TOKEN_FLOAT_LITERAL):
+            data->dbl = strtodouble(token, tokenlen);
+            return TOKEN_SDLSL_FLOAT_CONSTANT;
+
+        /* The language has no string literals atm!
+        case ((Token) TOKEN_STRING_LITERAL):
+            data->string = stringcache_len(ctx->strcache, token, tokenlen);
+            return TOKEN_SDLSL_STRING_LITERAL;*/
+
         case ((Token) ','): return TOKEN_SDLSL_COMMA;
         case ((Token) '='): return TOKEN_SDLSL_ASSIGN;
-        case ((Token) TOKEN_ADDASSIGN): return TOKEN_SDLSL_ADDASSIGN;
-        case ((Token) TOKEN_SUBASSIGN): return TOKEN_SDLSL_SUBASSIGN;
-        case ((Token) TOKEN_MULTASSIGN): return TOKEN_SDLSL_MULASSIGN;
-        case ((Token) TOKEN_DIVASSIGN): return TOKEN_SDLSL_DIVASSIGN;
-        case ((Token) TOKEN_MODASSIGN): return TOKEN_SDLSL_MODASSIGN;
+        case ((Token) TOKEN_ADDASSIGN): return TOKEN_SDLSL_PLUSASSIGN;
+        case ((Token) TOKEN_SUBASSIGN): return TOKEN_SDLSL_MINUSASSIGN;
+        case ((Token) TOKEN_MULTASSIGN): return TOKEN_SDLSL_STARASSIGN;
+        case ((Token) TOKEN_DIVASSIGN): return TOKEN_SDLSL_SLASHASSIGN;
+        case ((Token) TOKEN_MODASSIGN): return TOKEN_SDLSL_PERCENTASSIGN;
         case ((Token) TOKEN_LSHIFTASSIGN): return TOKEN_SDLSL_LSHIFTASSIGN;
         case ((Token) TOKEN_RSHIFTASSIGN): return TOKEN_SDLSL_RSHIFTASSIGN;
         case ((Token) TOKEN_ANDASSIGN): return TOKEN_SDLSL_ANDASSIGN;
@@ -914,99 +932,40 @@ static int convert_to_lemon_token(Context *ctx, const char *token, size_t tokenl
         case ((Token) ']'): return TOKEN_SDLSL_RBRACKET;
         case ((Token) '('): return TOKEN_SDLSL_LPAREN;
         case ((Token) ')'): return TOKEN_SDLSL_RPAREN;
-        case ((Token) TOKEN_INT_LITERAL): return TOKEN_SDLSL_INT_CONSTANT;
-        case ((Token) TOKEN_FLOAT_LITERAL): return TOKEN_SDLSL_FLOAT_CONSTANT;
-        case ((Token) TOKEN_STRING_LITERAL): return TOKEN_SDLSL_STRING_LITERAL;
         case ((Token) ':'): return TOKEN_SDLSL_COLON;
         case ((Token) ';'): return TOKEN_SDLSL_SEMICOLON;
         case ((Token) '{'): return TOKEN_SDLSL_LBRACE;
         case ((Token) '}'): return TOKEN_SDLSL_RBRACE;
-        /* case ((Token) TOKEN_PP_PRAGMA): return TOKEN_SDLSL_PRAGMA; */
-        /* case ((Token) '\n'): return TOKEN_SDLSL_NEWLINE; */
+        case ((Token) '@'): return TOKEN_SDLSL_AT;
 
-        case ((Token) TOKEN_IDENTIFIER):
-            #define tokencmp(t) ((tokenlen == strlen(t)) && (SDL_memcmp(token, t, tokenlen) == 0))
-            /* case ((Token) ''): return TOKEN_SDLSL_TYPECAST */
-            /* if (tokencmp("")) return TOKEN_SDLSL_TYPE_NAME */
-            /* if (tokencmp("...")) return TOKEN_SDLSL_ELIPSIS */
+        case ((Token) TOKEN_IDENTIFIER): {
+            const char *str = stringcache_len(ctx->strcache, token, tokenlen);
+            data->string = str;
+            #define tokencmp(t) (SDL_strcmp(data->string, t) == 0)
+            if (tokencmp("function")) return TOKEN_SDLSL_FUNCTION;
+            if (tokencmp("var")) return TOKEN_SDLSL_VAR;
             if (tokencmp("else")) return TOKEN_SDLSL_ELSE;
-            if (tokencmp("inline")) return TOKEN_SDLSL_INLINE;
             if (tokencmp("void")) return TOKEN_SDLSL_VOID;
-            if (tokencmp("in")) return TOKEN_SDLSL_IN;
-            if (tokencmp("inout")) return TOKEN_SDLSL_INOUT;
-            if (tokencmp("out")) return TOKEN_SDLSL_OUT;
-            if (tokencmp("uniform")) return TOKEN_SDLSL_UNIFORM;
-            if (tokencmp("linear")) return TOKEN_SDLSL_LINEAR;
-            if (tokencmp("centroid")) return TOKEN_SDLSL_CENTROID;
-            if (tokencmp("nointerpolation")) return TOKEN_SDLSL_NOINTERPOLATION;
-            if (tokencmp("noperspective")) return TOKEN_SDLSL_NOPERSPECTIVE;
-            if (tokencmp("sample")) return TOKEN_SDLSL_SAMPLE;
             if (tokencmp("struct")) return TOKEN_SDLSL_STRUCT;
-            if (tokencmp("typedef")) return TOKEN_SDLSL_TYPEDEF;
-            if (tokencmp("const")) return TOKEN_SDLSL_CONST;
-            if (tokencmp("packoffset")) return TOKEN_SDLSL_PACKOFFSET;
-            if (tokencmp("register")) return TOKEN_SDLSL_REGISTER;
-            if (tokencmp("extern")) return TOKEN_SDLSL_EXTERN;
-            if (tokencmp("shared")) return TOKEN_SDLSL_SHARED;
-            if (tokencmp("static")) return TOKEN_SDLSL_STATIC;
-            if (tokencmp("volatile")) return TOKEN_SDLSL_VOLATILE;
-            if (tokencmp("row_major")) return TOKEN_SDLSL_ROWMAJOR;
-            if (tokencmp("column_major")) return TOKEN_SDLSL_COLUMNMAJOR;
-            if (tokencmp("bool")) return TOKEN_SDLSL_BOOL;
-            if (tokencmp("int")) return TOKEN_SDLSL_INT;
-            if (tokencmp("uint")) return TOKEN_SDLSL_UINT;
-            if (tokencmp("half")) return TOKEN_SDLSL_HALF;
-            if (tokencmp("float")) return TOKEN_SDLSL_FLOAT;
-            if (tokencmp("double")) return TOKEN_SDLSL_DOUBLE;
-            if (tokencmp("string")) return TOKEN_SDLSL_STRING;
-            if (tokencmp("snorm")) return TOKEN_SDLSL_SNORM;
-            if (tokencmp("unorm")) return TOKEN_SDLSL_UNORM;
-            if (tokencmp("buffer")) return TOKEN_SDLSL_BUFFER;
-            if (tokencmp("vector")) return TOKEN_SDLSL_VECTOR;
-            if (tokencmp("matrix")) return TOKEN_SDLSL_MATRIX;
             if (tokencmp("break")) return TOKEN_SDLSL_BREAK;
             if (tokencmp("continue")) return TOKEN_SDLSL_CONTINUE;
             if (tokencmp("discard")) return TOKEN_SDLSL_DISCARD;
             if (tokencmp("return")) return TOKEN_SDLSL_RETURN;
             if (tokencmp("while")) return TOKEN_SDLSL_WHILE;
             if (tokencmp("for")) return TOKEN_SDLSL_FOR;
-            if (tokencmp("unroll")) return TOKEN_SDLSL_UNROLL;
-            if (tokencmp("loop")) return TOKEN_SDLSL_LOOP;
             if (tokencmp("do")) return TOKEN_SDLSL_DO;
             if (tokencmp("if")) return TOKEN_SDLSL_IF;
-            if (tokencmp("branch")) return TOKEN_SDLSL_BRANCH;
-            if (tokencmp("flatten")) return TOKEN_SDLSL_FLATTEN;
             if (tokencmp("switch")) return TOKEN_SDLSL_SWITCH;
-            if (tokencmp("forcecase")) return TOKEN_SDLSL_FORCECASE;
-            if (tokencmp("call")) return TOKEN_SDLSL_CALL;
             if (tokencmp("case")) return TOKEN_SDLSL_CASE;
             if (tokencmp("default")) return TOKEN_SDLSL_DEFAULT;
-            if (tokencmp("sampler")) return TOKEN_SDLSL_SAMPLER;
-            if (tokencmp("sampler1D")) return TOKEN_SDLSL_SAMPLER1D;
-            if (tokencmp("sampler2D")) return TOKEN_SDLSL_SAMPLER2D;
-            if (tokencmp("sampler3D")) return TOKEN_SDLSL_SAMPLER3D;
-            if (tokencmp("samplerCUBE")) return TOKEN_SDLSL_SAMPLERCUBE;
-            if (tokencmp("sampler_state")) return TOKEN_SDLSL_SAMPLER_STATE;
-            if (tokencmp("SamplerState")) return TOKEN_SDLSL_SAMPLERSTATE;
             if (tokencmp("true")) return TOKEN_SDLSL_TRUE;
             if (tokencmp("false")) return TOKEN_SDLSL_FALSE;
-            if (tokencmp("SamplerComparisonState")) return TOKEN_SDLSL_SAMPLERCOMPARISONSTATE;
-            if (tokencmp("isolate")) return TOKEN_SDLSL_ISOLATE;
-            if (tokencmp("maxInstructionCount")) return TOKEN_SDLSL_MAXINSTRUCTIONCOUNT;
-            if (tokencmp("noExpressionOptimizations")) return TOKEN_SDLSL_NOEXPRESSIONOPTIMIZATIONS;
-            if (tokencmp("unused")) return TOKEN_SDLSL_UNUSED;
-            if (tokencmp("xps")) return TOKEN_SDLSL_XPS;
             #undef tokencmp
-
-            /* get a canonical copy of the string now, as we'll need it. */
-            token = stringcache_len(ctx->strcache, token, tokenlen);
-            if (get_usertype(ctx, token) != NULL) {
-                return TOKEN_SDLSL_USERTYPE;
-            }
             return TOKEN_SDLSL_IDENTIFIER;
+        }
 
         case TOKEN_EOI: return 0;
-        default: SDL_assert(!"unexpected token from lexer\n"); return 0;
+        default: SDL_assert(!"unexpected token from lexer"); return 0;
     }
 
     return 0;
@@ -1014,24 +973,23 @@ static int convert_to_lemon_token(Context *ctx, const char *token, size_t tokenl
 
 
 /* parse the source code into an AST. */
-static void parse_source(Context *ctx, const char *filename,
+static void parse_sdlsl_source(Context *ctx, const char *filename,
                          const char *source, size_t sourcelen,
+                         const SDL_SHADER_PreprocessorDefine *defines,
+                         size_t define_count,
                          const char **system_include_paths,
                          size_t system_include_path_count,
                          const char **local_include_paths,
                          size_t local_include_path_count,
-                         SDL_SHADER_includeOpen include_open,
-                         SDL_SHADER_includeClose include_close,
-                         const SDL_SHADER_preprocessorDefine *defines,
-                         size_t define_count)
+                         SDL_SHADER_IncludeOpen include_open,
+                         SDL_SHADER_IncludeClose include_close)
 {
-    TokenData data;
-    size_t tokenlen;
+    void *parser;
     Token tokenval;
     const char *token;
+    size_t tokenlen;
     int lemon_token;
-    const char *fname;
-    void *parser;
+    TokenData data;
 
     if (!preprocessor_start(ctx, filename, source, sourcelen,
                             system_include_paths, system_include_path_count,
@@ -1050,100 +1008,61 @@ static void parse_source(Context *ctx, const char *filename,
         return;
     }
 
-    init_builtins(ctx);
-
-    SymbolScope *start_scope = ctx->usertypes.scope;
-
     #if DEBUG_COMPILER_PARSER
     ParseSDLSLTrace(stdout, "COMPILER: ");
     #endif
 
     /* Run the preprocessor/lexer/parser... */
-    SDL_bool is_pragma = SDL_FALSE;   /* !!! FIXME: remove this later when we can parse #pragma. */
-    SDL_bool skipping = SDL_FALSE; /* !!! FIXME: remove this later when we can parse #pragma. */
     do {
-        token = preprocessor_nexttoken(pp, &tokenlen, &tokenval);
+        if (ctx->out_of_memory) { break; }  /* !!! FIXME: I just sprinkled these everywhere, just in case. */
 
-        if (ctx->out_of_memory) {
-            break;
-        }
+        token = preprocessor_nexttoken(ctx, &tokenlen, &tokenval);
+        if (ctx->out_of_memory) { break; }
 
         if ((tokenval == TOKEN_HASH) || (tokenval == TOKEN_HASHHASH)) {
-            tokenval = TOKEN_BAD_CHARS;
+            tokenval = TOKEN_BAD_CHARS;  /* just treat these as bad chars, since we don't have any pragma things atm. */
         }
 
-        if (tokenval == TOKEN_BAD_CHARS) {
-            fail(ctx, "Bad characters in source file");
-            continue;
-        } else if (tokenval == TOKEN_PP_PRAGMA) {
-            SDL_assert(!is_pragma);
-            is_pragma = SDL_TRUE;
-            skipping = SDL_TRUE;
-            continue;
-        } else if (tokenval == ((Token) '\n')) {
-            SDL_assert(is_pragma);
-            is_pragma = SDL_FALSE;
-            skipping = SDL_FALSE;
-            continue;
-        } else if (skipping) {
-            continue;
+        switch (tokenval) {
+            case TOKEN_BAD_CHARS:
+                fail(ctx, "Bad characters in source file");
+                continue;
+
+            case TOKEN_INCOMPLETE_STRING_LITERAL:
+                fail(ctx, "String literal without an ending '\"'");
+                continue;
+
+            case TOKEN_INCOMPLETE_COMMENT:
+                fail(ctx, "Multiline comment without an ending '*/'");
+                continue;
+
+            case TOKEN_SINGLE_COMMENT:
+            case TOKEN_MULTI_COMMENT:
+            case ((Token) ' '):
+            case ((Token) '\n'):
+                continue;  /* just ignore these. */
+
+            default: break;
         }
 
-        /* !!! FIXME: this is a mess, decide who should be doing this stuff, and only do it once. */
-        lemon_token = convert_to_lemon_token(ctx, token, tokenlen, tokenval);
-        switch (lemon_token) {
-            case TOKEN_SDLSL_INT_CONSTANT:
-                data.i64 = strtoi64(token, tokenlen);
-                break;
+        lemon_token = convert_to_lemon_token(ctx, token, tokenlen, tokenval, &data);
+        if (ctx->out_of_memory) { break; }
 
-            case TOKEN_SDLSL_FLOAT_CONSTANT:
-                data.dbl = strtodouble(token, tokenlen);
-                break;
-
-            case TOKEN_SDLSL_USERTYPE:
-                data.string = stringcache_len(ctx->strcache, token, tokenlen);
-                data.datatype = get_usertype(ctx, data.string);  /* !!! FIXME: do we need this? It's kind of useless during parsing. */
-                SDL_assert(data.datatype != NULL);
-                break;
-
-            case TOKEN_SDLSL_STRING_LITERAL:
-            case TOKEN_SDLSL_IDENTIFIER:
-                data.string = stringcache_len(ctx->strcache, token, tokenlen);
-                break;
-
-            default:
-                data.i64 = 0;
-                break;
-        }
-
-        ParseSDLSL(parser, lemon_token, data, ctx);
-
-        /* this probably isn't perfect, but it's good enough for surviving */
-        /* the parse. We'll sort out correctness once we have a tree. */
-        if (lemon_token == TOKEN_SDLSL_LBRACE) {
-            push_scope(ctx);
-        } else if (lemon_token == TOKEN_SDLSL_RBRACE) {
-            pop_scope(ctx);
-        }
+        ParseSDLSL(parser, lemon_token, data, ctx);  /* run another iteration of the Lemon parser. */
+        if (ctx->out_of_memory) { break; }
     } while (tokenval != TOKEN_EOI);
 
-    /* Clean out extra usertypes; they are dummies until semantic analysis. */
-    while (ctx->usertypes.scope != start_scope) {
-        pop_symbol(ctx, &ctx->usertypes);
-    }
-
     ParseSDLSLFree(parser, ctx->free, ctx->malloc_data);
-    preprocessor_end(pp);
 }
 
 
-static SDL_SHADER_astData SDL_SHADER_out_of_mem_data_ast = {
+static SDL_SHADER_AstData SDL_SHADER_out_of_mem_data_ast = {
     1, &SDL_SHADER_out_of_mem_error, 0, 0, 0, 0, 0, 0
 };
 
 
 /* !!! FIXME: cut and paste from assembler. */
-static const SDL_SHADER_astData *build_failed_ast(Context *ctx)
+static const SDL_SHADER_AstData *build_failed_ast(Context *ctx)
 {
     SDL_assert(ctx->isfail);
 
@@ -1151,8 +1070,8 @@ static const SDL_SHADER_astData *build_failed_ast(Context *ctx)
         return &SDL_SHADER_out_of_mem_data_ast;
     }
 
-    SDL_SHADER_astData *retval = NULL;
-    retval = (SDL_SHADER_astData *) Malloc(ctx, sizeof (SDL_SHADER_astData));
+    SDL_SHADER_AstData *retval = NULL;
+    retval = (SDL_SHADER_AstData *) Malloc(ctx, sizeof (SDL_SHADER_AstData));
     if (retval == NULL) {
         return &SDL_SHADER_out_of_mem_data_ast;
     }
@@ -1174,15 +1093,15 @@ static const SDL_SHADER_astData *build_failed_ast(Context *ctx)
 }
 
 
-static const SDL_SHADER_astData *build_astdata(Context *ctx)
+static const SDL_SHADER_AstData *build_astdata(Context *ctx)
 {
-    SDL_SHADER_astData *retval = NULL;
+    SDL_SHADER_AstData *retval = NULL;
 
     if (ctx->out_of_memory) {
         return &SDL_SHADER_out_of_mem_data_ast;
     }
 
-    retval = (SDL_SHADER_astData *) Malloc(ctx, sizeof (SDL_SHADER_astData));
+    retval = (SDL_SHADER_AstData *) Malloc(ctx, sizeof (SDL_SHADER_AstData));
     if (retval == NULL) {
         return &SDL_SHADER_out_of_mem_data_ast;
     }
@@ -1194,7 +1113,7 @@ static const SDL_SHADER_astData *build_astdata(Context *ctx)
 
     if (!ctx->isfail) {
         retval->source_profile = ctx->source_profile;
-        retval->ast = ctx->ast;
+        retval->shader = ctx->shader;
     }
 
     retval->error_count = errorlist_count(ctx->errors);
@@ -1215,7 +1134,7 @@ static void choose_src_profile(Context *ctx, const char *srcprofile)
     /* make sure this points to an internal static string so we don't have to free it. */
 
     if (!srcprofile) {
-        ctx->srcprofile = SDL_SHADER_SRC_SDLSL_1_0;
+        ctx->source_profile = SDL_SHADER_SRC_SDLSL_1_0;
         return;
     }
 
@@ -1234,7 +1153,9 @@ void ast_end(Context *ctx)
         return;
     }
 
-    delete_compilation_unit(ctx, (SDL_SHADER_astCompilationUnit *) ctx->ast);
+    delete_shader(ctx, ctx->shader);
+
+    stringcache_destroy(ctx->strcache);
 
     ctx->uses_ast = SDL_FALSE;
 }
@@ -1245,47 +1166,59 @@ void ast_end(Context *ctx)
 const SDL_SHADER_AstData *SDL_SHADER_ParseAst(const char *srcprofile,
                                     const char *filename, const char *source,
                                     size_t sourcelen,
+                                    const SDL_SHADER_PreprocessorDefine *defines,
+                                    size_t define_count,
                                     const char **system_include_paths,
                                     size_t system_include_path_count,
                                     const char **local_include_paths,
                                     size_t local_include_path_count,
-                                    SDL_SHADER_includeOpen include_open,
-                                    SDL_SHADER_includeClose include_close,
-                                    const SDL_SHADER_preprocessorDefine *defines,
-                                    size_t define_count,
-                                    SDL_SHADER_malloc m, SDL_SHADER_free f, void *d)
+                                    SDL_SHADER_IncludeOpen include_open,
+                                    SDL_SHADER_IncludeClose include_close,
+                                    SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d)
 
 {
-    const SDL_SHADER_astData *retval = NULL;
+    const SDL_SHADER_AstData *retval = NULL;
     Context *ctx = context_create(m, f, d);
     if (ctx == NULL) {
+        return &SDL_SHADER_out_of_mem_data_ast;
+    }
+
+    ctx->uses_ast = SDL_TRUE;
+    ctx->strcache = stringcache_create(MallocContextBridge, FreeContextBridge, ctx);
+    if (!ctx->strcache) {
+        context_destroy(ctx);
         return &SDL_SHADER_out_of_mem_data_ast;
     }
 
     choose_src_profile(ctx, srcprofile);
 
     if (!ctx->isfail) {
-        parse_source(ctx, filename, source, sourcelen, system_include_paths, system_include_path_count, local_include_paths, local_include_path_count, include_open, include_close, defines, define_count);
+        if (SDL_strcmp(ctx->source_profile, SDL_SHADER_SRC_SDLSL_1_0) == 0) {
+            parse_sdlsl_source(ctx, filename, source, sourcelen, defines, define_count, system_include_paths, system_include_path_count, local_include_paths, local_include_path_count, include_open, include_close);
+        } else {
+            fail(ctx, "Internal compiler error. This is a bug, sorry!");
+            SDL_assert(!"choose_src_profile should have caught this");
+        }
     }
 
     if (!ctx->isfail) {
         retval = build_astdata(ctx);  /* ctx isn't destroyed yet! */
     } else {
-        retval = (SDL_SHADER_astData *) build_failed_ast(ctx);
-        destroy_context(ctx);
+        retval = (SDL_SHADER_AstData *) build_failed_ast(ctx);
+        context_destroy(ctx);
     }
 
     return retval;
 }
 
 
-void SDL_SHADER_freeAstData(const SDL_SHADER_astData *_data)
+void SDL_SHADER_FreeAstData(const SDL_SHADER_AstData *_data)
 {
-    SDL_SHADER_astData *data = (SDL_SHADER_astData *) _data;
+    SDL_SHADER_AstData *data = (SDL_SHADER_AstData *) _data;
     if ((data != NULL) && (data != &SDL_SHADER_out_of_mem_data_ast)) {
         /* !!! FIXME: this needs to live for deleting the stringcache and the ast. */
         Context *ctx = (Context *) data->opaque;
-        SDL_SHADER_free f = (data->free == NULL) ? SDL_SHADER_internal_free : data->free;
+        SDL_SHADER_Free f = (data->free == NULL) ? SDL_SHADER_internal_free : data->free;
         void *d = data->malloc_data;
         int i;
 
@@ -1300,7 +1233,7 @@ void SDL_SHADER_freeAstData(const SDL_SHADER_astData *_data)
         /* don't delete data->ast (it'll delete with the context). */
         f(data, d);
 
-        destroy_context(ctx);  /* finally safe to destroy this. */
+        context_destroy(ctx);  /* finally safe to destroy this. */
     }
 }
 

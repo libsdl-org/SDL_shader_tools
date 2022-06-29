@@ -1,21 +1,23 @@
 /*
  * My changes over the original lempar.c from SQLite are encased in
- *  #if __MOJOSHADER__ blocks.  --ryan.
+ *  #if __SDL_SHADER__ blocks.  --ryan.
  */
-#ifndef __MOJOSHADER__
-#define __MOJOSHADER__ 1
+#ifndef __SDL_SHADER__
+#define __SDL_SHADER__ 1
 #endif
 
-#if !__MOJOSHADER__
+#if !__SDL_SHADER__
 #define LEMON_SUPPORT_TRACING (!defined(NDEBUG))
 #endif
 
-#if __MOJOSHADER__
+#if __SDL_SHADER__
 /* Driver template for the LEMON parser generator.
 ** The original author(s) of lempar.c disclaim copyright to this source code.
-** However, changes made for MojoShader fall under the same license as the
-** rest of MojoShader. Please see the file LICENSE.txt in the source's root
-** directory.
+**
+**
+** Additions made TO THIS FILE ONLY for SDL_shader_tools are also
+** contributed to the public domain. The rest of SDL_shader_tools
+** is licensed according to its LICENSE.txt file. --ryan.
 */
 #endif
 
@@ -245,13 +247,13 @@ struct yyParser {
 typedef struct yyParser yyParser;
 
 #include <assert.h>
-#if LEMON_SUPPORT_TRACING   /* __MOJOSHADER__ */
+#if LEMON_SUPPORT_TRACING   /* __SDL_SHADER__ */
 #include <stdio.h>
 static FILE *yyTraceFILE = 0;
 static char *yyTracePrompt = 0;
 #endif /* NDEBUG */
 
-#if LEMON_SUPPORT_TRACING   /* __MOJOSHADER__ */
+#if LEMON_SUPPORT_TRACING   /* __SDL_SHADER__ */
 /*
 ** Turn parser tracing on by giving a stream to which to write the trace
 ** and a prompt to preface each trace message.  Tracing is turned off
@@ -269,7 +271,7 @@ static char *yyTracePrompt = 0;
 ** Outputs:
 ** None.
 */
-#if __MOJOSHADER__
+#if __SDL_SHADER__
 static
 #endif
 void ParseTrace(FILE *TraceFILE, char *zTracePrompt){
@@ -280,7 +282,7 @@ void ParseTrace(FILE *TraceFILE, char *zTracePrompt){
 }
 #endif /* NDEBUG */
 
-#if defined(YYCOVERAGE) || LEMON_SUPPORT_TRACING   /* __MOJOSHADER__ */
+#if defined(YYCOVERAGE) || LEMON_SUPPORT_TRACING   /* __SDL_SHADER__ */
 /* For tracing shifts, the names of all terminals and nonterminals
 ** are required.  The following table supplies these names */
 static const char *const yyTokenName[] = { 
@@ -288,7 +290,7 @@ static const char *const yyTokenName[] = {
 };
 #endif /* defined(YYCOVERAGE) || !defined(NDEBUG) */
 
-#if LEMON_SUPPORT_TRACING   /* __MOJOSHADER__ */
+#if LEMON_SUPPORT_TRACING   /* __SDL_SHADER__ */
 /* For tracing reduce actions, the names of all rules are required.
 */
 static const char *const yyRuleName[] = {
@@ -318,7 +320,7 @@ static int yyGrowStack(yyParser *p){
   if( pNew ){
     p->yystack = pNew;
     p->yytos = &p->yystack[idx];
-#if LEMON_SUPPORT_TRACING   /* __MOJOSHADER__ */
+#if LEMON_SUPPORT_TRACING   /* __SDL_SHADER__ */
     if( yyTraceFILE ){
       fprintf(yyTraceFILE,"%sStack grows from %d to %d entries.\n",
               yyTracePrompt, p->yystksz, newSize);
@@ -380,8 +382,8 @@ void ParseInit(void *yypRawParser ParseCTX_PDECL){
 ** A pointer to a parser.  This pointer is used in subsequent calls
 ** to Parse and ParseFree.
 */
-#if __MOJOSHADER__
-static void *ParseAlloc(void *(*mallocProc)(int,void *), void *malloc_data ParseCTX_PDECL){
+#if __SDL_SHADER__
+static void *ParseAlloc(void *(*mallocProc)(size_t,void *), void *malloc_data ParseCTX_PDECL){
   yyParser *yypParser;
   yypParser = (yyParser*)(*mallocProc)( (YYMALLOCARGTYPE)sizeof(yyParser), malloc_data );
   if( yypParser ){
@@ -447,7 +449,7 @@ static void yy_pop_parser_stack(yyParser *pParser){
   assert( pParser->yytos!=0 );
   assert( pParser->yytos > pParser->yystack );
   yytos = pParser->yytos--;
-#if LEMON_SUPPORT_TRACING   /* __MOJOSHADER__ */
+#if LEMON_SUPPORT_TRACING   /* __SDL_SHADER__ */
   if( yyTraceFILE ){
     fprintf(yyTraceFILE,"%sPopping %s\n",
       yyTracePrompt,
@@ -477,7 +479,7 @@ void ParseFinalize(void *p){
 ** is defined in a %include section of the input grammar) then it is
 ** assumed that the input pointer is never NULL.
 */
-#if __MOJOSHADER__
+#if __SDL_SHADER__
 static void ParseFree(
   void *p,                    /* The parser to be deleted */
   void (*freeProc)(void*,void*),     /* Function used to reclaim memory */
@@ -580,7 +582,7 @@ static YYACTIONTYPE yy_find_shift_action(
       assert( iLookAhead<sizeof(yyFallback)/sizeof(yyFallback[0]) );
       iFallback = yyFallback[iLookAhead];
       if( iFallback!=0 ){
-#if LEMON_SUPPORT_TRACING   /* __MOJOSHADER__ */
+#if LEMON_SUPPORT_TRACING   /* __SDL_SHADER__ */
         if( yyTraceFILE ){
           fprintf(yyTraceFILE, "%sFALLBACK %s => %s\n",
              yyTracePrompt, yyTokenName[iLookAhead], yyTokenName[iFallback]);
@@ -596,7 +598,7 @@ static YYACTIONTYPE yy_find_shift_action(
         int j = i - iLookAhead + YYWILDCARD;
         assert( j<(int)(sizeof(yy_lookahead)/sizeof(yy_lookahead[0])) );
         if( yy_lookahead[j]==YYWILDCARD && iLookAhead>0 ){
-#if LEMON_SUPPORT_TRACING   /* __MOJOSHADER__ */
+#if LEMON_SUPPORT_TRACING   /* __SDL_SHADER__ */
           if( yyTraceFILE ){
             fprintf(yyTraceFILE, "%sWILDCARD %s => %s\n",
                yyTracePrompt, yyTokenName[iLookAhead],
@@ -651,7 +653,7 @@ static YYACTIONTYPE yy_find_reduce_action(
 static void yyStackOverflow(yyParser *yypParser){
    ParseARG_FETCH
    ParseCTX_FETCH
-#if LEMON_SUPPORT_TRACING   /* __MOJOSHADER__ */
+#if LEMON_SUPPORT_TRACING   /* __SDL_SHADER__ */
    if( yyTraceFILE ){
      fprintf(yyTraceFILE,"%sStack Overflow!\n",yyTracePrompt);
    }
@@ -669,7 +671,7 @@ static void yyStackOverflow(yyParser *yypParser){
 /*
 ** Print tracing information for a SHIFT action
 */
-#if LEMON_SUPPORT_TRACING   /* __MOJOSHADER__ */
+#if LEMON_SUPPORT_TRACING   /* __SDL_SHADER__ */
 static void yyTraceShift(yyParser *yypParser, int yyNewState, const char *zTag){
   if( yyTraceFILE ){
     if( yyNewState<YYNSTATE ){
@@ -811,7 +813,7 @@ static void yy_parse_failed(
 ){
   ParseARG_FETCH
   ParseCTX_FETCH
-#if LEMON_SUPPORT_TRACING   /* __MOJOSHADER__ */
+#if LEMON_SUPPORT_TRACING   /* __SDL_SHADER__ */
   if( yyTraceFILE ){
     fprintf(yyTraceFILE,"%sFail!\n",yyTracePrompt);
   }
@@ -853,7 +855,7 @@ static void yy_accept(
 ){
   ParseARG_FETCH
   ParseCTX_FETCH
-#if LEMON_SUPPORT_TRACING   /* __MOJOSHADER__ */
+#if LEMON_SUPPORT_TRACING   /* __SDL_SHADER__ */
   if( yyTraceFILE ){
     fprintf(yyTraceFILE,"%sAccept!\n",yyTracePrompt);
   }
@@ -890,7 +892,7 @@ static void yy_accept(
 ** Outputs:
 ** None.
 */
-#if __MOJOSHADER__
+#if __SDL_SHADER__
 static
 #endif
 void Parse(
@@ -917,7 +919,7 @@ void Parse(
 #endif
 
   yyact = yypParser->yytos->stateno;
-#if LEMON_SUPPORT_TRACING   /* __MOJOSHADER__ */
+#if LEMON_SUPPORT_TRACING   /* __SDL_SHADER__ */
   if( yyTraceFILE ){
     if( yyact < YY_MIN_REDUCE ){
       fprintf(yyTraceFILE,"%sInput '%s' in state %d\n",
@@ -935,7 +937,7 @@ void Parse(
     yyact = yy_find_shift_action((YYCODETYPE)yymajor,yyact);
     if( yyact >= YY_MIN_REDUCE ){
       unsigned int yyruleno = yyact - YY_MIN_REDUCE; /* Reduce by this rule */
-#if LEMON_SUPPORT_TRACING   /* __MOJOSHADER__ */
+#if LEMON_SUPPORT_TRACING   /* __SDL_SHADER__ */
       assert( yyruleno<(int)(sizeof(yyRuleName)/sizeof(yyRuleName[0])) );
       if( yyTraceFILE ){
         int yysize = yyRuleInfoNRhs[yyruleno];
@@ -995,7 +997,7 @@ void Parse(
 #ifdef YYERRORSYMBOL
       int yymx;
 #endif
-#if LEMON_SUPPORT_TRACING   /* __MOJOSHADER__ */
+#if LEMON_SUPPORT_TRACING   /* __SDL_SHADER__ */
       if( yyTraceFILE ){
         fprintf(yyTraceFILE,"%sSyntax Error!\n",yyTracePrompt);
       }
@@ -1025,7 +1027,7 @@ void Parse(
       }
       yymx = yypParser->yytos->major;
       if( yymx==YYERRORSYMBOL || yyerrorhit ){
-#if LEMON_SUPPORT_TRACING   /* __MOJOSHADER__ */
+#if LEMON_SUPPORT_TRACING   /* __SDL_SHADER__ */
         if( yyTraceFILE ){
           fprintf(yyTraceFILE,"%sDiscard input token %s\n",
              yyTracePrompt,yyTokenName[yymajor]);
@@ -1091,7 +1093,7 @@ void Parse(
 #endif
     }
   }
-#if LEMON_SUPPORT_TRACING   /* __MOJOSHADER__ */
+#if LEMON_SUPPORT_TRACING   /* __SDL_SHADER__ */
   if( yyTraceFILE ){
     yyStackEntry *i;
     char cDiv = '[';
@@ -1110,7 +1112,7 @@ void Parse(
 ** Return the fallback token corresponding to canonical token iToken, or
 ** 0 if iToken has no fallback.
 */
-#if __MOJOSHADER__
+#if __SDL_SHADER__
 static
 #endif
 int ParseFallback(int iToken){

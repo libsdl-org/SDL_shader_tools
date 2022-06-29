@@ -32,11 +32,14 @@ add_executable(sdl-shader-compiler
     SDL_shader_common.c
     SDL_shader_lexer.c
     SDL_shader_preprocessor.c
+    SDL_shader_ast.c
     #SDL_shader_compiler.c
 )
 target_include_directories(sdl-shader-compiler PRIVATE ${SDL2_INCLUDE_DIRS} ${SDL2_INCLUDE_DIR})
 target_include_directories(sdl-shader-compiler PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(sdl-shader-compiler ${SDL2_LIBRARIES} ${SDL2_LIBRARY})
+
+SET_SOURCE_FILES_PROPERTIES(SDL_shader_ast.c PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/SDL_shader_parser.h")
 
 # end of CMakeLists.txt ...
 

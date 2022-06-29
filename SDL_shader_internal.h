@@ -215,10 +215,10 @@ typedef enum
     TOKEN_PP_ELSE,
     TOKEN_PP_ELIF,
     TOKEN_PP_ENDIF,
-    TOKEN_PP_ERROR,  /* caught, becomes TOKEN_PREPROCESSING_ERROR */
+    TOKEN_PP_ERROR,  /* caught in the preprocessor, not passed to caller */
     TOKEN_PP_PRAGMA,
-    TOKEN_INCOMPLETE_STRING_LITERAL,  /* caught, becomes TOKEN_PREPROCESSING_ERROR */
-    TOKEN_INCOMPLETE_COMMENT,  /* caught, becomes TOKEN_PREPROCESSING_ERROR */
+    TOKEN_INCOMPLETE_STRING_LITERAL,
+    TOKEN_INCOMPLETE_COMMENT,
     TOKEN_PP_UNARY_MINUS,  /* used internally, never returned. */
     TOKEN_PP_UNARY_PLUS,   /* used internally, never returned. */
 } Token;
@@ -306,12 +306,12 @@ typedef struct Context
     /* AST stuff ... */
     SDL_bool uses_ast;
     const char *source_profile;  /* static string, don't free */
-    SDL_SHADER_AstNode *ast;  /* Abstract Syntax Tree */
+    SDL_SHADER_AstShader *shader;  /* Abstract Syntax Tree */
+    StringCache *strcache;
 
     /* compiler stuff... */
     SDL_bool uses_compiler;
 #if 0 /* !!! FIXME, compiler code isn't built into the project yet! */
-    StringCache *strcache;
     SymbolMap usertypes;
     SymbolMap variables;
 
@@ -322,32 +322,6 @@ typedef struct Context
     Sint32 global_var_index;  // next variable index for global scope.
     Sint32 user_func_index;  // next function index for user-defined functions.
     Sint32 intrinsic_func_index;  // next function index for intrinsic functions.
-
-    /* Cache intrinsic types for fast lookup and consistent pointer values. */
-    SDL_SHADER_AstDataType dt_none;
-    SDL_SHADER_AstDataType dt_bool;
-    SDL_SHADER_AstDataType dt_int;
-    SDL_SHADER_AstDataType dt_uint;
-    SDL_SHADER_AstDataType dt_float;
-    SDL_SHADER_AstDataType dt_float_snorm;
-    SDL_SHADER_AstDataType dt_float_unorm;
-    SDL_SHADER_AstDataType dt_half;
-    SDL_SHADER_AstDataType dt_double;
-    SDL_SHADER_AstDataType dt_string;
-    SDL_SHADER_AstDataType dt_sampler1d;
-    SDL_SHADER_AstDataType dt_sampler2d;
-    SDL_SHADER_AstDataType dt_sampler3d;
-    SDL_SHADER_AstDataType dt_samplercube;
-    SDL_SHADER_AstDataType dt_samplerstate;
-    SDL_SHADER_AstDataType dt_samplercompstate;
-    SDL_SHADER_AstDataType dt_buf_bool;
-    SDL_SHADER_AstDataType dt_buf_int;
-    SDL_SHADER_AstDataType dt_buf_uint;
-    SDL_SHADER_AstDataType dt_buf_half;
-    SDL_SHADER_AstDataType dt_buf_float;
-    SDL_SHADER_AstDataType dt_buf_double;
-    SDL_SHADER_AstDataType dt_buf_float_snorm;
-    SDL_SHADER_AstDataType dt_buf_float_unorm;
 
     Buffer *garbage;  // this is sort of hacky.
 #endif

@@ -154,6 +154,7 @@ scanner_loop:
     "}"             { RET('}'); }
     "="             { RET('='); }
     "?"             { RET('?'); }
+    "@"             { RET('@'); }
 
     ";"             { if (s->asm_comments) { goto singlelinecomment; } RET(';'); }
 

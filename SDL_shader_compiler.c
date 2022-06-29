@@ -31,34 +31,6 @@
     } \
 }
 
-static inline int operator_is_unary(const MOJOSHADER_astNodeType op)
-{
-    return ( (op > MOJOSHADER_AST_OP_START_RANGE_UNARY) &&
-             (op < MOJOSHADER_AST_OP_END_RANGE_UNARY) );
-} // operator_is_unary
-
-static inline int operator_is_binary(const MOJOSHADER_astNodeType op)
-{
-    return ( (op > MOJOSHADER_AST_OP_START_RANGE_BINARY) &&
-             (op < MOJOSHADER_AST_OP_END_RANGE_BINARY) );
-} // operator_is_binary
-
-static inline int operator_is_ternary(const MOJOSHADER_astNodeType op)
-{
-    return ( (op > MOJOSHADER_AST_OP_START_RANGE_TERNARY) &&
-             (op < MOJOSHADER_AST_OP_END_RANGE_TERNARY) );
-} // operator_is_ternary
-
-
-typedef union TokenData
-{
-    int64 i64;
-    double dbl;
-    const char *string;
-    const MOJOSHADER_astDataType *datatype;
-} TokenData;
-
-
 // This tracks data types and variables, and notes when they enter/leave scope.
 
 typedef struct SymbolScope
@@ -227,31 +199,29 @@ static void push_symbol(Context *ctx, SymbolMap *map, const char *sym,
     map->scope = item;
 } // push_symbol
 
-static void push_usertype(Context *ctx, const char *sym, const MOJOSHADER_astDataType *dt)
+
+static void push_usertype(Context *ctx, const char *sym, const SDL_SHADER_AstDataType *dt)
 {
-    if (sym != NULL)
-    {
-        MOJOSHADER_astDataType *userdt;
-        userdt = (MOJOSHADER_astDataType *) Malloc(ctx, sizeof (*userdt));
-        if (userdt != NULL)
-        {
-            // !!! FIXME: this is hacky.
-            if (!buffer_append(ctx->garbage, &userdt, sizeof (userdt)))
-            {
+    if (sym != NULL) {
+        SDL_SHADER_AstDataType *userdt = (SDL_SHADER_AstDataType *) Malloc(ctx, sizeof (*userdt));
+        if (userdt != NULL) {
+            /* !!! FIXME: this is hacky. */
+            if (!buffer_append(ctx->garbage, &userdt, sizeof (userdt))) {
                 Free(ctx, userdt);
                 return;
-            } // if
+            }
 
-            userdt->type = MOJOSHADER_AST_DATATYPE_USER;
+            userdt->type = SDL_SHADER_AST_DATATYPE_USER;
             userdt->user.details = dt;
             userdt->user.name = sym;
 
             dt = userdt;
-        } // if
-    } // if
+        }
+    }
 
-    push_symbol(ctx, &ctx->usertypes, sym, dt, 0, 1);
-} // push_usertype
+    push_symbol(ctx, &ctx->usertypes, sym, dt, 0, SDL_TRUE);
+}
+
 
 static inline void push_variable(Context *ctx, const char *sym, const MOJOSHADER_astDataType *dt)
 {
@@ -1386,10 +1356,6 @@ static const MOJOSHADER_astDataType *get_usertype(const Context *ctx,
 } // get_usertype
 
 
-// This is where the actual parsing happens. It's Lemon-generated!
-#define __MOJOSHADER_HLSL_COMPILER__ 1
-#include "mojoshader_parser_hlsl.h"
-
 
 #if 0
 static int expr_is_constant(MOJOSHADER_astExpression *expr)
@@ -1722,6 +1688,7 @@ static const MOJOSHADER_astDataType *reduce_datatype(Context *ctx, const MOJOSHA
             //  left over from the parse phase. You HAVE to catch these in the
             //  right scope, so be aggressive about calling reduce_datatype()
             //  as soon as things come into view!
+            assert(user->details == NULL);
             user->details = get_usertype(ctx, user->name);
             assert(user->details != NULL);
         } // if
@@ -3324,36 +3291,6 @@ static Context *build_context(MOJOSHADER_malloc m, MOJOSHADER_free f, void *d)
 
     // !!! FIXME: this feels hacky.
     ctx->garbage = buffer_create(256*sizeof(void*),MallocBridge,FreeBridge,ctx);  // !!! FIXME: check for failure.
-
-    ctx->dt_none.type = MOJOSHADER_AST_DATATYPE_NONE;
-    ctx->dt_bool.type = MOJOSHADER_AST_DATATYPE_BOOL;
-    ctx->dt_int.type = MOJOSHADER_AST_DATATYPE_INT;
-    ctx->dt_uint.type = MOJOSHADER_AST_DATATYPE_UINT;
-    ctx->dt_float.type = MOJOSHADER_AST_DATATYPE_FLOAT;
-    ctx->dt_float_snorm.type = MOJOSHADER_AST_DATATYPE_FLOAT_SNORM;
-    ctx->dt_float_unorm.type = MOJOSHADER_AST_DATATYPE_FLOAT_UNORM;
-    ctx->dt_half.type = MOJOSHADER_AST_DATATYPE_HALF;
-    ctx->dt_double.type = MOJOSHADER_AST_DATATYPE_DOUBLE;
-    ctx->dt_string.type = MOJOSHADER_AST_DATATYPE_STRING;
-    ctx->dt_sampler1d.type = MOJOSHADER_AST_DATATYPE_SAMPLER_1D;
-    ctx->dt_sampler2d.type = MOJOSHADER_AST_DATATYPE_SAMPLER_2D;
-    ctx->dt_sampler3d.type = MOJOSHADER_AST_DATATYPE_SAMPLER_3D;
-    ctx->dt_samplercube.type = MOJOSHADER_AST_DATATYPE_SAMPLER_CUBE;
-    ctx->dt_samplerstate.type = MOJOSHADER_AST_DATATYPE_SAMPLER_STATE;
-    ctx->dt_samplercompstate.type = MOJOSHADER_AST_DATATYPE_SAMPLER_COMPARISON_STATE;
-
-    #define INIT_DT_BUFFER(t) \
-        ctx->dt_buf_##t.type = MOJOSHADER_AST_DATATYPE_BUFFER; \
-        ctx->dt_buf_##t.buffer.base = &ctx->dt_##t;
-    INIT_DT_BUFFER(bool);
-    INIT_DT_BUFFER(int);
-    INIT_DT_BUFFER(uint);
-    INIT_DT_BUFFER(half);
-    INIT_DT_BUFFER(float);
-    INIT_DT_BUFFER(double);
-    INIT_DT_BUFFER(float_snorm);
-    INIT_DT_BUFFER(float_unorm);
-    #undef INIT_DT_BUFFER
 
     return ctx;
 } // build_context

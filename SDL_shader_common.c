@@ -1117,7 +1117,7 @@ void context_destroy(Context *ctx)
 
         errorlist_destroy(ctx->errors);
         preprocessor_end(ctx);
-        /* !!! FIXME: ast_end(ctx); */ SDL_assert(!ctx->uses_ast);
+        ast_end(ctx);
         /* !!! FIXME: compiler_end(ctx); */ SDL_assert(!ctx->uses_compiler);
 
         f(ctx, d);

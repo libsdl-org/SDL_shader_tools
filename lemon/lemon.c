@@ -1,8 +1,12 @@
 /*
  * My changes over the original lemon.c from SQLite are encased in
- *  #if __MOJOSHADER__ blocks.  --ryan.
+ *  #if __SDL_SHADER__ blocks.
+ *
+ * I disclaim copyright on my changes to just this file. Unless
+ * otherwise stated, everything else in this project is licensed
+ * according to LICENSE.txt. --ryan.
  */
-#define __MOJOSHADER__ 1
+#define __SDL_SHADER__ 1
 
 /*
 ** This file contains all sources (including headers) to the LEMON
@@ -54,23 +58,11 @@ extern int access(const char *path, int mode);
 #define MAXRHS 1000
 #endif
 
-#if __MOJOSHADER__
+#if __SDL_SHADER__
+static void LemonAtExit(void);
 static const char **made_files = NULL;
 static int made_files_count = 0;
 static int successful_exit = 0;
-static void LemonAtExit(void)
-{
-    /* if we failed, delete (most) files we made, to unconfuse build tools. */
-    int i;
-    if (!successful_exit) {
-        for (i = 0; i < made_files_count; i++) {
-            remove(made_files[i]);
-        }
-    }
-    free(made_files);
-    made_files_count = 0;
-    made_files = NULL;
-}
 #endif
 
 extern void memory_error();
@@ -444,9 +436,6 @@ struct lemon {
   char *outname;           /* Name of the current output file */
   char *tokenprefix;       /* A prefix added to token names in the .h file */
   int nconflict;           /* Number of parsing conflicts */
-#if __MOJOSHADER__
-  int nexpected;           /* Number of expected parsing conflicts */
-#endif
   int nactiontab;          /* Number of entries in the yy_action[] table */
   int nlookaheadtab;       /* Number of entries in yy_lookahead[] */
   int tablesize;           /* Total table size of all tables in bytes */
@@ -1694,7 +1683,7 @@ int main(int argc, char **argv){
   struct lemon lem;
   struct rule *rp;
 
-#if __MOJOSHADER__
+#if __SDL_SHADER__
   atexit(LemonAtExit);
 #endif
 
@@ -1702,8 +1691,8 @@ int main(int argc, char **argv){
   OptInit(argv,options,stderr);
   if( version ){
      printf("Lemon version 1.0\n");
-#if __MOJOSHADER__
-     printf(" (...with MojoShader hacks.)\n");
+#if __SDL_SHADER__
+     printf(" (...with SDL_shader_tools hacks.)\n");
 #endif
      exit(0);
   }
@@ -1713,9 +1702,6 @@ int main(int argc, char **argv){
   }
   memset(&lem, 0, sizeof(lem));
   lem.errorcnt = 0;
-#if __MOJOSHADER__
-  lem.nexpected = -1;
-#endif
 
   /* Initialize the machine */
   Strsafe_init();
@@ -1810,7 +1796,7 @@ int main(int argc, char **argv){
     /* Produce a header file for use by the scanner.  (This step is
     ** omitted if the "-m" option is used because makeheaders will
     ** generate the file for us.) */
-#if !__MOJOSHADER__
+#if !__SDL_SHADER__
     if( !mhflag ) ReportHeader(&lem);
 #endif
   }
@@ -1826,22 +1812,14 @@ int main(int argc, char **argv){
     stats_line("lookahead table entries", lem.nlookaheadtab);
     stats_line("total table size (bytes)", lem.tablesize);
   }
-#if __MOJOSHADER__
-  if( lem.nexpected < 0 ) {
-    lem.nexpected = 0;  /* grammar didn't have an %expect declaration. */
-   }
-  if( lem.nconflict != lem.nexpected ){
-    fprintf(stderr,"%d parsing conflicts (%d expected).\n",lem.nconflict,lem.nexpected);
-  }
-  /* return 0 on success, 1 on failure. */
-  exitcode = ((lem.errorcnt > 0) || (lem.nconflict != lem.nexpected)) ? 1 : 0;
-  successful_exit = (exitcode == 0);
-#else
   if( lem.nconflict > 0 ){
     fprintf(stderr,"%d parsing conflicts.\n",lem.nconflict);
   }
   /* return 0 on success, 1 on failure. */
   exitcode = ((lem.errorcnt > 0) || (lem.nconflict > 0)) ? 1 : 0;
+
+#if __SDL_SHADER__
+  successful_exit = (exitcode == 0);
 #endif
 
   exit(exitcode);
@@ -2278,9 +2256,6 @@ enum e_state {
   WAITING_FOR_WILDCARD_ID,
   WAITING_FOR_CLASS_ID,
   WAITING_FOR_CLASS_TOKEN,
-#if __MOJOSHADER__
-  WAITING_FOR_EXPECT_VALUE,
-#endif
   WAITING_FOR_TOKEN_NAME
 };
 struct pstate {
@@ -2311,7 +2286,7 @@ struct pstate {
 /* Parse a single token */
 static void parseonetoken(struct pstate *psp)
 {
-#if __MOJOSHADER__
+#if __SDL_SHADER__
   char *endptr;
 #endif
   const char *x;
@@ -2611,16 +2586,6 @@ static void parseonetoken(struct pstate *psp)
           psp->state = WAITING_FOR_WILDCARD_ID;
         }else if( strcmp(x,"token_class")==0 ){
           psp->state = WAITING_FOR_CLASS_ID;
-#if __MOJOSHADER__
-        }else if( strcmp(x,"expect")==0 ){
-          if (psp->gp->nexpected >= 0) {
-            ErrorMsg(psp->filename,psp->tokenlineno, "Multiple %expect declarations.");
-            psp->errorcnt++;
-            psp->state = RESYNC_AFTER_DECL_ERROR;
-          } else {
-            psp->state = WAITING_FOR_EXPECT_VALUE;
-          }
-#endif
         }else{
           ErrorMsg(psp->filename,psp->tokenlineno,
             "Unknown declaration keyword: \"%%%s\".",x);
@@ -2648,21 +2613,6 @@ static void parseonetoken(struct pstate *psp)
         psp->state = WAITING_FOR_DECL_ARG;
       }
       break;
-#if __MOJOSHADER__
-    case WAITING_FOR_EXPECT_VALUE:
-        psp->gp->nexpected = (int) strtol(x, &endptr, 10);
-        if( (*endptr != '\0') || (endptr == x) ) {
-          ErrorMsg(psp->filename,psp->tokenlineno,
-            "Integer expected after %%expect keyword");
-          psp->errorcnt++;
-        } else if (psp->gp->nexpected < 0) {
-          ErrorMsg(psp->filename,psp->tokenlineno,
-            "Integer can't be negative after %%expect keyword");
-          psp->errorcnt++;
-        }
-        psp->state = WAITING_FOR_DECL_OR_RULE;
-        break;
-#endif
     case WAITING_FOR_DATATYPE_SYMBOL:
       if( !ISALPHA(x[0]) ){
         ErrorMsg(psp->filename,psp->tokenlineno,
@@ -3309,7 +3259,7 @@ PRIVATE FILE *file_open(
     return 0;
   }
 
-#if __MOJOSHADER__
+#if __SDL_SHADER__
   /* Add files we create to a list, so we can delete them if we fail. This
   ** is to keep makefiles from getting confused. We don't include .out files,
   ** though: this is debug information, and you don't want it deleted if there
@@ -4418,7 +4368,7 @@ void ReportTable(
 
   in = tplt_open(lemp);
   if( in==0 ) return;
-#if __MOJOSHADER__
+#if __SDL_SHADER__
   out = file_open(lemp,".h","wb");
 #else
   out = file_open(lemp,".c","wb");
@@ -4523,7 +4473,7 @@ void ReportTable(
 
   /* Generate the include code, if any */
   tplt_print(out,lemp,lemp->include,&lineno);
-#if !__MOJOSHADER__
+#if !__SDL_SHADER__
   if( mhflag ){
     char *incName = file_makename(lemp, ".h");
     fprintf(out,"#include \"%s\"\n", incName); lineno++;
@@ -4536,7 +4486,7 @@ void ReportTable(
   if( lemp->tokenprefix ) prefix = lemp->tokenprefix;
   else                    prefix = "";
 
-#if !__MOJOSHADER__
+#if !__SDL_SHADER__
   if( mhflag ){
     fprintf(out,"#if INTERFACE\n"); lineno++;
   }else{
@@ -4547,7 +4497,7 @@ void ReportTable(
     fprintf(out,"#define %s%-30s %2d\n",prefix,lemp->symbols[i]->name,i);
     lineno++;
   }
-#if !__MOJOSHADER__
+#if !__SDL_SHADER__
   fprintf(out,"#endif\n"); lineno++;
 #endif
   tplt_xfer(lemp->name,in,out,&lineno);
@@ -5623,9 +5573,13 @@ int Symbol_insert(struct symbol *data, const char *key)
       newnp->from = &(array.ht[h]);
       array.ht[h] = newnp;
     }
+#if __SDL_SHADER__
+    free(x2a->tbl);
+#else
     /* free(x2a->tbl); // This program was originally written for 16-bit
     ** machines.  Don't worry about freeing this trivial amount of memory
     ** on modern platforms.  Just leak it. */
+#endif
     *x2a = array;
   }
   /* Insert the new data */
@@ -5961,9 +5915,13 @@ int Configtable_insert(struct config *data)
       newnp->from = &(array.ht[h]);
       array.ht[h] = newnp;
     }
+#if __SDL_SHADER__
+    free(x4a->tbl);
+#else
     /* free(x4a->tbl); // This code was originall written for 16-bit machines.
     ** on modern machines, don't worry about freeing this trival amount of
     ** memory. */
+#endif
     *x4a = array;
   }
   /* Insert the new data */
@@ -6005,3 +5963,29 @@ void Configtable_clear(int(*f)(struct config *))
   x4a->count = 0;
   return;
 }
+
+#if __SDL_SHADER__
+static void LemonAtExit(void)
+{
+    /* if we failed, delete (most) files we made, to unconfuse build tools. */
+    int i;
+    if (!successful_exit) {
+        for (i = 0; i < made_files_count; i++) {
+            remove(made_files[i]);
+        }
+    }
+    free(made_files);
+    made_files_count = 0;
+    made_files = NULL;
+    if (x2a) {  /* free this to make AddressSanitizer happy. */
+        free(x2a->tbl);
+        free(x2a);
+        x2a = NULL;
+    }
+    if (x4a) {  /* free this to make AddressSanitizer happy. */
+        free(x4a->tbl);
+        free(x4a);
+        x4a = NULL;
+    }
+}
+#endif
