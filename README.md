@@ -33,13 +33,13 @@ much like the shader itself with mild reformatting, because it will output
 source code from the AST that it generated)...
 
 ```bash
-./sdl-shader-compiler -T -I some_dir -DSOME_DEFINE=SOME_VALUE some_source.c
+./sdl-shader-compiler -T -I some_dir -DSOME_DEFINE=SOME_VALUE some_source.shader
 ```
 
 If you just want to see it preprocess stuff, like a C preprocessor does:
 
 ```bash
-./sdl-shader-compiler -P -I some_dir -DSOME_DEFINE=SOME_VALUE some_source.c
+./sdl-shader-compiler -P -I some_dir -DSOME_DEFINE=SOME_VALUE some_source.shader
 ```
 
 # Questions?
