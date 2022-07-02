@@ -12,10 +12,6 @@
 #include "SDL_shader_compiler.h"
 #include "SDL_shader_ast.h"
 
-/* !!! FIXME: make this part of the API */
-static const char **include_paths = NULL;
-static size_t include_path_count = 0;
-
 #define SDL_SHADER_DEBUG_MALLOC 0
 
 #if SDL_SHADER_DEBUG_MALLOC
@@ -463,15 +459,13 @@ static void print_ast(FILE *io, const SDL_bool substmt, const void *_ast)
     #undef DO_INDENT
 }
 
-static int preprocess(const char *fname, const char *buf, size_t len,
-                      const char *outfile,
-                      const SDL_SHADER_PreprocessorDefine *defs,
-                      size_t defcount, FILE *io)
+static int preprocess(const SDL_SHADER_CompilerParams *params, const char *outfile, FILE *io)
 {
     const SDL_SHADER_PreprocessData *pd;
+    const char *srcprofile = NULL;  /* for now */
     int retval = 0;
 
-    pd = SDL_SHADER_Preprocess(fname, buf, len, SDL_TRUE, defs, defcount, NULL, 0, include_paths, include_path_count, NULL, NULL, UtilMalloc, UtilFree, NULL);
+    pd = SDL_SHADER_Preprocess(params, SDL_TRUE);
 
     if (pd->error_count > 0) {
         print_errors(pd->errors, pd->error_count);
@@ -492,14 +486,12 @@ static int preprocess(const char *fname, const char *buf, size_t len,
     return retval;
 }
 
-static int ast(const char *fname, const char *buf, size_t len,
-               const char *outfile, const SDL_SHADER_PreprocessorDefine *defs,
-               size_t defcount, FILE *io)
+static int ast(const SDL_SHADER_CompilerParams *params, const char *outfile, FILE *io)
 {
     const SDL_SHADER_AstData *ad;
     int retval = 0;
 
-    ad = SDL_SHADER_ParseAst(NULL, fname, buf, len, defs, defcount, NULL, 0, include_paths, include_path_count, NULL, NULL, UtilMalloc, UtilFree, NULL);
+    ad = SDL_SHADER_ParseAst(params);
     
     if (ad->error_count > 0) {
         print_errors(ad->errors, ad->error_count);
@@ -517,16 +509,13 @@ static int ast(const char *fname, const char *buf, size_t len,
 }
 
 #if 0
-static int compile(const char *fname, const char *buf, size_t len,
-                    const char *outfile,
-                    const SDL_SHADER_PreprocessorDefine *defs,
-                    size_t defcount, FILE *io)
+static int compile(const SDL_SHADER_CompilerParams *params, const char *outfile, FILE *io)
 {
     /* !!! FIXME: write me.
     const SDL_SHADER_parseData *pd;
     int retval = 0; */
 
-    SDL_SHADER_Compile("" /* !!! FIXME */, fname, buf, len, defs, defcount, NULL, 0, include_paths, include_path_count, NULL, NULL, UtilMalloc, UtilFree, NULL);
+    SDL_SHADER_Compile(params);
     return 1;
 }
 #endif
@@ -543,21 +532,34 @@ typedef enum
 
 int main(int argc, char **argv)
 {
+    SDL_SHADER_CompilerParams params;
     Action action = ACTION_UNKNOWN;
     int retval = 1;
-    const char *infile = NULL;
     const char *outfile = NULL;
-    char *buf = NULL;
     FILE *outio = NULL;
-    size_t fsize = 0;
     int i;
 
-    SDL_SHADER_PreprocessorDefine *defs = NULL;
-    int defcount = 0;
+    SDL_zero(params);
+    params.srcprofile = NULL;
+    params.filename = NULL;
+    params.source = NULL;
+    params.sourcelen = 0;
+    params.defines = NULL;
+    params.define_count = 0;
+    params.system_include_paths = NULL;
+    params.system_include_path_count = 0;
+    params.local_include_paths = NULL;
+    params.local_include_path_count = 0;
+    params.include_open = NULL;
+    params.include_close = NULL;
+    params.allocate = UtilMalloc;
+    params.deallocate = UtilFree;
+    params.allocate_data = NULL;
 
-    include_paths = (const char **) SDL_malloc(sizeof (char *));
-    include_paths[0] = ".";
-    include_path_count = 1;
+    /* !!! FIXME: check for allocation failure! */
+    params.local_include_paths = (const char **) SDL_malloc(sizeof (char *));
+    params.local_include_paths[0] = ".";
+    params.local_include_path_count = 1;
 
     /* !!! FIXME: clean this up. */
     for (i = 1; i < argc; i++) {
@@ -597,30 +599,36 @@ int main(int argc, char **argv)
             if (arg == NULL) {
                 fail("no path after '-I'");
             }
-            include_paths = (const char **) SDL_realloc(include_paths,
-                       (include_path_count+1) * sizeof (char *));
-            include_paths[include_path_count] = arg;
-            include_path_count++;
+            /* !!! FIXME: check for allocation failure */
+            params.local_include_paths = (const char **) SDL_realloc(params.local_include_paths, (params.local_include_path_count + 1) * sizeof (char *));
+            params.local_include_paths[params.local_include_path_count] = arg;
+            params.local_include_path_count++;
         } else if (strncmp(arg, "-D", 2) == 0) {
-            arg += 2;
-            char *ident = strdup(arg);
+            SDL_SHADER_PreprocessorDefine *defs = (SDL_SHADER_PreprocessorDefine *) params.defines;
+            char *ident = strdup(arg + 2);
             char *ptr = strchr(ident, '=');
             const char *val = "";
+
+            arg += 2;
+
             if (ptr) {
                 *ptr = '\0';
                 val = ptr + 1;
             }
 
-            defs = (SDL_SHADER_PreprocessorDefine *) SDL_realloc(defs,
-                       (defcount+1) * sizeof (SDL_SHADER_PreprocessorDefine));
-            defs[defcount].identifier = ident;
-            defs[defcount].definition = val;
-            defcount++;
+            defs = (SDL_SHADER_PreprocessorDefine *) SDL_realloc(defs, (params.define_count + 1) * sizeof (SDL_SHADER_PreprocessorDefine));
+            if (defs == NULL) {
+                fail("Out of memory");
+            }
+            defs[params.define_count].identifier = ident;
+            defs[params.define_count].definition = val;
+            params.defines = defs;
+            params.define_count++;
         } else {
-            if (infile != NULL) {
+            if (params.filename != NULL) {
                 fail("multiple input files specified");
             }
-            infile = arg;
+            params.filename = arg;
         }
     }
 
@@ -635,12 +643,12 @@ int main(int argc, char **argv)
     }
 #endif
 
-    if (infile == NULL) {
+    if (params.filename == NULL) {
         fail("no input file specified");
     }
 
-    buf = (char *) SDL_LoadFile(infile, &fsize);
-    if (buf == NULL) {
+    params.source = (char *) SDL_LoadFile(params.filename, &params.sourcelen);
+    if (params.source == NULL) {
         fail("failed to read input file");  /* !!! FIXME: need failf, pass SDL_GetError(). */
     }
 
@@ -650,12 +658,12 @@ int main(int argc, char **argv)
     }
 
     if (action == ACTION_PREPROCESS) {
-        retval = (!preprocess(infile, buf, fsize, outfile, defs, defcount, outio));
+        retval = (!preprocess(&params, outfile, outio));
     } else if (action == ACTION_AST) {
-        retval = (!ast(infile, buf, fsize, outfile, defs, defcount, outio));
+        retval = (!ast(&params, outfile, outio));
 #if 0
     } else if (action == ACTION_COMPILE) {
-        retval = (!compile(infile, buf, fsize, outfile, defs, defcount, outio));
+        retval = (!compile(&params, outfile, outio));
 #endif
     }
 
@@ -663,14 +671,14 @@ int main(int argc, char **argv)
         remove(outfile);
     }
 
-    SDL_free(buf);
+    SDL_free(params.source);
 
-    for (i = 0; i < defcount; i++) {
-        SDL_free((void *) defs[i].identifier);
+    for (i = 0; i < params.define_count; i++) {
+        SDL_free((void *) params.defines[i].identifier);
     }
-    SDL_free(defs);
+    SDL_free(params.defines);
 
-    SDL_free(include_paths);
+    SDL_free(params.local_include_paths);
 
     return retval;
 }

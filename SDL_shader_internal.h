@@ -331,16 +331,7 @@ Context *context_create(SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d);
 void context_destroy(Context *ctx);
 
 /* This will only fail if the allocator fails, so it doesn't return any error code...NULL on failure. */
-SDL_bool preprocessor_start(Context *ctx, const char *fname,
-                            const char *source, size_t sourcelen,
-                            const char **system_include_paths,
-                            size_t system_include_path_count,
-                            const char **local_include_paths,
-                            size_t local_include_path_count,
-                            SDL_SHADER_IncludeOpen open_callback,
-                            SDL_SHADER_IncludeClose close_callback,
-                            const SDL_SHADER_PreprocessorDefine *defines,
-                            size_t define_count, SDL_bool asm_comments);
+SDL_bool preprocessor_start(Context *ctx, const SDL_SHADER_CompilerParams *params, SDL_bool asm_comments);
 
 void preprocessor_end(Context *ctx);  /* destroying the context will call this for you, too. Safe to call directly as well. */
 const char *preprocessor_nexttoken(Context *ctx, size_t *_len, Token *_token);

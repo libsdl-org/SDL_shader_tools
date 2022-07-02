@@ -495,35 +495,25 @@ static void close_define_include(const char *data, SDL_SHADER_Malloc m,
 }
 
 
-SDL_bool preprocessor_start(Context *ctx, const char *fname,
-                            const char *source, size_t sourcelen,
-                            const char **system_include_paths,
-                            size_t system_include_path_count,
-                            const char **local_include_paths,
-                            size_t local_include_path_count,
-                            SDL_SHADER_IncludeOpen open_callback,
-                            SDL_SHADER_IncludeClose close_callback,
-                            const SDL_SHADER_PreprocessorDefine *defines,
-                            size_t define_count, SDL_bool asm_comments)
+SDL_bool preprocessor_start(Context *ctx, const SDL_SHADER_CompilerParams *params, SDL_bool asm_comments)
 {
+    char *define_include = NULL;
+    size_t define_include_len = 0;
     int okay = 1;
     size_t i = 0;
 
-    if ((open_callback == NULL) != (close_callback == NULL)) {
+    if ((params->include_open == NULL) != (params->include_close == NULL)) {
         return SDL_FALSE;
     }
 
-    if (!open_callback) { open_callback = SDL_SHADER_internal_include_open; }
-    if (!close_callback) { close_callback = SDL_SHADER_internal_include_close; }
-
     /* we don't own the *_include_paths arrays, don't free them. */
     ctx->uses_preprocessor = SDL_TRUE;
-    ctx->system_include_paths = system_include_paths;
-    ctx->system_include_path_count = system_include_path_count;
-    ctx->local_include_paths = local_include_paths;
-    ctx->local_include_path_count = local_include_path_count;
-    ctx->open_callback = open_callback;
-    ctx->close_callback = close_callback;
+    ctx->system_include_paths = params->system_include_paths;
+    ctx->system_include_path_count = params->system_include_path_count;
+    ctx->local_include_paths = params->local_include_paths;
+    ctx->local_include_path_count = params->local_include_path_count;
+    ctx->open_callback = params->include_open ? params->include_open : SDL_SHADER_internal_include_open;
+    ctx->close_callback = params->include_close ? params->include_close : SDL_SHADER_internal_include_close;
     ctx->asm_comments = asm_comments;
 
     ctx->filename_cache = stringcache_create(MallocContextBridge, FreeContextBridge, ctx);
@@ -542,14 +532,11 @@ SDL_bool preprocessor_start(Context *ctx, const char *fname,
     }
 
     /* let the usual preprocessor parser sort these out. */
-    char *define_include = NULL;
-    size_t define_include_len = 0;
-    if ((okay) && (define_count > 0)) {
+    if ((okay) && (params->define_count > 0)) {
         Buffer *predefbuf = buffer_create(256, MallocContextBridge, FreeContextBridge, ctx);
         okay = okay && (predefbuf != NULL);
-        for (i = 0; okay && (i < define_count); i++) {
-            okay = okay && buffer_append_fmt(predefbuf, "#define %s %s\n",
-                                 defines[i].identifier, defines[i].definition);
+        for (i = 0; okay && (i < params->define_count); i++) {
+            okay = okay && buffer_append_fmt(predefbuf, "#define %s %s\n", params->defines[i].identifier, params->defines[i].definition);
         }
 
         define_include_len = buffer_size(predefbuf);
@@ -560,14 +547,13 @@ SDL_bool preprocessor_start(Context *ctx, const char *fname,
         buffer_destroy(predefbuf);
     }
 
-    if ((okay) && (!push_source(ctx, fname, source, sourcelen, 1, NULL))) {
+    if ((okay) && (!push_source(ctx, params->filename, params->source, params->sourcelen, 1, NULL))) {
         okay = 0;
     }
 
     if ((okay) && (define_include_len > 0)) {
         SDL_assert(define_include != NULL);
-        okay = push_source(ctx, "<predefined macros>", define_include,
-                           define_include_len, SDL_SHADER_POSITION_BEFORE, close_define_include);
+        okay = push_source(ctx, "<predefined macros>", define_include, define_include_len, SDL_SHADER_POSITION_BEFORE, close_define_include);
     }
 
     if (!okay) {
@@ -2049,18 +2035,7 @@ static const SDL_SHADER_PreprocessData out_of_mem_data_preprocessor = {
 
 /* public API... */
 
-const SDL_SHADER_PreprocessData *SDL_SHADER_Preprocess(const char *filename,
-                             const char *source, size_t sourcelen,
-                             SDL_bool strip_comments,
-                             const SDL_SHADER_PreprocessorDefine *defines,
-                             size_t define_count,
-                             const char **system_include_paths,
-                             size_t system_include_path_count,
-                             const char **local_include_paths,
-                             size_t local_include_path_count,
-                             SDL_SHADER_IncludeOpen include_open,
-                             SDL_SHADER_IncludeClose include_close,
-                             SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d)
+const SDL_SHADER_PreprocessData *SDL_SHADER_Preprocess(const SDL_SHADER_CompilerParams *params, SDL_bool strip_comments)
 {
     SDL_SHADER_PreprocessData *retval = NULL;
     Context *ctx = NULL;
@@ -2075,16 +2050,12 @@ const SDL_SHADER_PreprocessData *SDL_SHADER_Preprocess(const char *filename,
     Token prev_token = TOKEN_UNKNOWN;
     SDL_bool whitespace_pending = SDL_FALSE;
 
-    ctx = context_create(m, f, d);
+    ctx = context_create(params->allocate, params->deallocate, params->allocate_data);
     if (ctx == NULL) {
         return &out_of_mem_data_preprocessor;
     }
 
-    if (!preprocessor_start(ctx, filename, source, sourcelen,
-                            system_include_paths, system_include_path_count,
-                            local_include_paths, local_include_path_count,
-                            include_open, include_close,
-                            defines, define_count, SDL_FALSE)) {
+    if (!preprocessor_start(ctx, params, SDL_FALSE)) {
         goto preprocess_out_of_mem;
     }
 
@@ -2160,9 +2131,9 @@ const SDL_SHADER_PreprocessData *SDL_SHADER_Preprocess(const char *filename,
 
     retval->output = output;
     retval->output_len = total_bytes;
-    retval->malloc = m;
-    retval->free = f;
-    retval->malloc_data = d;
+    retval->malloc = params->allocate;
+    retval->free = params->deallocate;
+    retval->malloc_data = params->allocate_data;
 
     context_destroy(ctx);
 

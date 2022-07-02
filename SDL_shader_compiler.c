@@ -4132,49 +4132,50 @@ static const MOJOSHADER_compileData *build_compiledata(Context *ctx)
 
 // API entry point...
 
-const MOJOSHADER_compileData *MOJOSHADER_compile(const char *srcprofile,
-                                    const char *filename, const char *source,
-                                    size_t sourcelen,
-                                    const MOJOSHADER_preprocessorDefine *defs,
-                                    size_t define_count,
-                                    MOJOSHADER_includeOpen include_open,
-                                    MOJOSHADER_includeClose include_close,
-                                    MOJOSHADER_malloc m, MOJOSHADER_free f,
-                                    void *d)
+
+extern DECLSPEC const SDL_SHADER_CompileData * SDLCALL SDL_SHADER_Compile(const SDL_SHADER_CompilerParams *params)
 {
-    // !!! FIXME: cut and paste from MOJOSHADER_parseAst().
-    MOJOSHADER_compileData *retval = NULL;
-    Context *ctx = NULL;
+    /* !!! FIXME: cut and paste from SDL_SHADER_ParseAst */
+    Context *ctx = context_create(m, f, d);
+    if (ctx == NULL) {
+         return &MOJOSHADER_out_of_mem_compile_data;
+    }
 
-    if ( ((m == NULL) && (f != NULL)) || ((m != NULL) && (f == NULL)) )
-        return &MOJOSHADER_out_of_mem_compile_data;  // supply both or neither.
-
-    ctx = build_context(m, f, d);
-    if (ctx == NULL)
-        return &MOJOSHADER_out_of_mem_compile_data;
+    ctx->uses_ast = SDL_TRUE;
+    ctx->strcache = stringcache_create(MallocContextBridge, FreeContextBridge, ctx);
+    if (!ctx->strcache) {
+        context_destroy(ctx);
+        return &SDL_SHADER_out_of_mem_data_ast;
+    }
 
     choose_src_profile(ctx, srcprofile);
 
-    if (!isfail(ctx))
-    {
-        parse_source(ctx, filename, source, sourcelen, defs, define_count,
-                     include_open, include_close);
-    } // if
+    if (!ctx->isfail) {
+        if (SDL_strcmp(ctx->source_profile, SDL_SHADER_SRC_SDLSL_1_0) == 0) {
+            parse_sdlsl_source(ctx, params);
+        } else {
+            fail(ctx, "Internal compiler error. This is a bug, sorry!");
+            SDL_assert(!"choose_src_profile should have caught this");
+        }
+    }
 
-    if (!isfail(ctx))
+    if (!ctx->isfail) {
+        ctx->uses_compiler = SDL_TRUE;
         semantic_analysis(ctx);
+    }
 
     if (!isfail(ctx))
         intermediate_representation(ctx);
 
     if (isfail(ctx))
         retval = (MOJOSHADER_compileData *) build_failed_compile(ctx);
-    else
+    } else {
         retval = (MOJOSHADER_compileData *) build_compiledata(ctx);
+    }
 
     destroy_context(ctx);
     return retval;
-} // MOJOSHADER_compile
+}
 
 
 void MOJOSHADER_freeCompileData(const MOJOSHADER_compileData *_data)

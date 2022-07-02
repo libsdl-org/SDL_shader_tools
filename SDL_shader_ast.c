@@ -974,16 +974,7 @@ static int convert_to_lemon_token(Context *ctx, const char *token, size_t tokenl
 
 
 /* parse the source code into an AST. */
-static void parse_sdlsl_source(Context *ctx, const char *filename,
-                         const char *source, size_t sourcelen,
-                         const SDL_SHADER_PreprocessorDefine *defines,
-                         size_t define_count,
-                         const char **system_include_paths,
-                         size_t system_include_path_count,
-                         const char **local_include_paths,
-                         size_t local_include_path_count,
-                         SDL_SHADER_IncludeOpen include_open,
-                         SDL_SHADER_IncludeClose include_close)
+static void parse_sdlsl_source(Context *ctx, const SDL_SHADER_CompilerParams *params)
 {
     void *parser;
     Token tokenval;
@@ -992,11 +983,7 @@ static void parse_sdlsl_source(Context *ctx, const char *filename,
     int lemon_token;
     TokenData data;
 
-    if (!preprocessor_start(ctx, filename, source, sourcelen,
-                            system_include_paths, system_include_path_count,
-                            local_include_paths, local_include_path_count,
-                            include_open, include_close,
-                            defines, define_count, SDL_FALSE)) {
+    if (!preprocessor_start(ctx, params, SDL_FALSE)) {
         SDL_assert(ctx->isfail);
         SDL_assert(ctx->out_of_memory);  /* shouldn't fail for any other reason. */
         return;
@@ -1162,47 +1149,42 @@ void ast_end(Context *ctx)
 }
 
 
-/* API entry point... */
-
-const SDL_SHADER_AstData *SDL_SHADER_ParseAst(const char *srcprofile,
-                                    const char *filename, const char *source,
-                                    size_t sourcelen,
-                                    const SDL_SHADER_PreprocessorDefine *defines,
-                                    size_t define_count,
-                                    const char **system_include_paths,
-                                    size_t system_include_path_count,
-                                    const char **local_include_paths,
-                                    size_t local_include_path_count,
-                                    SDL_SHADER_IncludeOpen include_open,
-                                    SDL_SHADER_IncludeClose include_close,
-                                    SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d)
-
+Context *parse_to_ast(const SDL_SHADER_CompilerParams *params)
 {
-    const SDL_SHADER_AstData *retval = NULL;
-    Context *ctx = context_create(m, f, d);
+    Context *ctx = context_create(params->allocate, params->deallocate, params->allocate_data);
     if (ctx == NULL) {
-        return &SDL_SHADER_out_of_mem_data_ast;
+        return NULL;
     }
 
     ctx->uses_ast = SDL_TRUE;
     ctx->strcache = stringcache_create(MallocContextBridge, FreeContextBridge, ctx);
     if (!ctx->strcache) {
         context_destroy(ctx);
-        return &SDL_SHADER_out_of_mem_data_ast;
+        return NULL;
     }
 
-    choose_src_profile(ctx, srcprofile);
+    choose_src_profile(ctx, params->srcprofile);
 
     if (!ctx->isfail) {
         if (SDL_strcmp(ctx->source_profile, SDL_SHADER_SRC_SDLSL_1_0) == 0) {
-            parse_sdlsl_source(ctx, filename, source, sourcelen, defines, define_count, system_include_paths, system_include_path_count, local_include_paths, local_include_path_count, include_open, include_close);
+            parse_sdlsl_source(ctx, params);
         } else {
             fail(ctx, "Internal compiler error. This is a bug, sorry!");
             SDL_assert(!"choose_src_profile should have caught this");
         }
     }
+    return ctx;
+}
 
-    if (!ctx->isfail) {
+/* API entry point... */
+
+const SDL_SHADER_AstData *SDL_SHADER_ParseAst(const SDL_SHADER_CompilerParams *params)
+{
+    const SDL_SHADER_AstData *retval = NULL;
+    Context *ctx = parse_to_ast(params);
+    if (ctx == NULL) {
+        return &SDL_SHADER_out_of_mem_data_ast;
+    } else if (!ctx->isfail) {
         retval = build_astdata(ctx);  /* ctx isn't destroyed yet! */
     } else {
         retval = (SDL_SHADER_AstData *) build_failed_ast(ctx);

@@ -178,6 +178,28 @@ typedef void (SDLCALL *SDL_SHADER_IncludeClose)(const char *data,
                             SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d);
 
 
+/* there's too many options to a compiler, so now they all live in a struct
+   so you don't call these APIs with 17 different parameters. */
+typedef struct SDL_SHADER_CompilerParams
+{
+    const char *srcprofile;
+    const char *filename;
+    const char *source;
+    size_t sourcelen;
+    const SDL_SHADER_PreprocessorDefine *defines;
+    size_t define_count;
+    const char **system_include_paths;
+    size_t system_include_path_count;
+    const char **local_include_paths;
+    size_t local_include_path_count;
+    SDL_SHADER_IncludeOpen include_open;
+    SDL_SHADER_IncludeClose include_close;
+    SDL_SHADER_Malloc allocate;
+    SDL_SHADER_Free deallocate;
+    void *allocate_data;
+} SDL_SHADER_CompilerParams;
+
+
 /*
  * This function is optional. Even if you are dealing with shader source
  *  code, you don't need to explicitly use the preprocessor, as the compiler
@@ -228,20 +250,7 @@ typedef void (SDLCALL *SDL_SHADER_IncludeClose)(const char *data,
  *  call. This allows you to preprocess several shaders on separate CPU cores
  *  at the same time.
  */
-/* !!! FIXME: put all these args in a struct */
-extern DECLSPEC const SDL_SHADER_PreprocessData * SDLCALL SDL_SHADER_Preprocess(const char *filename,
-                             const char *source, size_t sourcelen,
-                             SDL_bool strip_comments,
-                             const SDL_SHADER_PreprocessorDefine *defines,
-                             size_t define_count,
-                             const char **system_include_paths,
-                             size_t system_include_path_count,
-                             const char **local_include_paths,
-                             size_t local_include_path_count,
-                             SDL_SHADER_IncludeOpen include_open,
-                             SDL_SHADER_IncludeClose include_close,
-                             SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d);
-
+extern DECLSPEC const SDL_SHADER_PreprocessData * SDLCALL SDL_SHADER_Preprocess(const SDL_SHADER_CompilerParams *params, SDL_bool strip_comments);
 
 /*
  * Call this to dispose of preprocessing results when you are done with them.
@@ -367,19 +376,7 @@ typedef struct SDL_SHADER_CompileData
  *  call. This allows you to compile several shaders on separate CPU cores
  *  at the same time.
  */
-extern DECLSPEC const SDL_SHADER_CompileData * SDLCALL SDL_SHADER_Compile(const char *srcprofile,
-                                    const char *filename, const char *source,
-                                    size_t sourcelen,
-                                    const SDL_SHADER_PreprocessorDefine *defs,
-                                    size_t define_count,
-                                    const char **system_include_paths,
-                                    size_t system_include_path_count,
-                                    const char **local_include_paths,
-                                    size_t local_include_path_count,
-                                    SDL_SHADER_IncludeOpen include_open,
-                                    SDL_SHADER_IncludeClose include_close,
-                                    SDL_SHADER_Malloc m, SDL_SHADER_Free f,
-                                    void *d);
+extern DECLSPEC const SDL_SHADER_CompileData * SDLCALL SDL_SHADER_Compile(const SDL_SHADER_CompilerParams *params);
 
 
 /*
