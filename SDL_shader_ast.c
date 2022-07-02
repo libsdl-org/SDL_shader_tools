@@ -781,6 +781,7 @@ static void delete_function(Context *ctx, SDL_SHADER_AstFunction *fn)
     delete_function_params(ctx, fn->params);
     delete_at_attribute(ctx, fn->attribute);
     delete_statement_block(ctx, fn->code);
+    Free(ctx, fn);
 }
 
 static SDL_SHADER_AstTranslationUnit *new_function_unit(Context *ctx, SDL_SHADER_AstFunction *fn)
