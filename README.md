@@ -21,10 +21,11 @@ Which is to say that a non-goal is:
 There is much work to be done here, and so much to build, so please be
 patient as things fall into place and decisions are made.
 
-# Current status: parsing!
+# Current status: semantic analysis!
 
-We have a first draft of the syntax we're aiming for, and a parser that
-can handle it.
+We have a first draft of the syntax we're aiming for, a parser that
+can handle it, and enough semantic analysis to tell you if the parsed
+program is legal (modulo some small incomplete pieces at the moment).
 
 Build the project with CMake, and then you should have a program named
 "sdl-shader-compiler" ...run it like this to see it spit out the

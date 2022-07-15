@@ -26,9 +26,8 @@
  *  - Vector swizzles (the ".xyzw" part of "MyVec4.xyzw") will look like
  *    structure dereferences. We don't realize these are actually swizzles
  *    until semantic analysis.
- *  - SDL_SHADER_AstDataType info is not reliable when returned from
- *    SDL_SHADER_ParseAst()! Most of the datatype info will be missing or have
- *    inaccurate data types. We sort these out during semantic analysis, which
+ *  - SDL_SHADER_AstDataType info is not available when returned from
+ *    SDL_SHADER_ParseAst()! We sort these out during semantic analysis, which
  *    happens after the AST parsing is complete. A few are filled in, or can
  *    be deduced fairly trivially by processing several pieces into one.
  *    It's enough that you can reproduce the original source code, more or
@@ -137,12 +136,16 @@ typedef enum SDL_SHADER_AstNodeType
     SDL_SHADER_AST_END_RANGE
 } SDL_SHADER_AstNodeType;
 
+
+typedef struct SDL_SHADER_AstDataType SDL_SHADER_AstDataType;  /* this is opaque to external apps, for now at least. */
+
 typedef struct SDL_SHADER_AstNodeInfo
 {
     SDL_SHADER_AstNodeType type;
     const char *filename;
     size_t line;
     /* !!! FIXME: position */
+    const SDL_SHADER_AstDataType *dt;  /* this is NULL for everything before semantic analysis. Not every node has a datatype. */
 } SDL_SHADER_AstNodeInfo;
 
 /* You can cast any AST node pointer to this. */
@@ -159,7 +162,6 @@ typedef struct SDL_SHADER_AstAtAttribute
     Sint64 argument;
 } SDL_SHADER_AstAtAttribute;
 
-// !!! FIXME: add datatype field to this for semantic analysis to reuse.
 typedef struct SDL_SHADER_AstExpression
 {
     SDL_SHADER_AstNodeInfo ast;
@@ -229,11 +231,14 @@ typedef struct SDL_SHADER_AstStructDerefExpression
     const char *field;
 } SDL_SHADER_AstStructDerefExpression;
 
+struct SDL_SHADER_AstFunction;
+
 typedef struct SDL_SHADER_AstFunctionCallExpression
 {
     SDL_SHADER_AstNodeInfo ast;
     const char *fnname;
     SDL_SHADER_AstArguments *arguments;  /* NULL if there are no arguments ("()") */
+    struct SDL_SHADER_AstFunction *fn;  /* always NULL until semantic analysis (and will remain NULL for constructors) */
 } SDL_SHADER_AstFunctionCallExpression;
 
 typedef struct SDL_SHADER_AstStructMember
@@ -257,8 +262,10 @@ typedef struct SDL_SHADER_AstStructDeclaration
     SDL_SHADER_AstNodeInfo ast;
     const char *name;
     SDL_SHADER_AstStructMembers *members;
+    struct SDL_SHADER_AstStructDeclaration *nextstruct;  /* semantic analysis uses this, you should ignore it. */
 } SDL_SHADER_AstStructDeclaration;
 
+// !!! FIXME: need array declaration
 typedef struct SDL_SHADER_AstVarDeclaration
 {
     SDL_SHADER_AstNodeInfo ast;
@@ -275,9 +282,16 @@ typedef struct SDL_SHADER_AstStatement
 
 typedef SDL_SHADER_AstStatement SDL_SHADER_AstSimpleStatement;
 typedef SDL_SHADER_AstSimpleStatement SDL_SHADER_AstEmptyStatement;
-typedef SDL_SHADER_AstSimpleStatement SDL_SHADER_AstBreakStatement;
-typedef SDL_SHADER_AstSimpleStatement SDL_SHADER_AstContinueStatement;
 typedef SDL_SHADER_AstSimpleStatement SDL_SHADER_AstDiscardStatement;
+
+typedef struct SDL_SHADER_AstBreakStatement
+{
+    SDL_SHADER_AstNodeInfo ast;
+    struct SDL_SHADER_AstStatement *next;
+    struct SDL_SHADER_AstStatement *parent;  /* NULL until semantic analysis. */
+} SDL_SHADER_AstBreakStatement;
+
+typedef SDL_SHADER_AstBreakStatement SDL_SHADER_AstContinueStatement;
 
 typedef union SDL_SHADER_AstForInitializer SDL_SHADER_AstForInitializer;
 
@@ -416,14 +430,24 @@ typedef struct SDL_SHADER_AstFunctionParams
     SDL_SHADER_AstFunctionParam *tail;
 } SDL_SHADER_AstFunctionParams;
 
+typedef enum SDL_SHADER_AstFunctionType
+{
+    SDL_SHADER_AST_FNTYPE_UNKNOWN,
+    SDL_SHADER_AST_FNTYPE_NORMAL,
+    SDL_SHADER_AST_FNTYPE_VERTEX,
+    SDL_SHADER_AST_FNTYPE_FRAGMENT
+} SDL_SHADER_AstFunctionType;
+
 typedef struct SDL_SHADER_AstFunction
 {
     SDL_SHADER_AstNodeInfo ast;
+    SDL_SHADER_AstFunctionType fntype;  /* SDL_SHADER_AST_FNTYPE_UNKNOWN until semantic analysis */
     const char *datatype_name;  /* not resolved until semantic analysis (NULL==void) */
     const char *name;
     SDL_SHADER_AstFunctionParams *params;  /* NULL==void */
     SDL_SHADER_AstAtAttribute *attribute;
     SDL_SHADER_AstStatementBlock *code;
+    struct SDL_SHADER_AstFunction *nextfn;  /* semantic analysis uses this, you should ignore it. */
 } SDL_SHADER_AstFunction;
 
 typedef struct SDL_SHADER_AstTranslationUnit
@@ -541,12 +565,12 @@ typedef struct SDL_SHADER_AstData
     const SDL_SHADER_AstShader *shader;
 
     /*
-     * This is the malloc implementation you passed to SDL_SHADER_parse().
+     * This is the malloc implementation you passed to SDL_SHADER_Parse().
      */
     SDL_SHADER_Malloc malloc;
 
     /*
-     * This is the free implementation you passed to SDL_SHADER_parse().
+     * This is the free implementation you passed to SDL_SHADER_Parse().
      */
     SDL_SHADER_Free free;
 

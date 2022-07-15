@@ -245,13 +245,13 @@ static inline Uint32 hash_string(const char *str, size_t len)
 Uint32 hash_hash_string(const void *sym, void *data)
 {
     (void) data;
-    return hash_string((const char*) sym, strlen((const char *) sym));
+    return hash_string((const char*) sym, SDL_strlen((const char *) sym));
 }
 
 int hash_keymatch_string(const void *a, const void *b, void *data)
 {
     (void) data;
-    return (strcmp((const char *) a, (const char *) b) == 0);
+    return (SDL_strcmp((const char *) a, (const char *) b) == 0);
 }
 
 
@@ -1055,6 +1055,12 @@ void fail(Context *ctx, const char *reason)
     errorlist_add(ctx->errors, SDL_TRUE, ctx->filename, ctx->position, reason);
 }
 
+void fail_ast(Context *ctx, const SDL_SHADER_AstNodeInfo *ast, const char *reason)
+{
+    ctx->isfail = SDL_TRUE;
+    errorlist_add(ctx->errors, SDL_TRUE, ast->filename, ast->line, reason);
+}
+
 void failf(Context *ctx, const char *fmt, ...)
 {
     va_list ap;
@@ -1064,9 +1070,23 @@ void failf(Context *ctx, const char *fmt, ...)
     va_end(ap);
 }
 
+void failf_ast(Context *ctx, const SDL_SHADER_AstNodeInfo *ast, const char *fmt, ...)
+{
+    va_list ap;
+    ctx->isfail = SDL_TRUE;
+    va_start(ap, fmt);
+    errorlist_add_va(ctx->errors, SDL_TRUE, ast->filename, ast->line, fmt, ap);
+    va_end(ap);
+}
+
 void warn(Context *ctx, const char *reason)
 {
     errorlist_add(ctx->errors, SDL_FALSE, ctx->filename, ctx->position, reason);
+}
+
+void warn_ast(Context *ctx, const SDL_SHADER_AstNodeInfo *ast, const char *reason)
+{
+    errorlist_add(ctx->errors, SDL_FALSE, ast->filename, ast->line, reason);
 }
 
 void warnf(Context *ctx, const char *fmt, ...)
@@ -1074,6 +1094,14 @@ void warnf(Context *ctx, const char *fmt, ...)
     va_list ap;
     va_start(ap, fmt);
     errorlist_add_va(ctx->errors, SDL_FALSE, ctx->filename, ctx->position, fmt, ap);
+    va_end(ap);
+}
+
+void warnf_ast(Context *ctx, const SDL_SHADER_AstNodeInfo *ast, const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    errorlist_add_va(ctx->errors, SDL_FALSE, ast->filename, ast->line, fmt, ap);
     va_end(ap);
 }
 
@@ -1118,7 +1146,7 @@ void context_destroy(Context *ctx)
         errorlist_destroy(ctx->errors);
         preprocessor_end(ctx);
         ast_end(ctx);
-        /* !!! FIXME: compiler_end(ctx); */ SDL_assert(!ctx->uses_compiler);
+        compiler_end(ctx);
 
         f(ctx, d);
     }

@@ -223,6 +223,7 @@ switch_case(A) ::= DEFAULT COLON. { A = new_switch_case(ctx, NULL, NULL); }
 // and let semantic analysis sort it out.
 %type var_declaration { SDL_SHADER_AstVarDeclaration * }
 %destructor var_declaration { delete_var_declaration(ctx, $$); }
+// !!! FIXME: need array declaration
 var_declaration(A) ::= VAR IDENTIFIER(B) IDENTIFIER(C). { A = new_var_declaration(ctx, B.string, C.string, NULL); }
 var_declaration(A) ::= VAR IDENTIFIER(B) IDENTIFIER(C) ASSIGN expression(D). { A = new_var_declaration(ctx, B.string, C.string, D); }
 

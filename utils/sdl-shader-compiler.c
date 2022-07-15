@@ -41,7 +41,7 @@ static void UtilFree(void *_ptr, void *d)
 
 static void fail(const char *err)
 {
-    printf("%s.\n", err);
+    fprintf(stderr, "%s.\n", err);
     exit(1);
 }
 
@@ -473,14 +473,15 @@ static int preprocess(const SDL_SHADER_CompilerParams *params, const char *outfi
         if (pd->output != NULL) {
             const size_t len = pd->output_len;
             if ((len) && (fwrite(pd->output, len, 1, io) != 1)) {
-                printf(" ... fwrite('%s') failed.\n", outfile);
+                fprintf(stderr, " ... fwrite('%s') failed.\n", outfile);
             } else if ((outfile != NULL) && (fclose(io) == EOF)) {
-                printf(" ... fclose('%s') failed.\n", outfile);
+                fprintf(stderr, " ... fclose('%s') failed.\n", outfile);
             } else {
                 retval = 1;
             }
         }
     }
+
     SDL_SHADER_FreePreprocessData(pd);
 
     return retval;
@@ -498,27 +499,43 @@ static int ast(const SDL_SHADER_CompilerParams *params, const char *outfile, FIL
     } else {
         print_ast(io, SDL_FALSE, ad->shader);
         if ((outfile != NULL) && (fclose(io) == EOF)) {
-            printf(" ... fclose('%s') failed.\n", outfile);
+            fprintf(stderr, " ... fclose('%s') failed.\n", outfile);
         } else {
             retval = 1;
         }
     }
+
     SDL_SHADER_FreeAstData(ad);
 
     return retval;
 }
 
-#if 0
 static int compile(const SDL_SHADER_CompilerParams *params, const char *outfile, FILE *io)
 {
-    /* !!! FIXME: write me.
-    const SDL_SHADER_parseData *pd;
-    int retval = 0; */
+    const SDL_SHADER_CompileData *cd;
+    int retval = 0;
 
-    SDL_SHADER_Compile(params);
-    return 1;
+    cd = SDL_SHADER_Compile(params);
+
+    if (cd->error_count > 0) {
+        print_errors(cd->errors, cd->error_count);
+    } else {
+        if (cd->output != NULL) {
+            const size_t len = cd->output_len;
+            if ((len) && (fwrite(cd->output, len, 1, io) != 1)) {
+                fprintf(stderr, " ... fwrite('%s') failed.\n", outfile);
+            } else if ((outfile != NULL) && (fclose(io) == EOF)) {
+                fprintf(stderr, " ... fclose('%s') failed.\n", outfile);
+            } else {
+                retval = 1;
+            }
+        }
+    }
+
+    SDL_SHADER_FreeCompileData(cd);
+
+    return retval;
 }
-#endif
 
 typedef enum
 {
@@ -647,7 +664,7 @@ int main(int argc, char **argv)
         fail("no input file specified");
     }
 
-    params.source = (char *) SDL_LoadFile(params.filename, &params.sourcelen);
+    params.source = (const char *) SDL_LoadFile(params.filename, &params.sourcelen);
     if (params.source == NULL) {
         fail("failed to read input file");  /* !!! FIXME: need failf, pass SDL_GetError(). */
     }
@@ -661,22 +678,20 @@ int main(int argc, char **argv)
         retval = (!preprocess(&params, outfile, outio));
     } else if (action == ACTION_AST) {
         retval = (!ast(&params, outfile, outio));
-#if 0
     } else if (action == ACTION_COMPILE) {
         retval = (!compile(&params, outfile, outio));
-#endif
     }
 
     if ((retval != 0) && (outfile != NULL)) {
         remove(outfile);
     }
 
-    SDL_free(params.source);
+    SDL_free((void *) params.source);
 
     for (i = 0; i < params.define_count; i++) {
         SDL_free((void *) params.defines[i].identifier);
     }
-    SDL_free(params.defines);
+    SDL_free((void *) params.defines);
 
     SDL_free(params.local_include_paths);
 

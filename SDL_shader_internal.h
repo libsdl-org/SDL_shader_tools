@@ -273,6 +273,66 @@ Token preprocessor_lexer(IncludeState *s);  /* this is the interface to the re2c
 void SDL_SHADER_print_debug_token(const char *subsystem, const char *token, const size_t tokenlen, const Token tokenval);
 
 
+/* This tracks data types and variables, and notes when they enter/leave scope. */
+
+typedef SDL_SHADER_AstDataType DataType;
+
+typedef enum DataTypeType
+{
+    DT_BOOLEAN,
+    DT_INT,
+    DT_UINT,
+    DT_HALF,
+    DT_FLOAT,
+    DT_VECTOR,
+    DT_MATRIX,
+    DT_ARRAY,
+    DT_STRUCT
+} DataTypeType;
+
+typedef struct DataTypeArray
+{
+    const DataType *childdt;
+    Uint32 elements;
+} DataTypeArray;
+
+typedef struct DataTypeMatrix
+{
+    const DataType *childdt;   /* MUST be a vector type (that plus `rows` makes a matrix) */
+    Uint32 rows;
+} DataTypeMatrix;
+
+typedef struct DataTypeStructMembers
+{
+    const char *name;
+    const DataType *dt;
+} DataTypeStructMembers;
+
+typedef struct DataTypeStruct
+{
+    Uint32 num_members;
+    const DataTypeStructMembers *members;
+} DataTypeStruct;
+
+struct SDL_SHADER_AstDataType
+{
+    const char *name;  /* strcache'd */
+    DataTypeType dtype;
+    union
+    {
+        DataTypeArray vector;
+        DataTypeMatrix matrix;
+        DataTypeArray array;
+        DataTypeStruct structure;
+    } info;
+};
+
+typedef struct ScopeItem
+{
+    SDL_SHADER_AstNode *ast;
+    struct ScopeItem *next;
+} ScopeItem;
+
 typedef struct Context
 {
     SDL_bool isfail;
@@ -311,10 +371,22 @@ typedef struct Context
 
     /* compiler stuff... */
     SDL_bool uses_compiler;
-#if 0 /* !!! FIXME, compiler code isn't built into the project yet! */
-    SymbolMap usertypes;
-    SymbolMap variables;
+    SDL_bool isiced;  /* triggered an Internal Compiler Error. */
+    SDL_SHADER_AstFunction *functions;  /* global function linked list, linked on nextfn (do not free) */
+    SDL_SHADER_AstStructDeclaration *structs;  /* global struct decl linked list, linked on nextstruct (do not free) */
+    HashTable *datatypes;
+    SDL_SHADER_AstNodeInfo ast_before;  /* for fail_ast's use, for errors that count as "before" the source file */
+    SDL_SHADER_AstNodeInfo ast_after;  /* for fail_ast's use, for errors that count as "after" the source file */
+    const DataType *datatype_int;  /* just a pointer to a value in datatypes (do not free) */
+    const DataType *datatype_float;  /* just a pointer to a value in datatypes (do not free) */
+    const DataType *datatype_boolean;  /* just a pointer to a value in datatypes (do not free) */
+    ScopeItem *scope_stack;
+    ScopeItem *scope_pool;
+    Uint8 *compile_output;
+    size_t compile_output_len;
 
+#if 0 /* !!! FIXME, compiler code isn't built into the project yet! */
+    SymbolMap variables;
     SDL_bool is_func_scope; // SDL_TRUE if semantic analysis is in function scope.
     Uint32 loop_count;
     Uint32 switch_count;
@@ -339,6 +411,8 @@ const char *preprocessor_nexttoken(Context *ctx, size_t *_len, Token *_token);
 void ast_end(Context *ctx);
 void compiler_end(Context *ctx);
 
+Context *parse_to_ast(const SDL_SHADER_CompilerParams *params);
+
 
 /* Somehow there isn't an SDL_memchr ... */
 const void *MemChr(const void *buf, const Uint8 b, size_t buflen);
@@ -359,6 +433,25 @@ void fail(Context *ctx, const char *reason);
 void failf(Context *ctx, SDL_PRINTF_FORMAT_STRING const char *fmt, ...) SDL_PRINTF_VARARG_FUNC(2);
 void warn(Context *ctx, const char *reason);
 void warnf(Context *ctx, SDL_PRINTF_FORMAT_STRING const char *fmt, ...) SDL_PRINTF_VARARG_FUNC(2);
+void fail_ast(Context *ctx, const SDL_SHADER_AstNodeInfo *ast, const char *reason);
+void failf_ast(Context *ctx, const SDL_SHADER_AstNodeInfo *ast, SDL_PRINTF_FORMAT_STRING const char *fmt, ...) SDL_PRINTF_VARARG_FUNC(3);
+void warn_ast(Context *ctx, const SDL_SHADER_AstNodeInfo *ast, const char *reason);
+void warnf_ast(Context *ctx, const SDL_SHADER_AstNodeInfo *ast, SDL_PRINTF_FORMAT_STRING const char *fmt, ...) SDL_PRINTF_VARARG_FUNC(3);
+
+SDL_FORCE_INLINE SDL_bool operator_is_unary(const SDL_SHADER_AstNodeType op)
+{
+    return ( (op > SDL_SHADER_AST_OP_START_RANGE_UNARY) && (op < SDL_SHADER_AST_OP_END_RANGE_UNARY) ) ? SDL_TRUE : SDL_FALSE;
+}
+
+SDL_FORCE_INLINE int operator_is_binary(const SDL_SHADER_AstNodeType op)
+{
+    return ( (op > SDL_SHADER_AST_OP_START_RANGE_BINARY) && (op < SDL_SHADER_AST_OP_END_RANGE_BINARY) ) ? SDL_TRUE : SDL_FALSE;
+}
+
+SDL_FORCE_INLINE int operator_is_ternary(const SDL_SHADER_AstNodeType op)
+{
+    return ( (op > SDL_SHADER_AST_OP_START_RANGE_TERNARY) && (op < SDL_SHADER_AST_OP_END_RANGE_TERNARY) ) ? SDL_TRUE : SDL_FALSE;
+}
 
 #endif  /* _INCLUDE_SDL_SHADER_INTERNAL_H_ */
 
