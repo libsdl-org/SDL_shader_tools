@@ -383,7 +383,7 @@ static void print_ast(FILE *io, const SDL_bool substmt, const void *_ast)
         case SDL_SHADER_AST_TRANSUNIT_FUNCTION: {
             SDL_SHADER_AstFunction *fn = ast->fnunit.fn;
             DO_INDENT;
-            fprintf(io, "function %s %s(", fn->datatype_name, fn->name);
+            fprintf(io, "function %s %s(", fn->datatype_name ? fn->datatype_name : "void", fn->name);
             if (!fn->params) {
                 fprintf(io, "void");
             } else {
