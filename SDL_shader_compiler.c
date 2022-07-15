@@ -549,14 +549,10 @@ static SDL_bool ast_datatypes_match(const void *_a, const void *_b)
 static const char *ast_opstr(const SDL_SHADER_AstNodeType typ)
 {
     switch (typ) {
-        case SDL_SHADER_AST_OP_PREINCREMENT: return "--";
-        case SDL_SHADER_AST_OP_PREDECREMENT: return "--";
         case SDL_SHADER_AST_OP_POSITIVE: return "+";
         case SDL_SHADER_AST_OP_NEGATE: return "-";
         case SDL_SHADER_AST_OP_COMPLEMENT: return "~";
         case SDL_SHADER_AST_OP_NOT: return "!";
-        case SDL_SHADER_AST_OP_POSTINCREMENT: return "++";
-        case SDL_SHADER_AST_OP_POSTDECREMENT: return "--";
         case SDL_SHADER_AST_OP_PARENTHESES: return "()";
         case SDL_SHADER_AST_OP_MULTIPLY: return "*";
         case SDL_SHADER_AST_OP_DIVIDE: return "/";
@@ -590,6 +586,10 @@ static const char *ast_opstr(const SDL_SHADER_AstNodeType typ)
         case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNAND: return "&=";
         case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNXOR: return "^=";
         case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNOR: return "|=";
+        case SDL_SHADER_AST_STATEMENT_PREINCREMENT: return "++";
+        case SDL_SHADER_AST_STATEMENT_POSTINCREMENT: return "++";
+        case SDL_SHADER_AST_STATEMENT_PREDECREMENT: return "--";
+        case SDL_SHADER_AST_STATEMENT_POSTDECREMENT: return "--";
         default: break;
     }
 
@@ -793,26 +793,8 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
     ScopeItem *scope;
 
     switch (asttype) {
-        case SDL_SHADER_AST_OP_PREINCREMENT:
-        case SDL_SHADER_AST_OP_PREDECREMENT:
-        case SDL_SHADER_AST_OP_POSTINCREMENT:
-        case SDL_SHADER_AST_OP_POSTDECREMENT: {
-            /* !!! FIXME: these should work with integer vectors and matrices, too */
-            semantic_analysis_treewalk(ctx, ast->unary.operand);
-            if (!ast_is_lvalue(ctx, ast->unary.operand)) {
-                failf_ast(ctx, &ast->unary.operand->ast, "Object for '%s' must be an lvalue", ast_opstr(asttype));
-                ast->ast.dt = ctx->datatype_int;
-            } else if (!ast_is_number(ast->unary.operand)) {
-                failf_ast(ctx, &ast->unary.operand->ast, "Datatype for '%s' must be a number", ast_opstr(asttype));
-                ast->ast.dt = ctx->datatype_int;
-            } else {
-                ast->ast.dt = ast->unary.operand->ast.dt;
-            }
-            return;
-        }
-
         case SDL_SHADER_AST_OP_POSITIVE:
-        case SDL_SHADER_AST_OP_NEGATE: {
+        case SDL_SHADER_AST_OP_NEGATE:
             semantic_analysis_treewalk(ctx, ast->unary.operand);
             /* !!! FIXME: these should work with numeric vectors and matrices, too */
             if (!ast_is_number(ast->unary.operand)) {
@@ -822,7 +804,6 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
                 ast->ast.dt = ast->unary.operand->ast.dt;
             }
             return;
-        }
 
         case SDL_SHADER_AST_OP_COMPLEMENT:
             /* !!! FIXME: these should work with integer vectors and matrices, too */
@@ -1307,6 +1288,23 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
             pop_scope(ctx, scope);
             return;
         }
+
+        case SDL_SHADER_AST_STATEMENT_PREINCREMENT:
+        case SDL_SHADER_AST_STATEMENT_POSTINCREMENT:
+        case SDL_SHADER_AST_STATEMENT_PREDECREMENT:
+        case SDL_SHADER_AST_STATEMENT_POSTDECREMENT:
+            /* !!! FIXME: these should work with integer vectors and matrices, too */
+            semantic_analysis_treewalk(ctx, ast->incrementstmt.assignment);
+            if (!ast_is_lvalue(ctx, ast->incrementstmt.assignment)) {
+                failf_ast(ctx, &ast->incrementstmt.assignment->ast, "Object for '%s' must be an lvalue", ast_opstr(asttype));
+            } else if (!ast_is_number(ast->incrementstmt.assignment)) {
+                failf_ast(ctx, &ast->unary.operand->ast, "Datatype for '%s' must be a number", ast_opstr(asttype));
+            }
+            return;
+
+        case SDL_SHADER_AST_STATEMENT_FUNCTION_CALL:
+            semantic_analysis_treewalk(ctx, ast->fncallstmt.expr);
+            return;
 
         case SDL_SHADER_AST_STATEMENT_ASSIGNMENT:
             semantic_analysis_treewalk(ctx, ast->assignstmt.value);

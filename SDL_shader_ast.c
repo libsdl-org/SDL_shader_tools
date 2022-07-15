@@ -211,10 +211,6 @@ static SDL_SHADER_AstExpression *new_unaryminus_expression(Context *ctx, SDL_SHA
 static SDL_SHADER_AstExpression *new_unaryplus_expression(Context *ctx, SDL_SHADER_AstExpression *operand) { return new_unary_expression(ctx, SDL_SHADER_AST_OP_POSITIVE, operand); }
 static SDL_SHADER_AstExpression *new_unarycompl_expression(Context *ctx, SDL_SHADER_AstExpression *operand) { return new_unary_expression(ctx, SDL_SHADER_AST_OP_COMPLEMENT, operand); }
 static SDL_SHADER_AstExpression *new_unarynot_expression(Context *ctx, SDL_SHADER_AstExpression *operand) { return new_unary_expression(ctx, SDL_SHADER_AST_OP_NOT, operand); }
-static SDL_SHADER_AstExpression *new_preincrement_expression(Context *ctx, SDL_SHADER_AstExpression *operand) { return new_unary_expression(ctx, SDL_SHADER_AST_OP_PREINCREMENT, operand); }
-static SDL_SHADER_AstExpression *new_predecrement_expression(Context *ctx, SDL_SHADER_AstExpression *operand) { return new_unary_expression(ctx, SDL_SHADER_AST_OP_PREDECREMENT, operand); }
-static SDL_SHADER_AstExpression *new_postincrement_expression(Context *ctx, SDL_SHADER_AstExpression *operand) { return new_unary_expression(ctx, SDL_SHADER_AST_OP_POSTINCREMENT, operand); }
-static SDL_SHADER_AstExpression *new_postdecrement_expression(Context *ctx, SDL_SHADER_AstExpression *operand) { return new_unary_expression(ctx, SDL_SHADER_AST_OP_POSTDECREMENT, operand); }
 static SDL_SHADER_AstExpression *new_parentheses_expression(Context *ctx, SDL_SHADER_AstExpression *operand) { return new_unary_expression(ctx, SDL_SHADER_AST_OP_PARENTHESES, operand); }
 
 static SDL_SHADER_AstExpression *new_binary_expression(Context *ctx, SDL_SHADER_AstNodeType asttype, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *right)
@@ -639,6 +635,56 @@ static void delete_compound_assignment_statement(Context *ctx, SDL_SHADER_AstCom
     Free(ctx, asstmt);
 }
 
+static SDL_SHADER_AstStatement *new_increment_statement(Context *ctx, const SDL_SHADER_AstNodeType asttype, SDL_SHADER_AstExpression *assignment)
+{
+    NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstIncrementStatement, asttype);
+    retval->assignment = assignment;
+    return (SDL_SHADER_AstStatement *) retval;
+}
+
+static void delete_increment_statement(Context *ctx, SDL_SHADER_AstIncrementStatement *incstmt)
+{
+    DELETE_AST_STATEMENT_NODE(incstmt);
+    delete_expression(ctx, incstmt->assignment);
+    delete_statement(ctx, incstmt->next);
+    Free(ctx, incstmt);
+}
+
+static SDL_SHADER_AstStatement *new_preincrement_statement(Context *ctx, SDL_SHADER_AstExpression *assignment)
+{
+    return new_increment_statement(ctx, SDL_SHADER_AST_STATEMENT_PREINCREMENT, assignment);
+}
+
+static SDL_SHADER_AstStatement *new_predecrement_statement(Context *ctx, SDL_SHADER_AstExpression *assignment)
+{
+    return new_increment_statement(ctx, SDL_SHADER_AST_STATEMENT_PREDECREMENT, assignment);
+}
+
+static SDL_SHADER_AstStatement *new_postincrement_statement(Context *ctx, SDL_SHADER_AstExpression *assignment)
+{
+    return new_increment_statement(ctx, SDL_SHADER_AST_STATEMENT_POSTINCREMENT, assignment);
+}
+
+static SDL_SHADER_AstStatement *new_postdecrement_statement(Context *ctx, SDL_SHADER_AstExpression *assignment)
+{
+    return new_increment_statement(ctx, SDL_SHADER_AST_STATEMENT_POSTDECREMENT, assignment);
+}
+
+static SDL_SHADER_AstStatement *new_fncall_statement(Context *ctx, const char *fnname, SDL_SHADER_AstArguments *arguments)
+{
+    NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstFunctionCallStatement, SDL_SHADER_AST_STATEMENT_FUNCTION_CALL);
+    retval->expr = (SDL_SHADER_AstFunctionCallExpression *) new_fncall_expression(ctx, fnname, arguments);
+    return (SDL_SHADER_AstStatement *) retval;
+}
+
+static void delete_fncall_statement(Context *ctx, SDL_SHADER_AstFunctionCallStatement *fnstmt)
+{
+    DELETE_AST_STATEMENT_NODE(fnstmt);
+    delete_fncall_expression(ctx, fnstmt->expr);
+    delete_statement(ctx, fnstmt->next);
+    Free(ctx, fnstmt);
+}
+
 static SDL_SHADER_AstStatementBlock *new_statement_block(Context *ctx, SDL_SHADER_AstStatement *first)
 {
     NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstStatementBlock, SDL_SHADER_AST_STATEMENT_BLOCK);
@@ -670,7 +716,15 @@ static void delete_statement(Context *ctx, SDL_SHADER_AstStatement *stmt)
         case SDL_SHADER_AST_STATEMENT_SWITCH: delete_switch_statement(ctx, &ast->switchstmt); return;
         case SDL_SHADER_AST_STATEMENT_RETURN: delete_return_statement(ctx, &ast->returnstmt); return;
         case SDL_SHADER_AST_STATEMENT_ASSIGNMENT: delete_assignment_statement(ctx, &ast->assignstmt); return;
+        case SDL_SHADER_AST_STATEMENT_FUNCTION_CALL: delete_fncall_statement(ctx, &ast->fncallstmt); return;
         case SDL_SHADER_AST_STATEMENT_BLOCK: delete_statement_block(ctx, &ast->stmtblock); return;
+
+        case SDL_SHADER_AST_STATEMENT_PREINCREMENT:
+        case SDL_SHADER_AST_STATEMENT_PREDECREMENT:
+        case SDL_SHADER_AST_STATEMENT_POSTINCREMENT:
+        case SDL_SHADER_AST_STATEMENT_POSTDECREMENT:
+            delete_increment_statement(ctx, &ast->incrementstmt);
+            return;
 
         case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNMUL:
         case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNDIV:

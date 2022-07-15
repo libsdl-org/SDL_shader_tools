@@ -39,14 +39,10 @@ typedef enum SDL_SHADER_AstNodeType
     SDL_SHADER_AST_OP_START_RANGE,         /* expression operators. */
 
     SDL_SHADER_AST_OP_START_RANGE_UNARY,   /* unary operators. */
-    SDL_SHADER_AST_OP_PREINCREMENT,
-    SDL_SHADER_AST_OP_PREDECREMENT,
     SDL_SHADER_AST_OP_POSITIVE,
     SDL_SHADER_AST_OP_NEGATE,
     SDL_SHADER_AST_OP_COMPLEMENT,
     SDL_SHADER_AST_OP_NOT,
-    SDL_SHADER_AST_OP_POSTINCREMENT,
-    SDL_SHADER_AST_OP_POSTDECREMENT,
     SDL_SHADER_AST_OP_PARENTHESES,
     SDL_SHADER_AST_OP_END_RANGE_UNARY,
 
@@ -102,6 +98,11 @@ typedef enum SDL_SHADER_AstNodeType
     SDL_SHADER_AST_STATEMENT_SWITCH,
     SDL_SHADER_AST_STATEMENT_RETURN,
     SDL_SHADER_AST_STATEMENT_BLOCK,
+    SDL_SHADER_AST_STATEMENT_PREINCREMENT,
+    SDL_SHADER_AST_STATEMENT_POSTINCREMENT,
+    SDL_SHADER_AST_STATEMENT_PREDECREMENT,
+    SDL_SHADER_AST_STATEMENT_POSTDECREMENT,
+    SDL_SHADER_AST_STATEMENT_FUNCTION_CALL,
     SDL_SHADER_AST_STATEMENT_ASSIGNMENT_START_RANGE,
     SDL_SHADER_AST_STATEMENT_ASSIGNMENT,
     SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNMUL,
@@ -399,6 +400,20 @@ typedef struct SDL_SHADER_AstCompoundAssignStatement
     SDL_SHADER_AstExpression *value;
 } SDL_SHADER_AstCompoundAssignStatement;
 
+typedef struct SDL_SHADER_AstIncrementStatement
+{
+    SDL_SHADER_AstNodeInfo ast;
+    SDL_SHADER_AstStatement *next;
+    SDL_SHADER_AstExpression *assignment;
+} SDL_SHADER_AstIncrementStatement;
+
+typedef struct SDL_SHADER_AstFunctionCallStatement
+{
+    SDL_SHADER_AstNodeInfo ast;
+    SDL_SHADER_AstStatement *next;
+    SDL_SHADER_AstFunctionCallExpression *expr;
+} SDL_SHADER_AstFunctionCallStatement;
+
 typedef struct SDL_SHADER_AstStatementBlock
 {
     SDL_SHADER_AstNodeInfo ast;
@@ -516,6 +531,8 @@ typedef union SDL_SHADER_AstNode
     SDL_SHADER_AstReturnStatement returnstmt;
     SDL_SHADER_AstAssignStatement assignstmt;
     SDL_SHADER_AstCompoundAssignStatement compoundassignstmt;
+    SDL_SHADER_AstIncrementStatement incrementstmt;
+    SDL_SHADER_AstFunctionCallStatement fncallstmt;
     SDL_SHADER_AstStatementBlock stmtblock;
     SDL_SHADER_AstForInitializer forinit;
     SDL_SHADER_AstFunctionParam fnparam;

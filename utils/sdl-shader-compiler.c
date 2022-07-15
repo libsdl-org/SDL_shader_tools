@@ -76,8 +76,8 @@ static void print_ast(FILE *io, const SDL_bool substmt, const void *_ast)
         "=", "*=", "/=", "%=", "+=", "-=", "<<=", ">>=", "&=", "^=", "|="
     };
 
-    static const char *pre_unary[] = { "++", "--", "+", "-", "~", "!" };
-    static const char *post_unary[] = { "++", "--" };
+    static const char *pre_unary[] = { "+", "-", "~", "!" };
+
     static const char *simple_stmt[] = { "", "break", "continue", "discard" };
     static const char *inpmod[] = { "", "in ", "out ", "in out ", "uniform " };
     static const char *fnstorage[] = { "", "inline " };
@@ -91,20 +91,12 @@ static void print_ast(FILE *io, const SDL_bool substmt, const void *_ast)
     } while (SDL_FALSE)
 
     switch (ast->ast.type) {
-        case SDL_SHADER_AST_OP_PREINCREMENT:
-        case SDL_SHADER_AST_OP_PREDECREMENT:
         case SDL_SHADER_AST_OP_POSITIVE:
         case SDL_SHADER_AST_OP_NEGATE:
         case SDL_SHADER_AST_OP_COMPLEMENT:
         case SDL_SHADER_AST_OP_NOT:
             fprintf(io, "%s", pre_unary[(typeint-SDL_SHADER_AST_OP_START_RANGE_UNARY)-1]);
             print_ast(io, SDL_TRUE, ast->unary.operand);
-            break;
-
-        case SDL_SHADER_AST_OP_POSTINCREMENT:
-        case SDL_SHADER_AST_OP_POSTDECREMENT:
-            print_ast(io, SDL_TRUE, ast->unary.operand);
-            fprintf(io, "%s", post_unary[typeint-SDL_SHADER_AST_OP_POSTINCREMENT]);
             break;
 
         case SDL_SHADER_AST_OP_PARENTHESES:
@@ -347,7 +339,39 @@ static void print_ast(FILE *io, const SDL_bool substmt, const void *_ast)
             break;
         }
 
-        case SDL_SHADER_AST_STATEMENT_ASSIGNMENT: {
+        case SDL_SHADER_AST_STATEMENT_PREINCREMENT:
+            DO_INDENT;
+            fprintf(io, "++");
+            print_ast(io, SDL_TRUE, ast->incrementstmt.assignment);
+            fprintf(io, ";%s", nl);
+            break;
+
+        case SDL_SHADER_AST_STATEMENT_POSTINCREMENT:
+            DO_INDENT;
+            print_ast(io, SDL_TRUE, ast->incrementstmt.assignment);
+            fprintf(io, "++;%s", nl);
+            break;
+
+        case SDL_SHADER_AST_STATEMENT_PREDECREMENT:
+            DO_INDENT;
+            fprintf(io, "--");
+            print_ast(io, SDL_TRUE, ast->incrementstmt.assignment);
+            fprintf(io, ";%s", nl);
+            break;
+
+        case SDL_SHADER_AST_STATEMENT_POSTDECREMENT:
+            DO_INDENT;
+            print_ast(io, SDL_TRUE, ast->incrementstmt.assignment);
+            fprintf(io, "--;%s", nl);
+            break;
+
+        case SDL_SHADER_AST_STATEMENT_FUNCTION_CALL:
+            DO_INDENT;
+            print_ast(io, SDL_TRUE, ast->fncallstmt.expr);
+            fprintf(io, ";%s", nl);
+            break;
+
+        case SDL_SHADER_AST_STATEMENT_ASSIGNMENT:
             DO_INDENT;
             if (!ast->assignstmt.assignments) {
                 SDL_assert(!"Assignment statement without targets? This is a bug!");
@@ -361,7 +385,6 @@ static void print_ast(FILE *io, const SDL_bool substmt, const void *_ast)
             print_ast(io, SDL_TRUE, ast->assignstmt.value);
             fprintf(io, ";%s", nl);
             break;
-        }
 
         case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNMUL:
         case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNDIV:

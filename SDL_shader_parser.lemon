@@ -158,6 +158,8 @@ statement(A) ::= RETURN SEMICOLON. { A = new_return_statement(ctx, NULL); }
 statement(A) ::= RETURN expression(B) SEMICOLON. { A = new_return_statement(ctx, B); }
 statement(A) ::= assignment_statement(B) SEMICOLON. { A = B; } // created in assignment_statement
 statement(A) ::= compound_assignment_statement(B) SEMICOLON. { A = B; } // created in compound_assignment_statement
+statement(A) ::= increment_statement(B) SEMICOLON. { A = B; }  // created in increment_statement
+statement(A) ::= function_call_statement(B) SEMICOLON. { A = B; }  // created in function_call_statement
 statement(A) ::= statement_block(B). { A = (SDL_SHADER_AstStatement *) B; }
 //statement(A) ::= error SEMICOLON. { A = NULL; }  // !!! FIXME: research using the error nonterminal
 
@@ -189,6 +191,19 @@ compound_assignment_operator(A) ::= RSHIFTASSIGN. { A = SDL_SHADER_AST_STATEMENT
 compound_assignment_operator(A) ::= ANDASSIGN. { A = SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNAND; }
 compound_assignment_operator(A) ::= ORASSIGN. { A = SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNOR; }
 compound_assignment_operator(A) ::= XORASSIGN. { A = SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNXOR; }
+
+// "x++" and friends are allowed as standalone statements, and not expressions.
+%type increment_statement { SDL_SHADER_AstStatement * }
+%destructor increment_statement { delete_statement(ctx, $$); }
+increment_statement(A) ::= PLUSPLUS expression(B). { A = new_preincrement_statement(ctx, B); }
+increment_statement(A) ::= MINUSMINUS expression(B). { A = new_predecrement_statement(ctx, B); }
+increment_statement(A) ::= expression(B) PLUSPLUS. { A = new_postincrement_statement(ctx, B); }
+increment_statement(A) ::= expression(B) MINUSMINUS. { A = new_postdecrement_statement(ctx, B); }
+
+// "myfunction()" is allowed in expressions, but can also be used as a standalone statement.
+%type function_call_statement { SDL_SHADER_AstStatement * }
+%destructor function_call_statement { delete_statement(ctx, $$); }
+function_call_statement(A) ::= IDENTIFIER(B) arguments(C). { A = new_fncall_statement(ctx, B.string, C); }
 
 %type for_details { SDL_SHADER_AstForDetails * }
 %destructor for_details { delete_for_details(ctx, $$); }
@@ -237,7 +252,6 @@ arguments(A) ::= LPAREN argument_list(B) RPAREN. { A = B; }
 argument_list(A) ::= expression(B). { A = new_arguments(ctx, new_argument(ctx, B)); }
 argument_list(A) ::= argument_list(B) COMMA expression(C). { B->tail->next = new_argument(ctx, C); B->tail = B->tail->next; A = B; }
 
-
 // here we go.
 %type expression { SDL_SHADER_AstExpression * }
 %destructor expression { delete_expression(ctx, $$); }
@@ -248,10 +262,6 @@ expression(A) ::= TRUE. { A = new_bool_expression(ctx, 1); }
 expression(A) ::= FALSE. { A = new_bool_expression(ctx, 0); }
 expression(A) ::= LPAREN expression(B) RPAREN. { A = new_parentheses_expression(ctx, B); }
 expression(A) ::= IDENTIFIER(B) arguments(C). { A = new_fncall_expression(ctx, B.string, C); }  // this might be a function call or datatype constructor; semantic analysis will figure that out!
-expression(A) ::= expression(B) PLUSPLUS. { A = new_postincrement_expression(ctx, B); }
-expression(A) ::= expression(B) MINUSMINUS. { A = new_postdecrement_expression(ctx, B); }
-expression(A) ::= PLUSPLUS expression(B). { A = new_preincrement_expression(ctx, B); }
-expression(A) ::= MINUSMINUS expression(B). { A = new_predecrement_expression(ctx, B); }
 expression(A) ::= PLUS expression(B). { A = new_unaryplus_expression(ctx, B); }
 expression(A) ::= MINUS expression(B). { A = new_unaryminus_expression(ctx, B); }
 expression(A) ::= COMPLEMENT expression(B). { A = new_unarycompl_expression(ctx, B); }
