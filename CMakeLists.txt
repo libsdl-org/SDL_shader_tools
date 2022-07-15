@@ -1,5 +1,5 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.16)
-PROJECT(SDL_shader_language)
+PROJECT(SDL_shader_tools)
 
 find_package(SDL2 REQUIRED)
 

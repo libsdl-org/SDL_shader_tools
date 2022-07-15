@@ -1,5 +1,5 @@
 /**
- * SDL_shader_language; tools for SDL GPU shader support.
+ * SDL_shader_tools; tools for SDL GPU shader support.
  *
  * Please see the file LICENSE.txt in the source's root directory.
  */
