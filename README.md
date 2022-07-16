@@ -37,6 +37,13 @@ source code from the AST that it generated)...
 ./sdl-shader-compiler -T -I some_dir -DSOME_DEFINE=SOME_VALUE some_source.shader
 ```
 
+If you want to see it complain about semantic analysis errors (but not
+generate any binaries yet)...
+
+```bash
+./sdl-shader-compiler -C -I some_dir -DSOME_DEFINE=SOME_VALUE some_source.shader
+```
+
 If you just want to see it preprocess stuff, like a C preprocessor does:
 
 ```bash
