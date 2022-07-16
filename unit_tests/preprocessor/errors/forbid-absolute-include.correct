@@ -1,0 +1,1 @@
+preprocessor/errors/forbid-absolute-include:1: error: Absolute paths in #include directives are forbidden

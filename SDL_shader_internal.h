@@ -338,6 +338,8 @@ typedef struct Context
     SDL_bool uses_preprocessor;
     SDL_bool asm_comments;
     SDL_bool parsing_pragma;
+    SDL_bool allow_dotdot_includes;  /* if SDL_FALSE, fail on `#include "path/with/../in/it"` */
+    SDL_bool allow_absolute_includes;  /* if SDL_FALSE, fail on `#include "/absolute/path"` */
     Conditional *conditional_pool;
     IncludeState *include_stack;
     IncludeState *include_pool;

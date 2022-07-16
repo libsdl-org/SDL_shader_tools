@@ -194,6 +194,8 @@ typedef struct SDL_SHADER_CompilerParams
     const char *filename;
     const char *source;
     size_t sourcelen;
+    SDL_bool allow_dotdot_includes;  /* if SDL_FALSE, fail on `#include "path/with/../in/it"` */
+    SDL_bool allow_absolute_includes;  /* if SDL_FALSE, fail on `#include "/absolute/path"` */
     const SDL_SHADER_PreprocessorDefine *defines;
     size_t define_count;
     const char **system_include_paths;

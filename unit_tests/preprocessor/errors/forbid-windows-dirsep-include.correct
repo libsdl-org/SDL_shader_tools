@@ -1,0 +1,1 @@
+preprocessor/errors/forbid-windows-dirsep-include:1: error: '\' characters in #include directives are forbidden (use '/' instead)

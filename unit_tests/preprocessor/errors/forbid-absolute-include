@@ -1,0 +1,1 @@
+#include "/this-should-fail-because-we-forbid-absolute-paths-by-default"

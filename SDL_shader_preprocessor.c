@@ -591,6 +591,8 @@ SDL_bool preprocessor_start(Context *ctx, const SDL_SHADER_CompilerParams *param
 
     /* we don't own the *_include_paths arrays, don't free them. */
     ctx->uses_preprocessor = SDL_TRUE;
+    ctx->allow_dotdot_includes = params->allow_dotdot_includes;
+    ctx->allow_absolute_includes = params->allow_absolute_includes;
     ctx->system_include_paths = params->system_include_paths;
     ctx->system_include_path_count = params->system_include_path_count;
     ctx->local_include_paths = params->local_include_paths;
@@ -785,6 +787,37 @@ static void handle_pp_include(Context *ctx)
     if (bogus) {
         fail(ctx, "Invalid #include directive");
         return;
+    }
+
+    ptr = filename;
+    while (SDL_TRUE) {
+        const char ch = *(ptr++);
+        if (ch == '\0') {
+            break;
+        } else if (ch == '\\') {
+            fail(ctx, "'\\' characters in #include directives are forbidden (use '/' instead)");  /* sorry, Windows. */
+            return;
+        }
+    }
+
+    if (!ctx->allow_absolute_includes) {
+        if (*filename == '/') {
+            fail(ctx, "Absolute paths in #include directives are forbidden");
+            return;
+        }
+    }
+
+    if (!ctx->allow_dotdot_includes) {
+        ptr = filename;
+        while (SDL_TRUE) {
+            const char ch = *(ptr++);
+            if (ch == '\0') {
+                break;
+            } else if ((ch == '/') && ((ptr[0] == '.') && (ptr[1] == '.') && ((ptr[2] == '/') || (ptr[2] == '\0')))) {
+                fail(ctx, "'..' paths in #include directives are forbidden");
+                return;
+            }
+        }
     }
 
     /* We _should_ have provided internal implementations in this case. */
