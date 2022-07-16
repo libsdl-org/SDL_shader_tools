@@ -239,9 +239,11 @@ static void print_ast(FILE *io, const SDL_bool substmt, const void *_ast)
             DO_INDENT;
             fprintf(io, "for (");
             if (details->initializer) {
-                print_ast(io, SDL_TRUE, &details->initializer->ast);
+                print_ast(io, SDL_TRUE, details->initializer);
+            } else {
+                fprintf(io, ";");
             }
-            fprintf(io, "; ");
+            fprintf(io, " ");
 
             if (details->condition) {
                 print_ast(io, SDL_TRUE, details->condition);

@@ -419,41 +419,7 @@ static void delete_while_statement(Context *ctx, SDL_SHADER_AstWhileStatement *w
     Free(ctx, wstmt);
 }
 
-/* !!! FIXME: this all sort of sucks, rethink for loops. */
-static SDL_SHADER_AstForInitializer *new_for_initializer_expression(Context *ctx, SDL_SHADER_AstExpression *expr)
-{
-    SDL_SHADER_AstForInitializer *retval = (SDL_SHADER_AstForInitializer *) Malloc(ctx, sizeof (SDL_SHADER_AstForInitializer));
-    if (retval) { retval->expr = expr; }
-    return retval;
-}
-
-static SDL_SHADER_AstForInitializer *new_for_initializer_var_declaration(Context *ctx, SDL_SHADER_AstVarDeclaration *vardecl)
-{
-    SDL_SHADER_AstForInitializer *retval = (SDL_SHADER_AstForInitializer *) Malloc(ctx, sizeof (SDL_SHADER_AstForInitializer));
-    if (retval) { retval->vardecl = vardecl; }
-    return retval;
-}
-
-static SDL_SHADER_AstForInitializer *new_for_initializer_assignment(Context *ctx, SDL_SHADER_AstAssignStatement *assignment)
-{
-    SDL_SHADER_AstForInitializer *retval = (SDL_SHADER_AstForInitializer *) Malloc(ctx, sizeof (SDL_SHADER_AstForInitializer));
-    if (retval) { retval->assignment = assignment; }
-    return retval;
-}
-
-static void delete_for_initializer(Context *ctx, SDL_SHADER_AstForInitializer *forinitializer)
-{
-    if (forinitializer) {
-        switch (forinitializer->ast->type) {
-            case SDL_SHADER_AST_STATEMENT_ASSIGNMENT: delete_assignment_statement(ctx, forinitializer->assignment); break;
-            case SDL_SHADER_AST_VARIABLE_DECLARATION: delete_var_declaration(ctx, forinitializer->vardecl); break;
-            default: delete_expression(ctx, forinitializer->expr); break;  /* everything else is (hopefully!) an expression */
-        }
-        Free(ctx, forinitializer);
-    }
-}
-
-static SDL_SHADER_AstForDetails *new_for_details(Context *ctx, SDL_SHADER_AstForInitializer *initializer, SDL_SHADER_AstExpression *condition, SDL_SHADER_AstExpression *step)
+static SDL_SHADER_AstForDetails *new_for_details(Context *ctx, SDL_SHADER_AstStatement *initializer, SDL_SHADER_AstExpression *condition, SDL_SHADER_AstStatement *step)
 {
     SDL_SHADER_AstForDetails *retval = (SDL_SHADER_AstForDetails *) Malloc(ctx, sizeof (SDL_SHADER_AstForDetails));
     if (retval) {
@@ -467,9 +433,9 @@ static SDL_SHADER_AstForDetails *new_for_details(Context *ctx, SDL_SHADER_AstFor
 static void delete_for_details(Context *ctx, SDL_SHADER_AstForDetails *fordetails)
 {
     if (fordetails) {
-        delete_for_initializer(ctx, fordetails->initializer);
+        delete_statement(ctx, fordetails->initializer);
         delete_expression(ctx, fordetails->condition);
-        delete_expression(ctx, fordetails->step);
+        delete_statement(ctx, fordetails->step);
         Free(ctx, fordetails);
     }
 }

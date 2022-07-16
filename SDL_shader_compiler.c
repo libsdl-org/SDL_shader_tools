@@ -1209,7 +1209,7 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
 
         case SDL_SHADER_AST_STATEMENT_FOR:
             scope = push_scope(ctx, ast);  /* push a scope here for possible `for (var int i = 0; ...` syntax */
-            semantic_analysis_treewalk(ctx, ast->forstmt.details->initializer->ast);
+            semantic_analysis_treewalk(ctx, ast->forstmt.details->initializer);
             semantic_analysis_treewalk(ctx, ast->forstmt.details->condition);
             semantic_analysis_treewalk(ctx, ast->forstmt.details->step);
             semantic_analysis_treewalk(ctx, ast->forstmt.code);

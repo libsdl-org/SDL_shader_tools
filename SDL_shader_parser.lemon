@@ -207,17 +207,23 @@ function_call_statement(A) ::= IDENTIFIER(B) arguments(C). { A = new_fncall_stat
 
 %type for_details { SDL_SHADER_AstForDetails * }
 %destructor for_details { delete_for_details(ctx, $$); }
-for_details(A) ::= for_initializer(B) SEMICOLON expression(C) SEMICOLON expression(D). { A = new_for_details(ctx, B, C, D); }
-for_details(A) ::= for_initializer(B) SEMICOLON expression(C) SEMICOLON. { A = new_for_details(ctx, B, C, NULL); }
-for_details(A) ::= for_initializer(B) SEMICOLON SEMICOLON expression(C). { A = new_for_details(ctx, B, NULL, C); }
-for_details(A) ::= for_initializer(B) SEMICOLON SEMICOLON. { A = new_for_details(ctx, B, NULL, NULL); }
+for_details(A) ::= for_initializer(B) SEMICOLON expression(C) SEMICOLON for_step(D). { A = new_for_details(ctx, B, C, D); }
+for_details(A) ::= for_initializer(B) SEMICOLON SEMICOLON for_step(C). { A = new_for_details(ctx, B, NULL, C); }
 
-%type for_initializer { SDL_SHADER_AstForInitializer * }  // this is a union.
-%destructor for_initializer { delete_for_initializer(ctx, $$); }
-for_initializer(A) ::= expression(B). { A = new_for_initializer_expression(ctx, B); }
-for_initializer(A) ::= var_declaration(B). { A = new_for_initializer_var_declaration(ctx, B); }
-for_initializer(A) ::= assignment_statement(B). { A = new_for_initializer_assignment(ctx, (SDL_SHADER_AstAssignStatement *) B); }
+%type for_initializer { SDL_SHADER_AstStatement * }
+%destructor for_initializer { delete_statement(ctx, $$); }
+for_initializer(A) ::= var_declaration(B). { A = new_var_declaration_statement(ctx, B); }
+for_initializer(A) ::= assignment_statement(B). { A = B; }
+for_initializer(A) ::= compound_assignment_statement(B). { A = B; }
+for_initializer(A) ::= increment_statement(B). { A = B; }
 for_initializer(A) ::= . { A = NULL; }
+
+%type for_step { SDL_SHADER_AstStatement * }
+%destructor for_step { delete_statement(ctx, $$); }
+for_step(A) ::= assignment_statement(B). { A = B; }
+for_step(A) ::= compound_assignment_statement(B). { A = B; }
+for_step(A) ::= increment_statement(B). { A = B; }
+for_step(A) ::= . { A = NULL; }
 
 %type switch_case_list { SDL_SHADER_AstSwitchCases * }
 %destructor switch_case_list { delete_switch_cases(ctx, $$); }

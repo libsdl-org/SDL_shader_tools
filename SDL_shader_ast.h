@@ -288,19 +288,17 @@ typedef SDL_SHADER_AstSimpleStatement SDL_SHADER_AstDiscardStatement;
 typedef struct SDL_SHADER_AstBreakStatement
 {
     SDL_SHADER_AstNodeInfo ast;
-    struct SDL_SHADER_AstStatement *next;
-    struct SDL_SHADER_AstStatement *parent;  /* NULL until semantic analysis. */
+    SDL_SHADER_AstStatement *next;
+    SDL_SHADER_AstStatement *parent;  /* NULL until semantic analysis. */
 } SDL_SHADER_AstBreakStatement;
 
 typedef SDL_SHADER_AstBreakStatement SDL_SHADER_AstContinueStatement;
 
-typedef union SDL_SHADER_AstForInitializer SDL_SHADER_AstForInitializer;
-
 typedef struct SDL_SHADER_AstForDetails
 {
-    SDL_SHADER_AstForInitializer *initializer;
+    SDL_SHADER_AstStatement *initializer;
     SDL_SHADER_AstExpression *condition;
-    SDL_SHADER_AstExpression *step;
+    SDL_SHADER_AstStatement *step;
 } SDL_SHADER_AstForDetails;
 
 typedef struct SDL_SHADER_AstForStatement
@@ -534,7 +532,6 @@ typedef union SDL_SHADER_AstNode
     SDL_SHADER_AstIncrementStatement incrementstmt;
     SDL_SHADER_AstFunctionCallStatement fncallstmt;
     SDL_SHADER_AstStatementBlock stmtblock;
-    SDL_SHADER_AstForInitializer forinit;
     SDL_SHADER_AstFunctionParam fnparam;
     SDL_SHADER_AstFunction fn;
     SDL_SHADER_AstTranslationUnit unit;
