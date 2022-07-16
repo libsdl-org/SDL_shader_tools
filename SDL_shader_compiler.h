@@ -67,7 +67,7 @@ typedef struct SDL_SHADER_Error
 /* Preprocessor interface... */
 
 /*
- * Structure used to pass predefined macros. Maps to D3DXMACRO.
+ * Structure used to pass predefined macros.
  *  You can have macro arguments: set identifier to "a(b, c)" or whatever.
  */
 typedef struct SDL_SHADER_PreprocessorDefine
@@ -77,7 +77,7 @@ typedef struct SDL_SHADER_PreprocessorDefine
 } SDL_SHADER_PreprocessorDefine;
 
 /*
- * Used with the SDL_SHADER_includeOpen callback. Maps to D3DXINCLUDE_TYPE.
+ * Used with the SDL_SHADER_includeOpen callback.
  */
 typedef enum SDL_SHADER_IncludeType
 {
@@ -132,7 +132,10 @@ typedef struct SDL_SHADER_PreprocessData
  *
  * (inctype) specifies the type of header we wish to include.
  * (fname) specifies the name of the file specified on the #include line.
- * (parent) is a string of the entire source file containing the include, in
+ * (parent_fname) is a string of the filename containing the include. This
+ *  might be NULL, or nonsense, depending on how files have been included
+ *  and what your callback accepts.
+ * (parent_data) is a string of the entire source file containing the include, in
  *  its original, not-yet-preprocessed state. Note that this is just the
  *  contents of the specific file, not all source code that the preprocessor
  *  has seen through other includes, etc.
@@ -151,12 +154,17 @@ typedef struct SDL_SHADER_PreprocessData
  * (m),(f), and (d) are the allocator details that the application passed in.
  *  If these were NULL, they will be replaced them with internal allocators.
  *
- * The callback returns SDL_FALSE on error, SDL_TRUE on success.
+ * The callback returns the file opened (so that relative paths will be
+ * correct for future includes), or NULL on error. If the file opened was
+ * unchanged, it's legal to return `fname` here. If the returned string
+ * is a different pointer than `fname`, it will be free'd later with the
+ * `f(str, d);`.
  *
  * If you supply an includeOpen callback, you must supply includeClose, too.
  */
-typedef SDL_bool (SDLCALL *SDL_SHADER_IncludeOpen)(SDL_SHADER_IncludeType inctype,
-                            const char *fname, const char *parent,
+typedef const char * (SDLCALL *SDL_SHADER_IncludeOpen)(SDL_SHADER_IncludeType inctype,
+                            const char *fname, const char *parent_fname,
+                            const char *parent_data,
                             const char **outdata, size_t *outbytes,
                             const char **include_paths,
                             size_t include_path_count,

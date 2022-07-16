@@ -1,0 +1,4 @@
+// this isn't really a test, this is to make it clear we picked up the
+// wrong file if include-file-from-subdir-that-includes-from-current-directory
+// goes wrong.
+WRONG

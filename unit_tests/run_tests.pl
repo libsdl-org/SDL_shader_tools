@@ -132,9 +132,9 @@ foreach (@modules) {
             my $isfail = 0;
             my $origfname = $fname;
             $fname = readdir(TESTDIR);  # set for next iteration.
-            next if (-d $origfname);
-            next if ($origfname =~ /\.correct\Z/);
             my $fullfname = "$d/$origfname";
+            next if (-d $fullfname);
+            next if ($fullfname =~ /\.correct\Z/);
             my ($rc, $reason) = &$fn($module, $fullfname);
             if ($rc == 1) {
                 $result = 'PASS';

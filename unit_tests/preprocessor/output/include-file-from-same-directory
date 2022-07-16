@@ -1,0 +1,2 @@
+// this should work even without an include path for this directory.
+#include "basic-sanity"

@@ -116,12 +116,10 @@ void SDL_SHADER_print_debug_token(const char *subsystem, const char *token,
 #endif
 
 
-SDL_bool SDL_SHADER_internal_include_open(SDL_SHADER_IncludeType inctype,
-                                     const char *fname, const char *parent,
-                                     const char **outdata, size_t *outbytes,
-                                     const char **include_paths, size_t include_path_count,
-                                     char *failstr, size_t failstrlen,
-                                     SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d)
+static const char *attempt_include_open(const char *path, const char *fname,
+                                        const char **outdata, size_t *outbytes,
+                                        char *failstr, size_t failstrlen,
+                                        SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d)
 {
     #if defined(__WINDOWS__) || defined(__OS2__)
     const char dirsep = '\\';
@@ -129,50 +127,135 @@ SDL_bool SDL_SHADER_internal_include_open(SDL_SHADER_IncludeType inctype,
     const char dirsep = '/';
     #endif
 
+    char *ptr;
+    Sint64 flen;
+    SDL_RWops *io = NULL;
+    const size_t len = SDL_strlen(path) + SDL_strlen(fname) + 3;
+    char *fullpath = (char *) m(len, d);
+    if (fullpath == NULL) {
+        SDL_snprintf(failstr, failstrlen, "Out of memory");
+        return SDL_FALSE;
+    }
+
+    *failstr = '\0';
+
+    SDL_snprintf(fullpath, len, "%s/%s", path, fname);
+
+    ptr = fullpath;
+
+    #if defined(__WINDOWS__) || defined(__OS2__)
+    while (SDL_TRUE) {
+        const char ch = *ptr;
+        if (ch == '\0') {
+            break;
+        } else if (ch == '/') {
+            *ptr = dirsep;
+        }
+        ptr++;
+    }
+    #endif
+
+    io = SDL_RWFromFile(fullpath, "rb");
+
+    if (!io) {
+        f(fullpath, d);
+        return NULL;  /* !!! FIXME: fill in failstr if permission denied, etc. Leave alone for not found. */
+    }
+
+    flen = SDL_RWsize(io);
+    if (flen < 0) {
+        SDL_snprintf(failstr, failstrlen, "Failed to get file length of '%s': %s", fullpath, SDL_GetError());
+        SDL_RWclose(io);
+        f(fullpath, d);
+        return NULL;
+    }
+
+    *outdata = m((size_t) flen, d);
+    if (!*outdata) {
+        SDL_snprintf(failstr, failstrlen, "Out of memory");
+        SDL_RWclose(io);
+        f(fullpath, d);
+        return NULL;
+    }
+
+    if (SDL_RWread(io, (char *) *outdata, (size_t) flen, 1) != 1) {
+        SDL_snprintf(failstr, failstrlen, "Failed to read '%s': %s", fullpath, SDL_GetError());
+        SDL_RWclose(io);
+        f((void *) *outdata, d);
+        *outdata = NULL;
+        f(fullpath, d);
+        return NULL;
+    }
+
+    SDL_RWclose(io);
+
+    *outbytes = (size_t) flen;
+    return fullpath;
+}
+
+static const char *internal_include_open(SDL_SHADER_IncludeType inctype,
+                                         const char *fname, const char *parent_fname,
+                                         const char *parent_data,
+                                         const char **outdata, size_t *outbytes,
+                                         const char **include_paths, size_t include_path_count,
+                                         char *failstr, size_t failstrlen,
+                                         SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d)
+{
+    const char *rc = NULL;
     size_t i;
-    for (i = 0; i < include_path_count; i++)
-    {
-        SDL_RWops *io = NULL;
-        char stackpath[128];
-        const char *path = include_paths[i];
-        const size_t len = SDL_strlen(path) + SDL_strlen(fname) + 2;
-        char *fullpath = (len < sizeof (stackpath)) ? stackpath : (char *) m(len, d);
-        if (fullpath == NULL) {
+
+    if (parent_fname) {
+        const size_t slen = SDL_strlen(parent_fname) + 1;
+        char *ptr;
+        char *ptr2;
+        char *parent_dir = m(slen, d);
+        if (!parent_dir) {
+            SDL_snprintf(failstr, failstrlen, "Out of memory");
             return SDL_FALSE;
         }
-
-        SDL_snprintf(fullpath, len, "%s%c%s", path, dirsep, fname);
-
-        io = SDL_RWFromFile(fullpath, "rb");
-        if (fullpath != stackpath) {
-            f(fullpath, d);
+        SDL_snprintf(parent_dir, slen, "%s", parent_fname);
+        ptr = SDL_strrchr(parent_dir, '/');
+        ptr2 = SDL_strrchr(ptr ? (ptr + 1) : parent_dir, '\\');
+        if (ptr2) {
+            ptr = ptr2;
         }
 
-        if (!io) {
-            continue;  /* !!! FIXME: continue if not found, stop if permission denied, etc */
-        }
-
-        *outdata = (const char *) SDL_LoadFile_RW(io, outbytes, 1);
-
-        if (!*outdata) {
-            SDL_snprintf(failstr, failstrlen, "Failed to read '%s': %s", fname, SDL_GetError());
-            return SDL_FALSE;
-        }
-
-        if (*outdata) {
-            return SDL_TRUE;
+        if (!ptr) {
+            f(parent_dir, d);
+        } else {
+            if (ptr == parent_dir) {
+                ptr++;  /* if this was going to turn "/absolute_path" into "", make it "/" instead. */
+            }
+            *ptr = '\0';  /* will open "parent_dir/fname" */
+            rc = attempt_include_open(parent_dir, fname, outdata, outbytes, failstr, failstrlen, m, f, d);
+            f(parent_dir, d);
+            if (rc != NULL) {
+                return rc;
+            } else if (*failstr != '\0') {
+                return NULL;
+            }
         }
     }
 
-    SDL_snprintf(failstr, failstrlen, "%s: no such file or directory", fname);
-    return SDL_FALSE;
+    for (i = 0; i < include_path_count; i++) {
+        rc = attempt_include_open(include_paths[i], fname, outdata, outbytes, failstr, failstrlen, m, f, d);
+        if (rc != NULL) {
+            return rc;
+        } else if (*failstr != '\0') {
+            return NULL;
+        }
+    }
+
+    if (*failstr == '\0') {
+        SDL_snprintf(failstr, failstrlen, "%s: no such file or directory", fname);
+    }
+
+    return NULL;
 }
 
-void SDL_SHADER_internal_include_close(const char *data, SDL_SHADER_Malloc m,
-                                       SDL_SHADER_Free f, void *d)
+static void internal_include_close(const char *data, SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d)
 {
-    /* !!! FIXME: SDL_LoadFile uses SDL_malloc. Roll our own and use m() */
-    SDL_free((void *) data);
+    f((void *) data, d);
 }
 
 
@@ -512,8 +595,8 @@ SDL_bool preprocessor_start(Context *ctx, const SDL_SHADER_CompilerParams *param
     ctx->system_include_path_count = params->system_include_path_count;
     ctx->local_include_paths = params->local_include_paths;
     ctx->local_include_path_count = params->local_include_path_count;
-    ctx->open_callback = params->include_open ? params->include_open : SDL_SHADER_internal_include_open;
-    ctx->close_callback = params->include_close ? params->include_close : SDL_SHADER_internal_include_close;
+    ctx->open_callback = params->include_open ? params->include_open : internal_include_open;
+    ctx->close_callback = params->include_close ? params->include_close : internal_include_close;
     ctx->asm_comments = asm_comments;
 
     ctx->filename_cache = stringcache_create(MallocContextBridge, FreeContextBridge, ctx);
@@ -657,9 +740,11 @@ static void handle_pp_include(Context *ctx)
     const char *newdata = NULL;
     size_t newbytes = 0;
     char *filename = NULL;
+    const char *updated_filename = NULL;
     int bogus = 0;
     const char **include_paths = NULL;
     size_t include_path_count = 0;
+    char *ptr = NULL;
 
     if (token == TOKEN_STRING_LITERAL) {
         incltype = SDL_SHADER_INCLUDETYPE_LOCAL;
@@ -691,7 +776,7 @@ static void handle_pp_include(Context *ctx)
         size_t len;
         state->token++;  /* skip '<' or '\"'... */
         len = (size_t) (state->source - state->token);
-        filename = (char *) alloca(len);
+        filename = (char *) alloca(len);  /* !!! FIXME: maybe don't alloca this. */
         SDL_memcpy(filename, state->token, len-1);
         filename[len-1] = '\0';
         bogus = !require_newline(state);
@@ -707,17 +792,22 @@ static void handle_pp_include(Context *ctx)
     SDL_assert(ctx->close_callback != NULL);
 
     failstr[0] = '\0';
-    if (!ctx->open_callback(incltype, filename, state->source_base,
-                            &newdata, &newbytes, include_paths, include_path_count,
-                            failstr, sizeof (failstr),
-                            ctx->malloc, ctx->free, ctx->malloc_data)) {
+    updated_filename = ctx->open_callback(incltype, filename, state->filename, state->source_base,
+                                          &newdata, &newbytes, include_paths, include_path_count,
+                                          failstr, sizeof (failstr), ctx->malloc, ctx->free, ctx->malloc_data);
+
+    if (!updated_filename) {
         fail(ctx, failstr[0] ? failstr : "Include callback failed");
         return;
     }
 
-    if (!push_source(ctx, filename, newdata, newbytes, 1, ctx->close_callback)) {
+    if (!push_source(ctx, updated_filename, newdata, newbytes, 1, ctx->close_callback)) {
         SDL_assert(ctx->out_of_memory);
         ctx->close_callback(newdata, ctx->malloc, ctx->free, ctx->malloc_data);
+    }
+
+    if (updated_filename != filename) {
+        ctx->free((void *) updated_filename, ctx->malloc_data);
     }
 }
 
