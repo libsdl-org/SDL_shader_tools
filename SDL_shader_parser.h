@@ -224,17 +224,17 @@ typedef union {
 #define ParseSDLSLCTX_FETCH
 #define ParseSDLSLCTX_STORE
 #define YYNSTATE             152
-#define YYNRULE              121
-#define YYNRULE_WITH_ACTION  121
+#define YYNRULE              122
+#define YYNRULE_WITH_ACTION  122
 #define YYNTOKEN             68
 #define YY_MAX_SHIFT         151
-#define YY_MIN_SHIFTREDUCE   232
-#define YY_MAX_SHIFTREDUCE   352
-#define YY_ERROR_ACTION      353
-#define YY_ACCEPT_ACTION     354
-#define YY_NO_ACTION         355
-#define YY_MIN_REDUCE        356
-#define YY_MAX_REDUCE        476
+#define YY_MIN_SHIFTREDUCE   233
+#define YY_MAX_SHIFTREDUCE   354
+#define YY_ERROR_ACTION      355
+#define YY_ACCEPT_ACTION     356
+#define YY_NO_ACTION         357
+#define YY_MIN_REDUCE        358
+#define YY_MAX_REDUCE        479
 /************* End control #defines *******************************************/
 #define YY_NLOOKAHEAD ((int)(sizeof(yy_lookahead)/sizeof(yy_lookahead[0])))
 
@@ -303,100 +303,100 @@ typedef union {
 *********** Begin parsing tables **********************************************/
 #define YY_ACTTAB_COUNT (936)
 static const YYACTIONTYPE yy_action[] = {
- /*     0 */   107,  377,  280,  283,  284,  285,  286,  287,  288,  289,
- /*    10 */   290,  291,  292,   34,   35,   36,   37,   38,   39,   41,
+ /*     0 */   107,  379,  281,  284,  285,  286,  287,  288,  289,  290,
+ /*    10 */   291,  292,  293,   34,   35,   36,   37,   38,   39,   41,
  /*    20 */    40,   45,   43,   44,   42,   48,   46,   52,   50,   58,
- /*    30 */    56,   54,  356,   53,   51,  296,  295,  141,   32,   47,
- /*    40 */    49,   23,   24,  358,  359,  360,   55,   60,  147,   25,
- /*    50 */    67,  322,    1,    1,  257,  261,  148,  433,  139,  138,
+ /*    30 */    56,   54,  358,   53,   51,  297,  296,  141,   32,   47,
+ /*    40 */    49,   23,   24,  360,  361,  362,   55,   60,  147,   25,
+ /*    50 */    67,  324,    1,    1,  258,  262,  148,  436,  139,  138,
  /*    60 */   137,    9,  132,  131,  129,  127,   21,   71,   53,   51,
- /*    70 */   120,  323,  324,  325,   47,   49,   23,   24,  151,  151,
- /*    80 */   249,   55,   62,   62,   73,   67,  322,  248,    1,  258,
- /*    90 */   261,   83,   87,  139,  138,  137,    9,  132,  131,  129,
- /*   100 */   127,   21,   84,   53,   51,  120,  323,  324,  325,   47,
- /*   110 */    49,   23,   24,  113,  250,   85,   55,  114,   64,  364,
- /*   120 */    67,  322,  148,    1,  115,  261,  149,   86,  139,  138,
+ /*    70 */   121,  325,  326,  327,   47,   49,   23,   24,  151,  151,
+ /*    80 */   250,   55,   62,   62,   73,   67,  324,  249,    1,  259,
+ /*    90 */   262,   83,   87,  139,  138,  137,    9,  132,  131,  129,
+ /*   100 */   127,   21,   84,   53,   51,  121,  325,  326,  327,   47,
+ /*   110 */    49,   23,   24,  114,  251,   85,   55,  115,   64,  366,
+ /*   120 */    67,  324,  148,    1,  116,  262,  149,   86,  139,  138,
  /*   130 */   137,    9,  132,  131,  129,  127,   21,  141,   32,   72,
- /*   140 */   120,  323,  324,  325,   34,   35,   36,   37,   38,   39,
+ /*   140 */   121,  325,  326,  327,   34,   35,   36,   37,   38,   39,
  /*   150 */    41,   40,   45,   43,   44,   42,   48,   46,   52,   50,
  /*   160 */    58,   56,   54,   52,   50,   58,   56,   54,  141,   32,
- /*   170 */    27,  281,  117,  141,   32,  354,   13,  357,  359,  360,
+ /*   170 */    27,  282,  118,  141,   32,  356,   13,  359,  361,  362,
  /*   180 */    12,   74,   34,   35,   36,   37,   38,   39,   41,   40,
  /*   190 */    45,   43,   44,   42,   48,   46,   52,   50,   58,   56,
  /*   200 */    54,   75,   76,   77,   78,   79,  141,   32,   34,   35,
  /*   210 */    36,   37,   38,   39,   41,   40,   45,   43,   44,   42,
- /*   220 */    48,   46,   52,   50,   58,   56,   54,   66,   19,   57,
- /*   230 */    88,  402,  141,   32,    2,  383,  136,   80,   90,  125,
- /*   240 */   124,  123,  122,   26,  273,  434,   34,   35,   36,   37,
+ /*   220 */    48,   46,   52,   50,   58,   56,   54,   66,   19,  423,
+ /*   230 */    88,  404,  141,   32,    2,  385,  136,  423,   80,  125,
+ /*   240 */   124,  123,  122,   26,  274,  437,   34,   35,   36,   37,
  /*   250 */    38,   39,   41,   40,   45,   43,   44,   42,   48,   46,
- /*   260 */    52,   50,   58,   56,   54,   91,   92,  252,   93,  318,
+ /*   260 */    52,   50,   58,   56,   54,   90,   91,  253,   92,   93,
  /*   270 */   141,   32,   34,   35,   36,   37,   38,   39,   41,   40,
  /*   280 */    45,   43,   44,   42,   48,   46,   52,   50,   58,   56,
- /*   290 */    54,   94,   68,  147,   95,    4,  141,   32,  370,  244,
+ /*   290 */    54,   94,   68,  147,   95,    4,  141,   32,  372,  245,
  /*   300 */   126,   34,   35,   36,   37,   38,   39,   41,   40,   45,
  /*   310 */    43,   44,   42,   48,   46,   52,   50,   58,   56,   54,
  /*   320 */    96,   97,  143,   98,   99,  141,   32,  100,  102,    6,
  /*   330 */    34,   35,   36,   37,   38,   39,   41,   40,   45,   43,
- /*   340 */    44,   42,   48,   46,   52,   50,   58,   56,   54,  111,
- /*   350 */   101,  112,  104,  105,  141,   32,  103,  106,    8,   34,
+ /*   340 */    44,   42,   48,   46,   52,   50,   58,   56,   54,  112,
+ /*   350 */   101,  113,  104,  105,  141,   32,  103,  106,    8,   34,
  /*   360 */    35,   36,   37,   38,   39,   41,   40,   45,   43,   44,
- /*   370 */    42,   48,   46,   52,   50,   58,   56,   54,  110,   81,
- /*   380 */   109,   89,  108,  141,   32,   82,  142,  133,   34,   35,
+ /*   370 */    42,   48,   46,   52,   50,   58,   56,   54,  111,   81,
+ /*   380 */   110,   89,  109,  141,   32,   82,  142,  133,   34,   35,
  /*   390 */    36,   37,   38,   39,   41,   40,   45,   43,   44,   42,
- /*   400 */    48,   46,   52,   50,   58,   56,   54,  140,  365,  147,
- /*   410 */   380,  114,  141,   32,  351,   34,   35,   36,   37,   38,
+ /*   400 */    48,   46,   52,   50,   58,   56,   54,  140,  367,  147,
+ /*   410 */   382,  115,  141,   32,  353,   34,   35,   36,   37,   38,
  /*   420 */    39,   41,   40,   45,   43,   44,   42,   48,   46,   52,
- /*   430 */    50,   58,   56,   54,  378,   14,  121,    1,  371,  141,
+ /*   430 */    50,   58,   56,   54,  380,   14,  108,    1,  373,  141,
  /*   440 */    32,   34,   35,   36,   37,   38,   39,   41,   40,   45,
  /*   450 */    43,   44,   42,   48,   46,   52,   50,   58,   56,   54,
- /*   460 */    15,   17,  451,   65,   33,  141,   32,  251,    3,  326,
+ /*   460 */    15,   17,  454,   65,   33,  141,   32,  252,    3,  328,
  /*   470 */    34,   35,   36,   37,   38,   39,   41,   40,   45,   43,
  /*   480 */    44,   42,   48,   46,   52,   50,   58,   56,   54,   20,
- /*   490 */    22,  118,  119,  421,  141,   32,   63,   34,   35,   36,
+ /*   490 */    22,  119,  120,  278,  141,   32,   63,   34,   35,   36,
  /*   500 */    37,   38,   39,   41,   40,   45,   43,   44,   42,   48,
- /*   510 */    46,   52,   50,   58,   56,   54,  277,  276,  275,  274,
- /*   520 */    16,  141,   32,   36,   37,   38,   39,   41,   40,   45,
+ /*   510 */    46,   52,   50,   58,   56,   54,  277,  276,  275,   16,
+ /*   520 */    28,  141,   32,   36,   37,   38,   39,   41,   40,   45,
  /*   530 */    43,   44,   42,   48,   46,   52,   50,   58,   56,   54,
- /*   540 */    28,    5,   29,  266,    7,  141,   32,   37,   38,   39,
+ /*   540 */     5,   29,  267,    7,   10,  141,   32,   37,   38,   39,
  /*   550 */    41,   40,   45,   43,   44,   42,   48,   46,   52,   50,
- /*   560 */    58,   56,   54,   10,   30,   31,  134,  265,  141,   32,
+ /*   560 */    58,   56,   54,   30,   31,  134,  266,  265,  141,   32,
  /*   570 */    38,   39,   41,   40,   45,   43,   44,   42,   48,   46,
- /*   580 */    52,   50,   58,   56,   54,  264,  263,  262,   69,  352,
+ /*   580 */    52,   50,   58,   56,   54,  264,  263,   69,  354,  246,
  /*   590 */   141,   32,   39,   41,   40,   45,   43,   44,   42,   48,
- /*   600 */    46,   52,   50,   58,   56,   54,  245,  243,  238,  144,
- /*   610 */   145,  141,   32,   41,   40,   45,   43,   44,   42,   48,
- /*   620 */    46,   52,   50,   58,   56,   54,  271,   53,   51,  146,
- /*   630 */    61,  141,   32,   47,   49,   23,   24,  239,   18,   27,
- /*   640 */    55,  117,  150,  355,   70,  322,   45,   43,   44,   42,
- /*   650 */    48,   46,   52,   50,   58,   56,   54,  355,  355,  355,
- /*   660 */   355,  355,  141,   32,  120,  323,  324,  325,   53,   51,
- /*   670 */   355,  355,  355,   59,   47,   49,   23,   24,  147,  355,
- /*   680 */   355,   55,   53,   51,  242,   70,  322,  355,   47,   49,
- /*   690 */   355,  355,  355,  355,  355,   55,  317,   53,   51,   70,
- /*   700 */   322,  355,  355,   47,   49,  355,  323,  324,  325,  355,
- /*   710 */    55,   53,   51,  355,   70,  322,  355,   47,   49,   11,
- /*   720 */   323,  324,  325,  355,   55,   53,   51,  355,   70,  322,
- /*   730 */   355,   47,   49,  272,  355,  323,  324,  325,   55,  355,
- /*   740 */   355,  355,   70,  322,  355,   19,  355,  355,  402,  323,
- /*   750 */   324,  325,  384,  136,  355,  355,  125,  124,  123,  122,
- /*   760 */    26,  355,  355,  323,  324,  325,   19,  355,  355,  402,
- /*   770 */   355,  355,  355,  437,  136,  355,  355,  125,  124,  123,
- /*   780 */   122,   26,  355,   19,  355,  355,  402,  355,  355,  355,
- /*   790 */   435,  136,  355,  355,  125,  124,  123,  122,   26,   19,
- /*   800 */   355,  355,  402,  355,  355,  355,  394,  136,  355,  355,
- /*   810 */   125,  124,  123,  122,   26,   19,  355,  355,  402,  355,
- /*   820 */   355,  355,  128,  136,  355,  355,  125,  124,  123,  122,
- /*   830 */    26,  355,  355,   19,  355,  355,  402,  355,  355,  355,
- /*   840 */   392,  136,  355,  355,  125,  124,  123,  122,   26,  355,
- /*   850 */    19,  355,  355,  402,  355,  355,  355,  391,  136,  355,
- /*   860 */   355,  125,  124,  123,  122,   26,  355,   19,  355,  355,
- /*   870 */   402,  355,  355,  355,  135,  136,  355,  355,  125,  124,
+ /*   600 */    46,   52,   50,   58,   56,   54,  244,  239,  144,  145,
+ /*   610 */   240,  141,   32,   41,   40,   45,   43,   44,   42,   48,
+ /*   620 */    46,   52,   50,   58,   56,   54,  272,   53,   51,  146,
+ /*   630 */    57,  141,   32,   47,   49,   23,   24,   61,   18,   27,
+ /*   640 */    55,  118,  150,  357,   70,  324,   45,   43,   44,   42,
+ /*   650 */    48,   46,   52,   50,   58,   56,   54,  357,  357,  357,
+ /*   660 */   357,  357,  141,   32,  121,  325,  326,  327,   53,   51,
+ /*   670 */   320,  357,  357,   59,   47,   49,   23,   24,  147,  357,
+ /*   680 */   357,   55,   53,   51,  243,   67,  324,  357,   47,   49,
+ /*   690 */   357,  357,  357,  357,  357,   55,  319,   53,   51,   70,
+ /*   700 */   324,  357,  357,   47,   49,  357,  325,  326,  327,  357,
+ /*   710 */    55,   53,   51,  357,   70,  324,  357,   47,   49,   11,
+ /*   720 */   325,  326,  327,  357,   55,   53,   51,  357,   70,  324,
+ /*   730 */   357,   47,   49,  273,  357,  325,  326,  327,   55,  357,
+ /*   740 */   357,  357,   70,  324,  357,   19,  357,  357,  404,  325,
+ /*   750 */   326,  327,  386,  136,  357,  357,  125,  124,  123,  122,
+ /*   760 */    26,  357,  357,  325,  326,  327,   19,  357,  357,  404,
+ /*   770 */   357,  357,  357,  440,  136,  357,  357,  125,  124,  123,
+ /*   780 */   122,   26,  357,   19,  357,  357,  404,  357,  357,  357,
+ /*   790 */   438,  136,  357,  357,  125,  124,  123,  122,   26,   19,
+ /*   800 */   357,  357,  404,  357,  357,  357,  396,  136,  357,  357,
+ /*   810 */   125,  124,  123,  122,   26,   19,  357,  357,  404,  357,
+ /*   820 */   357,  357,  128,  136,  357,  357,  125,  124,  123,  122,
+ /*   830 */    26,  357,  357,   19,  357,  357,  404,  357,  357,  357,
+ /*   840 */   394,  136,  357,  357,  125,  124,  123,  122,   26,  357,
+ /*   850 */    19,  357,  357,  404,  357,  357,  357,  393,  136,  357,
+ /*   860 */   357,  125,  124,  123,  122,   26,  357,   19,  357,  357,
+ /*   870 */   404,  357,  357,  357,  135,  136,  357,  357,  125,  124,
  /*   880 */   123,  122,   26,   48,   46,   52,   50,   58,   56,   54,
- /*   890 */    19,  355,  355,  355,  355,  141,   32,  355,  424,  130,
- /*   900 */    19,  425,  426,  427,  355,   26,  355,  355,  116,  355,
- /*   910 */    19,  429,  430,  431,  355,   26,  355,  355,  355,  423,
- /*   920 */   355,  429,  430,  431,  355,   26,   58,   56,   54,  422,
- /*   930 */   355,  355,  355,  355,  141,   32,
+ /*   890 */    19,  357,  357,  357,  357,  141,   32,  357,  426,  130,
+ /*   900 */    19,  427,  428,  429,  357,   26,  357,  357,  117,  357,
+ /*   910 */    19,  431,  432,  433,  434,   26,  357,  357,  357,  425,
+ /*   920 */   357,  431,  432,  433,  434,   26,   58,   56,   54,  424,
+ /*   930 */   357,  357,  357,  357,  141,   32,
 };
 static const YYCODETYPE yy_lookahead[] = {
  /*     0 */    80,   81,    2,    3,    4,    5,    6,    7,    8,    9,
@@ -421,11 +421,11 @@ static const YYCODETYPE yy_lookahead[] = {
  /*   190 */    21,   22,   23,   24,   25,   26,   27,   28,   29,   30,
  /*   200 */    31,   76,   76,   76,   76,   76,   37,   38,   13,   14,
  /*   210 */    15,   16,   17,   18,   19,   20,   21,   22,   23,   24,
- /*   220 */    25,   26,   27,   28,   29,   30,   31,    1,   76,    1,
- /*   230 */    76,   79,   37,   38,   82,   83,   84,   76,   76,   87,
+ /*   220 */    25,   26,   27,   28,   29,   30,   31,    1,   76,   41,
+ /*   230 */    76,   79,   37,   38,   82,   83,   84,   49,   76,   87,
  /*   240 */    88,   89,   90,   91,   49,   96,   13,   14,   15,   16,
  /*   250 */    17,   18,   19,   20,   21,   22,   23,   24,   25,   26,
- /*   260 */    27,   28,   29,   30,   31,   76,   76,   41,   76,   41,
+ /*   260 */    27,   28,   29,   30,   31,   76,   76,   41,   76,   76,
  /*   270 */    37,   38,   13,   14,   15,   16,   17,   18,   19,   20,
  /*   280 */    21,   22,   23,   24,   25,   26,   27,   28,   29,   30,
  /*   290 */    31,   76,   73,   43,   76,   62,   37,   38,   79,   49,
@@ -450,23 +450,23 @@ static const YYCODETYPE yy_lookahead[] = {
  /*   480 */    23,   24,   25,   26,   27,   28,   29,   30,   31,   49,
  /*   490 */     2,   44,   44,   49,   37,   38,   39,   13,   14,   15,
  /*   500 */    16,   17,   18,   19,   20,   21,   22,   23,   24,   25,
- /*   510 */    26,   27,   28,   29,   30,   31,   49,   49,   49,   49,
- /*   520 */    47,   37,   38,   15,   16,   17,   18,   19,   20,   21,
+ /*   510 */    26,   27,   28,   29,   30,   31,   49,   49,   49,   47,
+ /*   520 */    40,   37,   38,   15,   16,   17,   18,   19,   20,   21,
  /*   530 */    22,   23,   24,   25,   26,   27,   28,   29,   30,   31,
- /*   540 */    40,   42,   40,   49,   41,   37,   38,   16,   17,   18,
+ /*   540 */    42,   40,   49,   41,   40,   37,   38,   16,   17,   18,
  /*   550 */    19,   20,   21,   22,   23,   24,   25,   26,   27,   28,
- /*   560 */    29,   30,   31,   40,   40,   40,   56,   49,   37,   38,
+ /*   560 */    29,   30,   31,   40,   40,   56,   49,   49,   37,   38,
  /*   570 */    17,   18,   19,   20,   21,   22,   23,   24,   25,   26,
- /*   580 */    27,   28,   29,   30,   31,   49,   49,   49,   44,   44,
+ /*   580 */    27,   28,   29,   30,   31,   49,   49,   44,   44,   49,
  /*   590 */    37,   38,   18,   19,   20,   21,   22,   23,   24,   25,
- /*   600 */    26,   27,   28,   29,   30,   31,   49,   49,   41,   45,
- /*   610 */    40,   37,   38,   19,   20,   21,   22,   23,   24,   25,
+ /*   600 */    26,   27,   28,   29,   30,   31,   49,   41,   45,   40,
+ /*   610 */    49,   37,   38,   19,   20,   21,   22,   23,   24,   25,
  /*   620 */    26,   27,   28,   29,   30,   31,   48,   27,   28,   44,
- /*   630 */    44,   37,   38,   33,   34,   35,   36,   49,   47,   61,
+ /*   630 */     1,   37,   38,   33,   34,   35,   36,   44,   47,   61,
  /*   640 */    40,   63,   44,   98,   44,   45,   21,   22,   23,   24,
  /*   650 */    25,   26,   27,   28,   29,   30,   31,   98,   98,   98,
  /*   660 */    98,   98,   37,   38,   64,   65,   66,   67,   27,   28,
- /*   670 */    98,   98,   98,   38,   33,   34,   35,   36,   43,   98,
+ /*   670 */    41,   98,   98,   38,   33,   34,   35,   36,   43,   98,
  /*   680 */    98,   40,   27,   28,   49,   44,   45,   98,   33,   34,
  /*   690 */    98,   98,   98,   98,   98,   40,   41,   27,   28,   44,
  /*   700 */    45,   98,   98,   33,   34,   98,   65,   66,   67,   98,
@@ -490,8 +490,8 @@ static const YYCODETYPE yy_lookahead[] = {
  /*   880 */    89,   90,   91,   25,   26,   27,   28,   29,   30,   31,
  /*   890 */    76,   98,   98,   98,   98,   37,   38,   98,   84,   85,
  /*   900 */    76,   87,   88,   89,   98,   91,   98,   98,   94,   98,
- /*   910 */    76,   87,   88,   89,   98,   91,   98,   98,   98,   95,
- /*   920 */    98,   87,   88,   89,   98,   91,   29,   30,   31,   95,
+ /*   910 */    76,   87,   88,   89,   90,   91,   98,   98,   98,   95,
+ /*   920 */    98,   87,   88,   89,   90,   91,   29,   30,   31,   95,
  /*   930 */    98,   98,   98,   98,   37,   38,   98,   98,   98,   98,
  /*   940 */    98,   98,   98,   98,   98,   98,   98,   98,   98,   98,
  /*   950 */    98,   98,   98,   98,   98,   98,   98,   98,   98,   98,
@@ -515,11 +515,11 @@ static const unsigned short int yy_shift_ofst[] = {
  /*    70 */   395,  131,  169,  195,  233,  259,  288,  317,  346,  375,
  /*    80 */   402,  428,  457,  484,  484,  484,  484,  484,  484,  484,
  /*    90 */   508,  531,  553,  574,  594,  625,  625,  858,  858,  858,
- /*   100 */   858,  136,  136,  897,  897,  897,  897,  226,  100,  100,
- /*   110 */   100,  100,  100,  228,  419,  426,  440,  406,  488,  447,
- /*   120 */   448,  444,  467,  468,  469,  470,  473,  500,  499,  502,
- /*   130 */   503,  523,  524,  494,  525,  510,  518,  536,  537,  538,
- /*   140 */   544,  545,  557,  558,  567,  564,  570,  585,  586,  588,
+ /*   100 */   858,  136,  136,  897,  897,  897,  897,  226,  188,  100,
+ /*   110 */   100,  100,  100,  100,  629,  419,  426,  440,  406,  488,
+ /*   120 */   447,  448,  444,  467,  468,  469,  472,  480,  498,  501,
+ /*   130 */   502,  504,  523,  493,  524,  509,  517,  518,  536,  537,
+ /*   140 */   543,  544,  540,  557,  566,  563,  569,  585,  593,  561,
  /*   150 */   591,  598,
 };
 #define YY_REDUCE_COUNT (70)
@@ -529,29 +529,29 @@ static const short yy_reduce_ofst[] = {
  /*     0 */   107,  152,  669,  690,  707,  723,  739,  757,  774,  791,
  /*    10 */   814,  824,  834,  -27,   16,  -80,  -39,  219,   44,  -43,
  /*    20 */    -9,    8,   15,   26,   39,   51,   63,  105,  125,  126,
- /*    30 */   127,  128,  129,  154,  161,  162,  189,  190,  192,  215,
+ /*    30 */   127,  128,  129,  154,  162,  189,  190,  192,  193,  215,
  /*    40 */   218,  244,  245,  247,  248,  251,  252,  273,  274,  275,
  /*    50 */   276,  277,  280,  281,  302,  303,  304,  305,  306,  309,
  /*    60 */   149,  249,  330,  313,  333,  337,  353,  343,  359,  383,
  /*    70 */   369,
 };
 static const YYACTIONTYPE yy_default[] = {
- /*     0 */   353,  353,  353,  438,  436,  353,  353,  353,  353,  353,
- /*    10 */   428,  432,  432,  353,  353,  353,  353,  353,  353,  353,
- /*    20 */   353,  353,  353,  353,  353,  353,  353,  353,  353,  353,
- /*    30 */   353,  353,  353,  353,  353,  353,  353,  353,  353,  353,
- /*    40 */   353,  353,  353,  353,  353,  353,  353,  353,  353,  353,
- /*    50 */   353,  353,  353,  353,  353,  353,  353,  353,  353,  353,
- /*    60 */   353,  353,  353,  353,  353,  379,  353,  445,  353,  353,
- /*    70 */   445,  353,  403,  353,  353,  353,  353,  353,  353,  353,
- /*    80 */   353,  353,  353,  440,  418,  417,  406,  443,  474,  444,
- /*    90 */   473,  472,  471,  470,  469,  468,  467,  466,  465,  464,
- /*   100 */   463,  461,  462,  459,  460,  453,  452,  353,  456,  457,
- /*   110 */   458,  455,  454,  353,  353,  353,  353,  353,  439,  353,
- /*   120 */   353,  451,  353,  353,  353,  353,  353,  353,  393,  353,
- /*   130 */   353,  353,  353,  353,  353,  353,  353,  353,  353,  353,
- /*   140 */   353,  353,  353,  353,  353,  353,  361,  353,  353,  353,
- /*   150 */   353,  353,
+ /*     0 */   355,  355,  355,  441,  439,  355,  355,  355,  355,  355,
+ /*    10 */   430,  435,  435,  355,  355,  355,  355,  355,  355,  355,
+ /*    20 */   355,  355,  355,  355,  355,  355,  355,  355,  355,  355,
+ /*    30 */   355,  355,  355,  355,  355,  355,  355,  355,  355,  355,
+ /*    40 */   355,  355,  355,  355,  355,  355,  355,  355,  355,  355,
+ /*    50 */   355,  355,  355,  355,  355,  355,  355,  355,  355,  355,
+ /*    60 */   355,  355,  355,  355,  355,  381,  355,  448,  355,  355,
+ /*    70 */   448,  355,  405,  355,  355,  355,  355,  355,  355,  355,
+ /*    80 */   355,  355,  355,  443,  420,  419,  408,  446,  477,  447,
+ /*    90 */   476,  475,  474,  473,  472,  471,  470,  469,  468,  467,
+ /*   100 */   466,  464,  465,  462,  463,  456,  455,  355,  454,  459,
+ /*   110 */   460,  461,  458,  457,  355,  355,  355,  355,  355,  442,
+ /*   120 */   355,  355,  355,  355,  355,  355,  355,  355,  395,  355,
+ /*   130 */   355,  355,  355,  355,  355,  355,  355,  355,  355,  355,
+ /*   140 */   355,  355,  355,  355,  355,  355,  363,  355,  355,  355,
+ /*   150 */   355,  355,
 };
 /********** End of lemon-generated parsing tables *****************************/
 
@@ -843,51 +843,52 @@ static const char *const yyRuleName[] = {
  /*  73 */ "for_step ::= assignment_statement",
  /*  74 */ "for_step ::= compound_assignment_statement",
  /*  75 */ "for_step ::= increment_statement",
- /*  76 */ "for_step ::=",
- /*  77 */ "switch_case_list ::= switch_case",
- /*  78 */ "switch_case_list ::= switch_case_list switch_case",
- /*  79 */ "switch_case ::= CASE expression COLON statement",
- /*  80 */ "switch_case ::= CASE expression COLON",
- /*  81 */ "switch_case ::= DEFAULT COLON statement",
- /*  82 */ "switch_case ::= DEFAULT COLON",
- /*  83 */ "var_declaration ::= VAR IDENTIFIER IDENTIFIER",
- /*  84 */ "var_declaration ::= VAR IDENTIFIER IDENTIFIER ASSIGN expression",
- /*  85 */ "arguments ::= LPAREN RPAREN",
- /*  86 */ "arguments ::= LPAREN argument_list RPAREN",
- /*  87 */ "argument_list ::= expression",
- /*  88 */ "argument_list ::= argument_list COMMA expression",
- /*  89 */ "expression ::= IDENTIFIER",
- /*  90 */ "expression ::= INT_CONSTANT",
- /*  91 */ "expression ::= FLOAT_CONSTANT",
- /*  92 */ "expression ::= TRUE",
- /*  93 */ "expression ::= FALSE",
- /*  94 */ "expression ::= LPAREN expression RPAREN",
- /*  95 */ "expression ::= IDENTIFIER arguments",
- /*  96 */ "expression ::= PLUS expression",
- /*  97 */ "expression ::= MINUS expression",
- /*  98 */ "expression ::= COMPLEMENT expression",
- /*  99 */ "expression ::= EXCLAMATION expression",
- /* 100 */ "expression ::= expression STAR expression",
- /* 101 */ "expression ::= expression SLASH expression",
- /* 102 */ "expression ::= expression PERCENT expression",
- /* 103 */ "expression ::= expression PLUS expression",
- /* 104 */ "expression ::= expression MINUS expression",
- /* 105 */ "expression ::= expression LSHIFT expression",
- /* 106 */ "expression ::= expression RSHIFT expression",
- /* 107 */ "expression ::= expression LT expression",
- /* 108 */ "expression ::= expression GT expression",
- /* 109 */ "expression ::= expression LEQ expression",
- /* 110 */ "expression ::= expression GEQ expression",
- /* 111 */ "expression ::= expression EQL expression",
- /* 112 */ "expression ::= expression NEQ expression",
- /* 113 */ "expression ::= expression AND expression",
- /* 114 */ "expression ::= expression XOR expression",
- /* 115 */ "expression ::= expression OR expression",
- /* 116 */ "expression ::= expression ANDAND expression",
- /* 117 */ "expression ::= expression OROR expression",
- /* 118 */ "expression ::= expression QUESTION expression COLON expression",
- /* 119 */ "expression ::= expression LBRACKET expression RBRACKET",
- /* 120 */ "expression ::= expression DOT IDENTIFIER",
+ /*  76 */ "for_step ::= function_call_statement",
+ /*  77 */ "for_step ::=",
+ /*  78 */ "switch_case_list ::= switch_case",
+ /*  79 */ "switch_case_list ::= switch_case_list switch_case",
+ /*  80 */ "switch_case ::= CASE expression COLON statement",
+ /*  81 */ "switch_case ::= CASE expression COLON",
+ /*  82 */ "switch_case ::= DEFAULT COLON statement",
+ /*  83 */ "switch_case ::= DEFAULT COLON",
+ /*  84 */ "var_declaration ::= VAR IDENTIFIER IDENTIFIER",
+ /*  85 */ "var_declaration ::= VAR IDENTIFIER IDENTIFIER ASSIGN expression",
+ /*  86 */ "arguments ::= LPAREN RPAREN",
+ /*  87 */ "arguments ::= LPAREN argument_list RPAREN",
+ /*  88 */ "argument_list ::= expression",
+ /*  89 */ "argument_list ::= argument_list COMMA expression",
+ /*  90 */ "expression ::= IDENTIFIER",
+ /*  91 */ "expression ::= INT_CONSTANT",
+ /*  92 */ "expression ::= FLOAT_CONSTANT",
+ /*  93 */ "expression ::= TRUE",
+ /*  94 */ "expression ::= FALSE",
+ /*  95 */ "expression ::= LPAREN expression RPAREN",
+ /*  96 */ "expression ::= IDENTIFIER arguments",
+ /*  97 */ "expression ::= PLUS expression",
+ /*  98 */ "expression ::= MINUS expression",
+ /*  99 */ "expression ::= COMPLEMENT expression",
+ /* 100 */ "expression ::= EXCLAMATION expression",
+ /* 101 */ "expression ::= expression STAR expression",
+ /* 102 */ "expression ::= expression SLASH expression",
+ /* 103 */ "expression ::= expression PERCENT expression",
+ /* 104 */ "expression ::= expression PLUS expression",
+ /* 105 */ "expression ::= expression MINUS expression",
+ /* 106 */ "expression ::= expression LSHIFT expression",
+ /* 107 */ "expression ::= expression RSHIFT expression",
+ /* 108 */ "expression ::= expression LT expression",
+ /* 109 */ "expression ::= expression GT expression",
+ /* 110 */ "expression ::= expression LEQ expression",
+ /* 111 */ "expression ::= expression GEQ expression",
+ /* 112 */ "expression ::= expression EQL expression",
+ /* 113 */ "expression ::= expression NEQ expression",
+ /* 114 */ "expression ::= expression AND expression",
+ /* 115 */ "expression ::= expression XOR expression",
+ /* 116 */ "expression ::= expression OR expression",
+ /* 117 */ "expression ::= expression ANDAND expression",
+ /* 118 */ "expression ::= expression OROR expression",
+ /* 119 */ "expression ::= expression QUESTION expression COLON expression",
+ /* 120 */ "expression ::= expression LBRACKET expression RBRACKET",
+ /* 121 */ "expression ::= expression DOT IDENTIFIER",
 };
 #endif /* NDEBUG */
 
@@ -1029,70 +1030,70 @@ static void yy_destructor(
 {
 #line 62 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
  delete_shader(ctx, (yypminor->yy94)); 
-#line 1033 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1034 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 }
       break;
     case 69: /* translation_unit_list */
 {
 #line 66 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
  delete_translation_units(ctx, (yypminor->yy33)); 
-#line 1040 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1041 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 }
       break;
     case 70: /* translation_unit */
 {
 #line 73 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
  delete_translation_unit(ctx, (yypminor->yy142)); 
-#line 1047 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1048 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 }
       break;
     case 71: /* struct_declaration */
 {
 #line 85 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
  delete_struct_declaration(ctx, (yypminor->yy6)); 
-#line 1054 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1055 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 }
       break;
     case 72: /* function */
 {
 #line 105 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
  delete_function(ctx, (yypminor->yy81)); 
-#line 1061 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1062 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 }
       break;
     case 73: /* at_attrib */
 {
 #line 80 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
  delete_at_attribute(ctx, (yypminor->yy44)); 
-#line 1068 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1069 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 }
       break;
     case 74: /* struct_member_list */
 {
 #line 89 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
  delete_struct_members(ctx, (yypminor->yy95)); 
-#line 1075 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1076 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 }
       break;
     case 75: /* struct_member */
 {
 #line 98 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
  delete_struct_member(ctx, (yypminor->yy120)); 
-#line 1082 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1083 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 }
       break;
     case 76: /* expression */
 {
-#line 263 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
+#line 264 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
  delete_expression(ctx, (yypminor->yy167)); 
-#line 1089 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1090 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 }
       break;
     case 77: /* return_type */
 {
 #line 110 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 
-#line 1096 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1097 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 }
       break;
     case 78: /* function_params */
@@ -1100,7 +1101,7 @@ static void yy_destructor(
 {
 #line 115 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
  delete_function_params(ctx, (yypminor->yy137)); 
-#line 1104 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1105 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 }
       break;
     case 79: /* statement_block */
@@ -1108,14 +1109,14 @@ static void yy_destructor(
 {
 #line 134 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
  delete_statement_block(ctx, (yypminor->yy3)); 
-#line 1112 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1113 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 }
       break;
     case 81: /* function_param */
 {
 #line 129 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
  delete_function_param(ctx, (yypminor->yy178)); 
-#line 1119 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1120 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 }
       break;
     case 83: /* statement */
@@ -1128,50 +1129,50 @@ static void yy_destructor(
 {
 #line 144 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
  delete_statement(ctx, (yypminor->yy36)); 
-#line 1132 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1133 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 }
       break;
     case 84: /* var_declaration */
 {
-#line 246 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
+#line 247 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
  delete_var_declaration(ctx, (yypminor->yy50)); 
-#line 1139 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1140 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 }
       break;
     case 85: /* for_details */
 {
 #line 209 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
  delete_for_details(ctx, (yypminor->yy184)); 
-#line 1146 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1147 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 }
       break;
     case 86: /* switch_case_list */
 {
-#line 229 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
+#line 230 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
  delete_switch_cases(ctx, (yypminor->yy64)); 
-#line 1153 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1154 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 }
       break;
     case 91: /* assignment_statement_list */
 {
 #line 174 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
  delete_assignments(ctx, (yypminor->yy63)); 
-#line 1160 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1161 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 }
       break;
     case 93: /* arguments */
     case 97: /* argument_list */
 {
-#line 252 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
+#line 253 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
  delete_arguments(ctx, (yypminor->yy93)); 
-#line 1168 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1169 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 }
       break;
     case 96: /* switch_case */
 {
-#line 236 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
+#line 237 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
  delete_switch_case(ctx, (yypminor->yy97)); 
-#line 1175 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1176 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 }
       break;
 /********* End destructor definitions *****************************************/
@@ -1407,7 +1408,7 @@ static void yyStackOverflow(yyParser *yypParser){
 
     // !!! FIXME: make this a proper fail() function.
     fail(ctx, "Giving up. Parser stack overflow");
-#line 1411 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1412 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 /******** End %stack_overflow code ********************************************/
    ParseSDLSLARG_STORE /* Suppress warning about unused %extra_argument var */
    ParseSDLSLCTX_STORE
@@ -1555,51 +1556,52 @@ static const YYCODETYPE yyRuleInfoLhs[] = {
     95,  /* (73) for_step ::= assignment_statement */
     95,  /* (74) for_step ::= compound_assignment_statement */
     95,  /* (75) for_step ::= increment_statement */
-    95,  /* (76) for_step ::= */
-    86,  /* (77) switch_case_list ::= switch_case */
-    86,  /* (78) switch_case_list ::= switch_case_list switch_case */
-    96,  /* (79) switch_case ::= CASE expression COLON statement */
-    96,  /* (80) switch_case ::= CASE expression COLON */
-    96,  /* (81) switch_case ::= DEFAULT COLON statement */
-    96,  /* (82) switch_case ::= DEFAULT COLON */
-    84,  /* (83) var_declaration ::= VAR IDENTIFIER IDENTIFIER */
-    84,  /* (84) var_declaration ::= VAR IDENTIFIER IDENTIFIER ASSIGN expression */
-    93,  /* (85) arguments ::= LPAREN RPAREN */
-    93,  /* (86) arguments ::= LPAREN argument_list RPAREN */
-    97,  /* (87) argument_list ::= expression */
-    97,  /* (88) argument_list ::= argument_list COMMA expression */
-    76,  /* (89) expression ::= IDENTIFIER */
-    76,  /* (90) expression ::= INT_CONSTANT */
-    76,  /* (91) expression ::= FLOAT_CONSTANT */
-    76,  /* (92) expression ::= TRUE */
-    76,  /* (93) expression ::= FALSE */
-    76,  /* (94) expression ::= LPAREN expression RPAREN */
-    76,  /* (95) expression ::= IDENTIFIER arguments */
-    76,  /* (96) expression ::= PLUS expression */
-    76,  /* (97) expression ::= MINUS expression */
-    76,  /* (98) expression ::= COMPLEMENT expression */
-    76,  /* (99) expression ::= EXCLAMATION expression */
-    76,  /* (100) expression ::= expression STAR expression */
-    76,  /* (101) expression ::= expression SLASH expression */
-    76,  /* (102) expression ::= expression PERCENT expression */
-    76,  /* (103) expression ::= expression PLUS expression */
-    76,  /* (104) expression ::= expression MINUS expression */
-    76,  /* (105) expression ::= expression LSHIFT expression */
-    76,  /* (106) expression ::= expression RSHIFT expression */
-    76,  /* (107) expression ::= expression LT expression */
-    76,  /* (108) expression ::= expression GT expression */
-    76,  /* (109) expression ::= expression LEQ expression */
-    76,  /* (110) expression ::= expression GEQ expression */
-    76,  /* (111) expression ::= expression EQL expression */
-    76,  /* (112) expression ::= expression NEQ expression */
-    76,  /* (113) expression ::= expression AND expression */
-    76,  /* (114) expression ::= expression XOR expression */
-    76,  /* (115) expression ::= expression OR expression */
-    76,  /* (116) expression ::= expression ANDAND expression */
-    76,  /* (117) expression ::= expression OROR expression */
-    76,  /* (118) expression ::= expression QUESTION expression COLON expression */
-    76,  /* (119) expression ::= expression LBRACKET expression RBRACKET */
-    76,  /* (120) expression ::= expression DOT IDENTIFIER */
+    95,  /* (76) for_step ::= function_call_statement */
+    95,  /* (77) for_step ::= */
+    86,  /* (78) switch_case_list ::= switch_case */
+    86,  /* (79) switch_case_list ::= switch_case_list switch_case */
+    96,  /* (80) switch_case ::= CASE expression COLON statement */
+    96,  /* (81) switch_case ::= CASE expression COLON */
+    96,  /* (82) switch_case ::= DEFAULT COLON statement */
+    96,  /* (83) switch_case ::= DEFAULT COLON */
+    84,  /* (84) var_declaration ::= VAR IDENTIFIER IDENTIFIER */
+    84,  /* (85) var_declaration ::= VAR IDENTIFIER IDENTIFIER ASSIGN expression */
+    93,  /* (86) arguments ::= LPAREN RPAREN */
+    93,  /* (87) arguments ::= LPAREN argument_list RPAREN */
+    97,  /* (88) argument_list ::= expression */
+    97,  /* (89) argument_list ::= argument_list COMMA expression */
+    76,  /* (90) expression ::= IDENTIFIER */
+    76,  /* (91) expression ::= INT_CONSTANT */
+    76,  /* (92) expression ::= FLOAT_CONSTANT */
+    76,  /* (93) expression ::= TRUE */
+    76,  /* (94) expression ::= FALSE */
+    76,  /* (95) expression ::= LPAREN expression RPAREN */
+    76,  /* (96) expression ::= IDENTIFIER arguments */
+    76,  /* (97) expression ::= PLUS expression */
+    76,  /* (98) expression ::= MINUS expression */
+    76,  /* (99) expression ::= COMPLEMENT expression */
+    76,  /* (100) expression ::= EXCLAMATION expression */
+    76,  /* (101) expression ::= expression STAR expression */
+    76,  /* (102) expression ::= expression SLASH expression */
+    76,  /* (103) expression ::= expression PERCENT expression */
+    76,  /* (104) expression ::= expression PLUS expression */
+    76,  /* (105) expression ::= expression MINUS expression */
+    76,  /* (106) expression ::= expression LSHIFT expression */
+    76,  /* (107) expression ::= expression RSHIFT expression */
+    76,  /* (108) expression ::= expression LT expression */
+    76,  /* (109) expression ::= expression GT expression */
+    76,  /* (110) expression ::= expression LEQ expression */
+    76,  /* (111) expression ::= expression GEQ expression */
+    76,  /* (112) expression ::= expression EQL expression */
+    76,  /* (113) expression ::= expression NEQ expression */
+    76,  /* (114) expression ::= expression AND expression */
+    76,  /* (115) expression ::= expression XOR expression */
+    76,  /* (116) expression ::= expression OR expression */
+    76,  /* (117) expression ::= expression ANDAND expression */
+    76,  /* (118) expression ::= expression OROR expression */
+    76,  /* (119) expression ::= expression QUESTION expression COLON expression */
+    76,  /* (120) expression ::= expression LBRACKET expression RBRACKET */
+    76,  /* (121) expression ::= expression DOT IDENTIFIER */
 };
 
 /* For rule J, yyRuleInfoNRhs[J] contains the negative of the number
@@ -1681,51 +1683,52 @@ static const signed char yyRuleInfoNRhs[] = {
    -1,  /* (73) for_step ::= assignment_statement */
    -1,  /* (74) for_step ::= compound_assignment_statement */
    -1,  /* (75) for_step ::= increment_statement */
-    0,  /* (76) for_step ::= */
-   -1,  /* (77) switch_case_list ::= switch_case */
-   -2,  /* (78) switch_case_list ::= switch_case_list switch_case */
-   -4,  /* (79) switch_case ::= CASE expression COLON statement */
-   -3,  /* (80) switch_case ::= CASE expression COLON */
-   -3,  /* (81) switch_case ::= DEFAULT COLON statement */
-   -2,  /* (82) switch_case ::= DEFAULT COLON */
-   -3,  /* (83) var_declaration ::= VAR IDENTIFIER IDENTIFIER */
-   -5,  /* (84) var_declaration ::= VAR IDENTIFIER IDENTIFIER ASSIGN expression */
-   -2,  /* (85) arguments ::= LPAREN RPAREN */
-   -3,  /* (86) arguments ::= LPAREN argument_list RPAREN */
-   -1,  /* (87) argument_list ::= expression */
-   -3,  /* (88) argument_list ::= argument_list COMMA expression */
-   -1,  /* (89) expression ::= IDENTIFIER */
-   -1,  /* (90) expression ::= INT_CONSTANT */
-   -1,  /* (91) expression ::= FLOAT_CONSTANT */
-   -1,  /* (92) expression ::= TRUE */
-   -1,  /* (93) expression ::= FALSE */
-   -3,  /* (94) expression ::= LPAREN expression RPAREN */
-   -2,  /* (95) expression ::= IDENTIFIER arguments */
-   -2,  /* (96) expression ::= PLUS expression */
-   -2,  /* (97) expression ::= MINUS expression */
-   -2,  /* (98) expression ::= COMPLEMENT expression */
-   -2,  /* (99) expression ::= EXCLAMATION expression */
-   -3,  /* (100) expression ::= expression STAR expression */
-   -3,  /* (101) expression ::= expression SLASH expression */
-   -3,  /* (102) expression ::= expression PERCENT expression */
-   -3,  /* (103) expression ::= expression PLUS expression */
-   -3,  /* (104) expression ::= expression MINUS expression */
-   -3,  /* (105) expression ::= expression LSHIFT expression */
-   -3,  /* (106) expression ::= expression RSHIFT expression */
-   -3,  /* (107) expression ::= expression LT expression */
-   -3,  /* (108) expression ::= expression GT expression */
-   -3,  /* (109) expression ::= expression LEQ expression */
-   -3,  /* (110) expression ::= expression GEQ expression */
-   -3,  /* (111) expression ::= expression EQL expression */
-   -3,  /* (112) expression ::= expression NEQ expression */
-   -3,  /* (113) expression ::= expression AND expression */
-   -3,  /* (114) expression ::= expression XOR expression */
-   -3,  /* (115) expression ::= expression OR expression */
-   -3,  /* (116) expression ::= expression ANDAND expression */
-   -3,  /* (117) expression ::= expression OROR expression */
-   -5,  /* (118) expression ::= expression QUESTION expression COLON expression */
-   -4,  /* (119) expression ::= expression LBRACKET expression RBRACKET */
-   -3,  /* (120) expression ::= expression DOT IDENTIFIER */
+   -1,  /* (76) for_step ::= function_call_statement */
+    0,  /* (77) for_step ::= */
+   -1,  /* (78) switch_case_list ::= switch_case */
+   -2,  /* (79) switch_case_list ::= switch_case_list switch_case */
+   -4,  /* (80) switch_case ::= CASE expression COLON statement */
+   -3,  /* (81) switch_case ::= CASE expression COLON */
+   -3,  /* (82) switch_case ::= DEFAULT COLON statement */
+   -2,  /* (83) switch_case ::= DEFAULT COLON */
+   -3,  /* (84) var_declaration ::= VAR IDENTIFIER IDENTIFIER */
+   -5,  /* (85) var_declaration ::= VAR IDENTIFIER IDENTIFIER ASSIGN expression */
+   -2,  /* (86) arguments ::= LPAREN RPAREN */
+   -3,  /* (87) arguments ::= LPAREN argument_list RPAREN */
+   -1,  /* (88) argument_list ::= expression */
+   -3,  /* (89) argument_list ::= argument_list COMMA expression */
+   -1,  /* (90) expression ::= IDENTIFIER */
+   -1,  /* (91) expression ::= INT_CONSTANT */
+   -1,  /* (92) expression ::= FLOAT_CONSTANT */
+   -1,  /* (93) expression ::= TRUE */
+   -1,  /* (94) expression ::= FALSE */
+   -3,  /* (95) expression ::= LPAREN expression RPAREN */
+   -2,  /* (96) expression ::= IDENTIFIER arguments */
+   -2,  /* (97) expression ::= PLUS expression */
+   -2,  /* (98) expression ::= MINUS expression */
+   -2,  /* (99) expression ::= COMPLEMENT expression */
+   -2,  /* (100) expression ::= EXCLAMATION expression */
+   -3,  /* (101) expression ::= expression STAR expression */
+   -3,  /* (102) expression ::= expression SLASH expression */
+   -3,  /* (103) expression ::= expression PERCENT expression */
+   -3,  /* (104) expression ::= expression PLUS expression */
+   -3,  /* (105) expression ::= expression MINUS expression */
+   -3,  /* (106) expression ::= expression LSHIFT expression */
+   -3,  /* (107) expression ::= expression RSHIFT expression */
+   -3,  /* (108) expression ::= expression LT expression */
+   -3,  /* (109) expression ::= expression GT expression */
+   -3,  /* (110) expression ::= expression LEQ expression */
+   -3,  /* (111) expression ::= expression GEQ expression */
+   -3,  /* (112) expression ::= expression EQL expression */
+   -3,  /* (113) expression ::= expression NEQ expression */
+   -3,  /* (114) expression ::= expression AND expression */
+   -3,  /* (115) expression ::= expression XOR expression */
+   -3,  /* (116) expression ::= expression OR expression */
+   -3,  /* (117) expression ::= expression ANDAND expression */
+   -3,  /* (118) expression ::= expression OROR expression */
+   -5,  /* (119) expression ::= expression QUESTION expression COLON expression */
+   -4,  /* (120) expression ::= expression LBRACKET expression RBRACKET */
+   -3,  /* (121) expression ::= expression DOT IDENTIFIER */
 };
 
 static void yy_accept(yyParser*);  /* Forward Declaration */
@@ -1770,230 +1773,230 @@ static YYACTIONTYPE yy_reduce(
       case 0: /* shader ::= translation_unit_list */
 #line 63 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { SDL_assert(!ctx->shader); ctx->shader = new_shader(ctx, yymsp[0].minor.yy33); }
-#line 1774 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1777 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 1: /* translation_unit_list ::= translation_unit */
 #line 67 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy33 = new_translation_units(ctx, yymsp[0].minor.yy142); }
-#line 1779 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1782 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[0].minor.yy33 = yylhsminor.yy33;
         break;
       case 2: /* translation_unit_list ::= translation_unit_list translation_unit */
 #line 68 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-1].minor.yy33->tail->next = yymsp[0].minor.yy142; yymsp[-1].minor.yy33->tail = yymsp[0].minor.yy142; yylhsminor.yy33 = yymsp[-1].minor.yy33; }
-#line 1785 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1788 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-1].minor.yy33 = yylhsminor.yy33;
         break;
       case 3: /* translation_unit ::= struct_declaration */
 #line 74 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy142 = new_struct_declaration_unit(ctx, yymsp[0].minor.yy6); }
-#line 1791 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1794 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[0].minor.yy142 = yylhsminor.yy142;
         break;
       case 4: /* translation_unit ::= function */
 #line 75 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy142 = new_function_unit(ctx, yymsp[0].minor.yy81); }
-#line 1797 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1800 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[0].minor.yy142 = yylhsminor.yy142;
         break;
       case 5: /* at_attrib ::= AT IDENTIFIER */
 #line 81 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-1].minor.yy44 = new_at_attribute(ctx, yymsp[0].minor.yy0.string, NULL); }
-#line 1803 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1806 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 6: /* at_attrib ::= AT IDENTIFIER LPAREN INT_CONSTANT RPAREN */
 #line 82 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-4].minor.yy44 = new_at_attribute(ctx, yymsp[-3].minor.yy0.string, &yymsp[-1].minor.yy0.i64); }
-#line 1808 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1811 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 7: /* struct_declaration ::= STRUCT IDENTIFIER LBRACE struct_member_list RBRACE SEMICOLON */
 #line 86 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-5].minor.yy6 = new_struct_declaration(ctx, yymsp[-4].minor.yy0.string, yymsp[-2].minor.yy95); }
-#line 1813 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1816 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 8: /* struct_member_list ::= struct_member */
 #line 90 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy95 = new_struct_members(ctx, yymsp[0].minor.yy120); }
-#line 1818 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1821 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[0].minor.yy95 = yylhsminor.yy95;
         break;
       case 9: /* struct_member_list ::= struct_member_list struct_member */
 #line 91 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-1].minor.yy95->tail->next = yymsp[0].minor.yy120; yymsp[-1].minor.yy95->tail = yymsp[0].minor.yy120; yylhsminor.yy95 = yymsp[-1].minor.yy95; }
-#line 1824 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1827 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-1].minor.yy95 = yylhsminor.yy95;
         break;
       case 10: /* struct_member ::= IDENTIFIER IDENTIFIER SEMICOLON */
 #line 99 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy120 = new_struct_member(ctx, yymsp[-2].minor.yy0.string, yymsp[-1].minor.yy0.string, NULL, NULL); }
-#line 1830 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1833 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy120 = yylhsminor.yy120;
         break;
       case 11: /* struct_member ::= IDENTIFIER IDENTIFIER at_attrib SEMICOLON */
 #line 100 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy120 = new_struct_member(ctx, yymsp[-3].minor.yy0.string, yymsp[-2].minor.yy0.string, NULL, yymsp[-1].minor.yy44); }
-#line 1836 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1839 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-3].minor.yy120 = yylhsminor.yy120;
         break;
       case 12: /* struct_member ::= IDENTIFIER IDENTIFIER LBRACKET expression RBRACKET SEMICOLON */
 #line 101 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy120 = new_struct_member(ctx, yymsp[-5].minor.yy0.string, yymsp[-4].minor.yy0.string, yymsp[-2].minor.yy167, NULL); }
-#line 1842 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1845 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-5].minor.yy120 = yylhsminor.yy120;
         break;
       case 13: /* struct_member ::= IDENTIFIER IDENTIFIER LBRACKET expression RBRACKET at_attrib SEMICOLON */
 #line 102 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy120 = new_struct_member(ctx, yymsp[-6].minor.yy0.string, yymsp[-5].minor.yy0.string, yymsp[-3].minor.yy167, yymsp[-1].minor.yy44); }
-#line 1848 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1851 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-6].minor.yy120 = yylhsminor.yy120;
         break;
       case 14: /* function ::= FUNCTION return_type IDENTIFIER function_params statement_block */
 #line 106 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-4].minor.yy81 = new_function(ctx, yymsp[-3].minor.yy168, yymsp[-2].minor.yy0.string, yymsp[-1].minor.yy137, NULL, yymsp[0].minor.yy3); }
-#line 1854 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1857 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 15: /* function ::= FUNCTION return_type IDENTIFIER function_params at_attrib statement_block */
 #line 107 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-5].minor.yy81 = new_function(ctx, yymsp[-4].minor.yy168, yymsp[-3].minor.yy0.string, yymsp[-2].minor.yy137, yymsp[-1].minor.yy44, yymsp[0].minor.yy3); }
-#line 1859 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1862 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 16: /* return_type ::= VOID */
 #line 111 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[0].minor.yy168 = NULL; }
-#line 1864 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1867 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 17: /* return_type ::= IDENTIFIER */
 #line 112 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy168 = yymsp[0].minor.yy0.string; }
-#line 1869 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1872 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[0].minor.yy168 = yylhsminor.yy168;
         break;
       case 18: /* function_params ::= LPAREN RPAREN */
 #line 116 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-1].minor.yy137 = NULL; }
-#line 1875 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1878 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 19: /* function_params ::= LPAREN VOID RPAREN */
 #line 117 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-2].minor.yy137 = NULL; }
-#line 1880 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1883 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 20: /* function_params ::= LPAREN function_param_list RPAREN */
 #line 118 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-2].minor.yy137 = yymsp[-1].minor.yy137; }
-#line 1885 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1888 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 21: /* function_param_list ::= function_param */
 #line 122 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy137 = new_function_params(ctx, yymsp[0].minor.yy178); }
-#line 1890 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1893 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[0].minor.yy137 = yylhsminor.yy137;
         break;
       case 22: /* function_param_list ::= function_param_list COMMA function_param */
 #line 123 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-2].minor.yy137->tail->next = yymsp[0].minor.yy178; yymsp[-2].minor.yy137->tail = yymsp[0].minor.yy178; yylhsminor.yy137 = yymsp[-2].minor.yy137; }
-#line 1896 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1899 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy137 = yylhsminor.yy137;
         break;
       case 23: /* function_param ::= IDENTIFIER IDENTIFIER */
 #line 130 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy178 = new_function_param(ctx, yymsp[-1].minor.yy0.string, yymsp[0].minor.yy0.string, NULL); }
-#line 1902 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1905 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-1].minor.yy178 = yylhsminor.yy178;
         break;
       case 24: /* function_param ::= IDENTIFIER IDENTIFIER at_attrib */
 #line 131 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy178 = new_function_param(ctx, yymsp[-2].minor.yy0.string, yymsp[-1].minor.yy0.string, yymsp[0].minor.yy44); }
-#line 1908 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1911 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy178 = yylhsminor.yy178;
         break;
       case 25: /* statement_block ::= LBRACE RBRACE */
 #line 135 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-1].minor.yy3 = new_statement_block(ctx, NULL); }
-#line 1914 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1917 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 26: /* statement_block ::= LBRACE statement_list RBRACE */
 #line 136 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-2].minor.yy3 = yymsp[-1].minor.yy3; }
-#line 1919 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1922 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 27: /* statement_list ::= statement */
 #line 140 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy3 = new_statement_block(ctx, yymsp[0].minor.yy36); }
-#line 1924 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1927 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[0].minor.yy3 = yylhsminor.yy3;
         break;
       case 28: /* statement_list ::= statement_list statement */
 #line 141 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-1].minor.yy3->tail->next = yymsp[0].minor.yy36; yymsp[-1].minor.yy3->tail = yymsp[0].minor.yy36; yylhsminor.yy3 = yymsp[-1].minor.yy3; }
-#line 1930 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1933 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-1].minor.yy3 = yylhsminor.yy3;
         break;
       case 29: /* statement ::= SEMICOLON */
 #line 145 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[0].minor.yy36 = new_empty_statement(ctx); }
-#line 1936 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1939 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 30: /* statement ::= BREAK SEMICOLON */
 #line 146 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-1].minor.yy36 = new_break_statement(ctx); }
-#line 1941 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1944 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 31: /* statement ::= CONTINUE SEMICOLON */
 #line 147 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-1].minor.yy36 = new_continue_statement(ctx); }
-#line 1946 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1949 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 32: /* statement ::= DISCARD SEMICOLON */
 #line 148 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-1].minor.yy36 = new_discard_statement(ctx); }
-#line 1951 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1954 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 33: /* statement ::= var_declaration SEMICOLON */
 #line 149 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy36 = new_var_declaration_statement(ctx, yymsp[-1].minor.yy50); }
-#line 1956 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1959 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-1].minor.yy36 = yylhsminor.yy36;
         break;
       case 34: /* statement ::= DO statement WHILE LPAREN expression RPAREN SEMICOLON */
 #line 150 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-6].minor.yy36 = new_do_statement(ctx, yymsp[-5].minor.yy36, yymsp[-2].minor.yy167); }
-#line 1962 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1965 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 35: /* statement ::= WHILE LPAREN expression RPAREN statement */
 #line 151 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-4].minor.yy36 = new_while_statement(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy36); }
-#line 1967 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1970 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 36: /* statement ::= FOR LPAREN for_details RPAREN statement */
 #line 152 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-4].minor.yy36 = new_for_statement(ctx, yymsp[-2].minor.yy184, yymsp[0].minor.yy36); }
-#line 1972 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1975 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 37: /* statement ::= IF LPAREN expression RPAREN statement */
 #line 153 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-4].minor.yy36 = new_if_statement(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy36, NULL); }
-#line 1977 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1980 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 38: /* statement ::= IF LPAREN expression RPAREN statement ELSE statement */
 #line 154 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-6].minor.yy36 = new_if_statement(ctx, yymsp[-4].minor.yy167, yymsp[-2].minor.yy36, yymsp[0].minor.yy36); }
-#line 1982 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1985 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 39: /* statement ::= SWITCH LPAREN expression RPAREN LBRACE switch_case_list RBRACE */
 #line 155 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-6].minor.yy36 = new_switch_statement(ctx, yymsp[-4].minor.yy167, yymsp[-1].minor.yy64); }
-#line 1987 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1990 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 40: /* statement ::= RETURN SEMICOLON */
 #line 157 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-1].minor.yy36 = new_return_statement(ctx, NULL); }
-#line 1992 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 1995 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 41: /* statement ::= RETURN expression SEMICOLON */
 #line 158 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-2].minor.yy36 = new_return_statement(ctx, yymsp[-1].minor.yy167); }
-#line 1997 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2000 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 42: /* statement ::= assignment_statement SEMICOLON */
       case 43: /* statement ::= compound_assignment_statement SEMICOLON */ yytestcase(yyruleno==43);
@@ -2001,133 +2004,133 @@ static YYACTIONTYPE yy_reduce(
       case 45: /* statement ::= function_call_statement SEMICOLON */ yytestcase(yyruleno==45);
 #line 159 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy36 = yymsp[-1].minor.yy36; }
-#line 2005 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2008 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-1].minor.yy36 = yylhsminor.yy36;
         break;
       case 46: /* statement ::= statement_block */
 #line 163 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy36 = (SDL_SHADER_AstStatement *) yymsp[0].minor.yy3; }
-#line 2011 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2014 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[0].minor.yy36 = yylhsminor.yy36;
         break;
       case 47: /* assignment_statement ::= assignment_statement_list expression */
 #line 171 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy36 = new_assignment_statement(ctx, yymsp[-1].minor.yy63, yymsp[0].minor.yy167); }
-#line 2017 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2020 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-1].minor.yy36 = yylhsminor.yy36;
         break;
       case 48: /* assignment_statement_list ::= expression ASSIGN */
 #line 175 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy63 = new_assignments(ctx, new_assignment(ctx, yymsp[-1].minor.yy167)); }
-#line 2023 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2026 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-1].minor.yy63 = yylhsminor.yy63;
         break;
       case 49: /* assignment_statement_list ::= assignment_statement_list expression ASSIGN */
 #line 176 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-2].minor.yy63->tail->next = new_assignment(ctx, yymsp[-1].minor.yy167); yymsp[-2].minor.yy63->tail = yymsp[-2].minor.yy63->tail->next; yylhsminor.yy63 = yymsp[-2].minor.yy63; }
-#line 2029 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2032 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy63 = yylhsminor.yy63;
         break;
       case 50: /* compound_assignment_statement ::= expression compound_assignment_operator expression */
 #line 181 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy36 = new_compound_assignment_statement(ctx, yymsp[-2].minor.yy167, yymsp[-1].minor.yy65, yymsp[0].minor.yy167); }
-#line 2035 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2038 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy36 = yylhsminor.yy36;
         break;
       case 51: /* compound_assignment_operator ::= PLUSASSIGN */
 #line 184 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[0].minor.yy65 = SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNADD; }
-#line 2041 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2044 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 52: /* compound_assignment_operator ::= MINUSASSIGN */
 #line 185 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[0].minor.yy65 = SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNSUB; }
-#line 2046 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2049 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 53: /* compound_assignment_operator ::= STARASSIGN */
 #line 186 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[0].minor.yy65 = SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNMUL; }
-#line 2051 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2054 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 54: /* compound_assignment_operator ::= SLASHASSIGN */
 #line 187 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[0].minor.yy65 = SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNDIV; }
-#line 2056 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2059 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 55: /* compound_assignment_operator ::= PERCENTASSIGN */
 #line 188 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[0].minor.yy65 = SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNMOD; }
-#line 2061 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2064 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 56: /* compound_assignment_operator ::= LSHIFTASSIGN */
 #line 189 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[0].minor.yy65 = SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNLSHIFT; }
-#line 2066 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2069 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 57: /* compound_assignment_operator ::= RSHIFTASSIGN */
 #line 190 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[0].minor.yy65 = SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNRSHIFT; }
-#line 2071 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2074 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 58: /* compound_assignment_operator ::= ANDASSIGN */
 #line 191 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[0].minor.yy65 = SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNAND; }
-#line 2076 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2079 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 59: /* compound_assignment_operator ::= ORASSIGN */
 #line 192 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[0].minor.yy65 = SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNOR; }
-#line 2081 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2084 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 60: /* compound_assignment_operator ::= XORASSIGN */
 #line 193 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[0].minor.yy65 = SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNXOR; }
-#line 2086 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2089 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 61: /* increment_statement ::= PLUSPLUS expression */
 #line 198 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-1].minor.yy36 = new_preincrement_statement(ctx, yymsp[0].minor.yy167); }
-#line 2091 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2094 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 62: /* increment_statement ::= MINUSMINUS expression */
 #line 199 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-1].minor.yy36 = new_predecrement_statement(ctx, yymsp[0].minor.yy167); }
-#line 2096 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2099 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
       case 63: /* increment_statement ::= expression PLUSPLUS */
 #line 200 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy36 = new_postincrement_statement(ctx, yymsp[-1].minor.yy167); }
-#line 2101 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2104 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-1].minor.yy36 = yylhsminor.yy36;
         break;
       case 64: /* increment_statement ::= expression MINUSMINUS */
 #line 201 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy36 = new_postdecrement_statement(ctx, yymsp[-1].minor.yy167); }
-#line 2107 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2110 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-1].minor.yy36 = yylhsminor.yy36;
         break;
       case 65: /* function_call_statement ::= IDENTIFIER arguments */
 #line 206 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy36 = new_fncall_statement(ctx, yymsp[-1].minor.yy0.string, yymsp[0].minor.yy93); }
-#line 2113 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2116 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-1].minor.yy36 = yylhsminor.yy36;
         break;
       case 66: /* for_details ::= for_initializer SEMICOLON expression SEMICOLON for_step */
 #line 210 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy184 = new_for_details(ctx, yymsp[-4].minor.yy36, yymsp[-2].minor.yy167, yymsp[0].minor.yy36); }
-#line 2119 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2122 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-4].minor.yy184 = yylhsminor.yy184;
         break;
       case 67: /* for_details ::= for_initializer SEMICOLON SEMICOLON for_step */
 #line 211 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy184 = new_for_details(ctx, yymsp[-3].minor.yy36, NULL, yymsp[0].minor.yy36); }
-#line 2125 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2128 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-3].minor.yy184 = yylhsminor.yy184;
         break;
       case 68: /* for_initializer ::= var_declaration */
 #line 215 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy36 = new_var_declaration_statement(ctx, yymsp[0].minor.yy50); }
-#line 2131 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2134 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[0].minor.yy36 = yylhsminor.yy36;
         break;
       case 69: /* for_initializer ::= assignment_statement */
@@ -2136,264 +2139,265 @@ static YYACTIONTYPE yy_reduce(
       case 73: /* for_step ::= assignment_statement */ yytestcase(yyruleno==73);
       case 74: /* for_step ::= compound_assignment_statement */ yytestcase(yyruleno==74);
       case 75: /* for_step ::= increment_statement */ yytestcase(yyruleno==75);
+      case 76: /* for_step ::= function_call_statement */ yytestcase(yyruleno==76);
 #line 216 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy36 = yymsp[0].minor.yy36; }
-#line 2142 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2146 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[0].minor.yy36 = yylhsminor.yy36;
         break;
       case 72: /* for_initializer ::= */
-      case 76: /* for_step ::= */ yytestcase(yyruleno==76);
+      case 77: /* for_step ::= */ yytestcase(yyruleno==77);
 #line 219 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[1].minor.yy36 = NULL; }
-#line 2149 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2153 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
-      case 77: /* switch_case_list ::= switch_case */
-#line 230 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
+      case 78: /* switch_case_list ::= switch_case */
+#line 231 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy64 = new_switch_cases(ctx, yymsp[0].minor.yy97); }
-#line 2154 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2158 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[0].minor.yy64 = yylhsminor.yy64;
         break;
-      case 78: /* switch_case_list ::= switch_case_list switch_case */
-#line 231 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
+      case 79: /* switch_case_list ::= switch_case_list switch_case */
+#line 232 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-1].minor.yy64->tail->next = yymsp[0].minor.yy97; yymsp[-1].minor.yy64->tail = yymsp[0].minor.yy97; yylhsminor.yy64 = yymsp[-1].minor.yy64; }
-#line 2160 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2164 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-1].minor.yy64 = yylhsminor.yy64;
         break;
-      case 79: /* switch_case ::= CASE expression COLON statement */
-#line 237 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yymsp[-3].minor.yy97 = new_switch_case(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy36); }
-#line 2166 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
-        break;
-      case 80: /* switch_case ::= CASE expression COLON */
+      case 80: /* switch_case ::= CASE expression COLON statement */
 #line 238 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yymsp[-2].minor.yy97 = new_switch_case(ctx, yymsp[-1].minor.yy167, NULL); }
-#line 2171 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yymsp[-3].minor.yy97 = new_switch_case(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy36); }
+#line 2170 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
-      case 81: /* switch_case ::= DEFAULT COLON statement */
+      case 81: /* switch_case ::= CASE expression COLON */
 #line 239 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yymsp[-2].minor.yy97 = new_switch_case(ctx, NULL, yymsp[0].minor.yy36); }
-#line 2176 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yymsp[-2].minor.yy97 = new_switch_case(ctx, yymsp[-1].minor.yy167, NULL); }
+#line 2175 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
-      case 82: /* switch_case ::= DEFAULT COLON */
+      case 82: /* switch_case ::= DEFAULT COLON statement */
 #line 240 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
+{ yymsp[-2].minor.yy97 = new_switch_case(ctx, NULL, yymsp[0].minor.yy36); }
+#line 2180 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+        break;
+      case 83: /* switch_case ::= DEFAULT COLON */
+#line 241 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-1].minor.yy97 = new_switch_case(ctx, NULL, NULL); }
-#line 2181 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2185 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
-      case 83: /* var_declaration ::= VAR IDENTIFIER IDENTIFIER */
-#line 248 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yymsp[-2].minor.yy50 = new_var_declaration(ctx, yymsp[-1].minor.yy0.string, yymsp[0].minor.yy0.string, NULL); }
-#line 2186 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
-        break;
-      case 84: /* var_declaration ::= VAR IDENTIFIER IDENTIFIER ASSIGN expression */
+      case 84: /* var_declaration ::= VAR IDENTIFIER IDENTIFIER */
 #line 249 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
+{ yymsp[-2].minor.yy50 = new_var_declaration(ctx, yymsp[-1].minor.yy0.string, yymsp[0].minor.yy0.string, NULL); }
+#line 2190 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+        break;
+      case 85: /* var_declaration ::= VAR IDENTIFIER IDENTIFIER ASSIGN expression */
+#line 250 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-4].minor.yy50 = new_var_declaration(ctx, yymsp[-3].minor.yy0.string, yymsp[-2].minor.yy0.string, yymsp[0].minor.yy167); }
-#line 2191 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2195 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
-      case 85: /* arguments ::= LPAREN RPAREN */
-#line 253 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yymsp[-1].minor.yy93 = NULL; }
-#line 2196 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
-        break;
-      case 86: /* arguments ::= LPAREN argument_list RPAREN */
+      case 86: /* arguments ::= LPAREN RPAREN */
 #line 254 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yymsp[-2].minor.yy93 = yymsp[-1].minor.yy93; }
-#line 2201 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yymsp[-1].minor.yy93 = NULL; }
+#line 2200 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
-      case 87: /* argument_list ::= expression */
-#line 258 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
+      case 87: /* arguments ::= LPAREN argument_list RPAREN */
+#line 255 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
+{ yymsp[-2].minor.yy93 = yymsp[-1].minor.yy93; }
+#line 2205 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+        break;
+      case 88: /* argument_list ::= expression */
+#line 259 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy93 = new_arguments(ctx, new_argument(ctx, yymsp[0].minor.yy167)); }
-#line 2206 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2210 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[0].minor.yy93 = yylhsminor.yy93;
         break;
-      case 88: /* argument_list ::= argument_list COMMA expression */
-#line 259 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
+      case 89: /* argument_list ::= argument_list COMMA expression */
+#line 260 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yymsp[-2].minor.yy93->tail->next = new_argument(ctx, yymsp[0].minor.yy167); yymsp[-2].minor.yy93->tail = yymsp[-2].minor.yy93->tail->next; yylhsminor.yy93 = yymsp[-2].minor.yy93; }
-#line 2212 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2216 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy93 = yylhsminor.yy93;
         break;
-      case 89: /* expression ::= IDENTIFIER */
-#line 264 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yylhsminor.yy167 = new_identifier_expression(ctx, yymsp[0].minor.yy0.string); }
-#line 2218 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
-  yymsp[0].minor.yy167 = yylhsminor.yy167;
-        break;
-      case 90: /* expression ::= INT_CONSTANT */
+      case 90: /* expression ::= IDENTIFIER */
 #line 265 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yylhsminor.yy167 = new_int_expression(ctx, yymsp[0].minor.yy0.i64); }
-#line 2224 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yylhsminor.yy167 = new_identifier_expression(ctx, yymsp[0].minor.yy0.string); }
+#line 2222 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[0].minor.yy167 = yylhsminor.yy167;
         break;
-      case 91: /* expression ::= FLOAT_CONSTANT */
+      case 91: /* expression ::= INT_CONSTANT */
 #line 266 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yylhsminor.yy167 = new_float_expression(ctx, yymsp[0].minor.yy0.dbl); }
-#line 2230 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yylhsminor.yy167 = new_int_expression(ctx, yymsp[0].minor.yy0.i64); }
+#line 2228 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[0].minor.yy167 = yylhsminor.yy167;
         break;
-      case 92: /* expression ::= TRUE */
+      case 92: /* expression ::= FLOAT_CONSTANT */
 #line 267 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yymsp[0].minor.yy167 = new_bool_expression(ctx, 1); }
-#line 2236 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yylhsminor.yy167 = new_float_expression(ctx, yymsp[0].minor.yy0.dbl); }
+#line 2234 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+  yymsp[0].minor.yy167 = yylhsminor.yy167;
         break;
-      case 93: /* expression ::= FALSE */
+      case 93: /* expression ::= TRUE */
 #line 268 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yymsp[0].minor.yy167 = new_bool_expression(ctx, 0); }
-#line 2241 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yymsp[0].minor.yy167 = new_bool_expression(ctx, 1); }
+#line 2240 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
-      case 94: /* expression ::= LPAREN expression RPAREN */
+      case 94: /* expression ::= FALSE */
 #line 269 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yymsp[-2].minor.yy167 = new_parentheses_expression(ctx, yymsp[-1].minor.yy167); }
-#line 2246 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yymsp[0].minor.yy167 = new_bool_expression(ctx, 0); }
+#line 2245 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
-      case 95: /* expression ::= IDENTIFIER arguments */
+      case 95: /* expression ::= LPAREN expression RPAREN */
 #line 270 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
+{ yymsp[-2].minor.yy167 = new_parentheses_expression(ctx, yymsp[-1].minor.yy167); }
+#line 2250 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+        break;
+      case 96: /* expression ::= IDENTIFIER arguments */
+#line 271 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy167 = new_fncall_expression(ctx, yymsp[-1].minor.yy0.string, yymsp[0].minor.yy93); }
-#line 2251 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2255 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-1].minor.yy167 = yylhsminor.yy167;
         break;
-      case 96: /* expression ::= PLUS expression */
-#line 271 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yymsp[-1].minor.yy167 = new_unaryplus_expression(ctx, yymsp[0].minor.yy167); }
-#line 2257 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
-        break;
-      case 97: /* expression ::= MINUS expression */
+      case 97: /* expression ::= PLUS expression */
 #line 272 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yymsp[-1].minor.yy167 = new_unaryminus_expression(ctx, yymsp[0].minor.yy167); }
-#line 2262 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yymsp[-1].minor.yy167 = new_unaryplus_expression(ctx, yymsp[0].minor.yy167); }
+#line 2261 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
-      case 98: /* expression ::= COMPLEMENT expression */
+      case 98: /* expression ::= MINUS expression */
 #line 273 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yymsp[-1].minor.yy167 = new_unarycompl_expression(ctx, yymsp[0].minor.yy167); }
-#line 2267 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yymsp[-1].minor.yy167 = new_unaryminus_expression(ctx, yymsp[0].minor.yy167); }
+#line 2266 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
-      case 99: /* expression ::= EXCLAMATION expression */
+      case 99: /* expression ::= COMPLEMENT expression */
 #line 274 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yymsp[-1].minor.yy167 = new_unarynot_expression(ctx, yymsp[0].minor.yy167); }
-#line 2272 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yymsp[-1].minor.yy167 = new_unarycompl_expression(ctx, yymsp[0].minor.yy167); }
+#line 2271 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
-      case 100: /* expression ::= expression STAR expression */
+      case 100: /* expression ::= EXCLAMATION expression */
 #line 275 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yylhsminor.yy167 = new_multiply_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
-#line 2277 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
-  yymsp[-2].minor.yy167 = yylhsminor.yy167;
+{ yymsp[-1].minor.yy167 = new_unarynot_expression(ctx, yymsp[0].minor.yy167); }
+#line 2276 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
         break;
-      case 101: /* expression ::= expression SLASH expression */
+      case 101: /* expression ::= expression STAR expression */
 #line 276 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yylhsminor.yy167 = new_divide_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
-#line 2283 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yylhsminor.yy167 = new_multiply_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
+#line 2281 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy167 = yylhsminor.yy167;
         break;
-      case 102: /* expression ::= expression PERCENT expression */
+      case 102: /* expression ::= expression SLASH expression */
 #line 277 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yylhsminor.yy167 = new_mod_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
-#line 2289 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yylhsminor.yy167 = new_divide_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
+#line 2287 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy167 = yylhsminor.yy167;
         break;
-      case 103: /* expression ::= expression PLUS expression */
+      case 103: /* expression ::= expression PERCENT expression */
 #line 278 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yylhsminor.yy167 = new_addition_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
-#line 2295 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yylhsminor.yy167 = new_mod_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
+#line 2293 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy167 = yylhsminor.yy167;
         break;
-      case 104: /* expression ::= expression MINUS expression */
+      case 104: /* expression ::= expression PLUS expression */
 #line 279 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yylhsminor.yy167 = new_subtraction_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
-#line 2301 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yylhsminor.yy167 = new_addition_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
+#line 2299 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy167 = yylhsminor.yy167;
         break;
-      case 105: /* expression ::= expression LSHIFT expression */
+      case 105: /* expression ::= expression MINUS expression */
 #line 280 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yylhsminor.yy167 = new_lshift_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
-#line 2307 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yylhsminor.yy167 = new_subtraction_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
+#line 2305 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy167 = yylhsminor.yy167;
         break;
-      case 106: /* expression ::= expression RSHIFT expression */
+      case 106: /* expression ::= expression LSHIFT expression */
 #line 281 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yylhsminor.yy167 = new_rshift_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
-#line 2313 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yylhsminor.yy167 = new_lshift_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
+#line 2311 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy167 = yylhsminor.yy167;
         break;
-      case 107: /* expression ::= expression LT expression */
+      case 107: /* expression ::= expression RSHIFT expression */
 #line 282 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yylhsminor.yy167 = new_lt_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
-#line 2319 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yylhsminor.yy167 = new_rshift_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
+#line 2317 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy167 = yylhsminor.yy167;
         break;
-      case 108: /* expression ::= expression GT expression */
+      case 108: /* expression ::= expression LT expression */
 #line 283 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yylhsminor.yy167 = new_gt_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
-#line 2325 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yylhsminor.yy167 = new_lt_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
+#line 2323 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy167 = yylhsminor.yy167;
         break;
-      case 109: /* expression ::= expression LEQ expression */
+      case 109: /* expression ::= expression GT expression */
 #line 284 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yylhsminor.yy167 = new_leq_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
-#line 2331 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yylhsminor.yy167 = new_gt_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
+#line 2329 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy167 = yylhsminor.yy167;
         break;
-      case 110: /* expression ::= expression GEQ expression */
+      case 110: /* expression ::= expression LEQ expression */
 #line 285 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yylhsminor.yy167 = new_geq_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
-#line 2337 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yylhsminor.yy167 = new_leq_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
+#line 2335 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy167 = yylhsminor.yy167;
         break;
-      case 111: /* expression ::= expression EQL expression */
+      case 111: /* expression ::= expression GEQ expression */
 #line 286 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yylhsminor.yy167 = new_eql_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
-#line 2343 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yylhsminor.yy167 = new_geq_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
+#line 2341 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy167 = yylhsminor.yy167;
         break;
-      case 112: /* expression ::= expression NEQ expression */
+      case 112: /* expression ::= expression EQL expression */
 #line 287 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yylhsminor.yy167 = new_neq_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
-#line 2349 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yylhsminor.yy167 = new_eql_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
+#line 2347 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy167 = yylhsminor.yy167;
         break;
-      case 113: /* expression ::= expression AND expression */
+      case 113: /* expression ::= expression NEQ expression */
 #line 288 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yylhsminor.yy167 = new_and_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
-#line 2355 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yylhsminor.yy167 = new_neq_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
+#line 2353 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy167 = yylhsminor.yy167;
         break;
-      case 114: /* expression ::= expression XOR expression */
+      case 114: /* expression ::= expression AND expression */
 #line 289 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yylhsminor.yy167 = new_xor_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
-#line 2361 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yylhsminor.yy167 = new_and_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
+#line 2359 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy167 = yylhsminor.yy167;
         break;
-      case 115: /* expression ::= expression OR expression */
+      case 115: /* expression ::= expression XOR expression */
 #line 290 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yylhsminor.yy167 = new_or_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
-#line 2367 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yylhsminor.yy167 = new_xor_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
+#line 2365 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy167 = yylhsminor.yy167;
         break;
-      case 116: /* expression ::= expression ANDAND expression */
+      case 116: /* expression ::= expression OR expression */
 #line 291 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yylhsminor.yy167 = new_andand_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
-#line 2373 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yylhsminor.yy167 = new_or_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
+#line 2371 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy167 = yylhsminor.yy167;
         break;
-      case 117: /* expression ::= expression OROR expression */
+      case 117: /* expression ::= expression ANDAND expression */
 #line 292 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
-{ yylhsminor.yy167 = new_oror_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
-#line 2379 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+{ yylhsminor.yy167 = new_andand_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
+#line 2377 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy167 = yylhsminor.yy167;
         break;
-      case 118: /* expression ::= expression QUESTION expression COLON expression */
+      case 118: /* expression ::= expression OROR expression */
 #line 293 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
+{ yylhsminor.yy167 = new_oror_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
+#line 2383 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+  yymsp[-2].minor.yy167 = yylhsminor.yy167;
+        break;
+      case 119: /* expression ::= expression QUESTION expression COLON expression */
+#line 294 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy167 = new_conditional_expression(ctx, yymsp[-4].minor.yy167, yymsp[-2].minor.yy167, yymsp[0].minor.yy167); }
-#line 2385 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2389 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-4].minor.yy167 = yylhsminor.yy167;
         break;
-      case 119: /* expression ::= expression LBRACKET expression RBRACKET */
-#line 294 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
+      case 120: /* expression ::= expression LBRACKET expression RBRACKET */
+#line 295 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy167 = new_array_dereference_expression(ctx, yymsp[-3].minor.yy167, yymsp[-1].minor.yy167); }
-#line 2391 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2395 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-3].minor.yy167 = yylhsminor.yy167;
         break;
-      case 120: /* expression ::= expression DOT IDENTIFIER */
-#line 295 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
+      case 121: /* expression ::= expression DOT IDENTIFIER */
+#line 296 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.lemon"
 { yylhsminor.yy167 = new_struct_dereference_expression(ctx, yymsp[-2].minor.yy167, yymsp[0].minor.yy0.string); }
-#line 2397 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2401 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
   yymsp[-2].minor.yy167 = yylhsminor.yy167;
         break;
       default:
@@ -2442,7 +2446,7 @@ static void yy_parse_failed(
 
     // !!! FIXME: make this a proper fail() function.
     fail(ctx, "Giving up. Parser is hopelessly lost...");
-#line 2446 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2450 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 /************ End %parse_failure code *****************************************/
   ParseSDLSLARG_STORE /* Suppress warning about unused %extra_argument variable */
   ParseSDLSLCTX_STORE
@@ -2465,7 +2469,7 @@ static void yy_syntax_error(
 
     // !!! FIXME: make this a proper fail() function.
     fail(ctx, "Syntax error");
-#line 2469 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
+#line 2473 "/home/icculus/projects/SDL_shader_tools/SDL_shader_parser.h"
 /************ End %syntax_error code ******************************************/
   ParseSDLSLARG_STORE /* Suppress warning about unused %extra_argument variable */
   ParseSDLSLCTX_STORE

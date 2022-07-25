@@ -223,6 +223,7 @@ for_initializer(A) ::= . { A = NULL; }
 for_step(A) ::= assignment_statement(B). { A = B; }
 for_step(A) ::= compound_assignment_statement(B). { A = B; }
 for_step(A) ::= increment_statement(B). { A = B; }
+for_step(A) ::= function_call_statement(B). { A = B; }
 for_step(A) ::= . { A = NULL; }
 
 %type switch_case_list { SDL_SHADER_AstSwitchCases * }

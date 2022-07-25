@@ -1203,7 +1203,6 @@ const SDL_SHADER_AstData *SDL_SHADER_ParseAst(const SDL_SHADER_CompilerParams *p
     return retval;
 }
 
-
 void SDL_SHADER_FreeAstData(const SDL_SHADER_AstData *_data)
 {
     SDL_SHADER_AstData *data = (SDL_SHADER_AstData *) _data;
