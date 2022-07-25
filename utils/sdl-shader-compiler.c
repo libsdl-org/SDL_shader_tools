@@ -58,37 +58,40 @@ static void print_errors(const SDL_SHADER_Error *errors, const size_t error_coun
     }
 }
 
+/* These _HAVE_ to be in the same order as SDL_SHADER_AstNodeType! */
+static const char *binary[] = {
+    "*", "/", "%", "+", "-", "<<", ">>", "<", ">", "<=", ">=", "==", "!=", "&", "^", "|", "&&", "||"
+};
+
+static const char *assign[] = {
+    "=", "*=", "/=", "%=", "+=", "-=", "<<=", ">>=", "&=", "^=", "|="
+};
+
+static const char *pre_unary[] = { "+", "-", "~", "!", "()" };
+
+static const char *simple_stmt[] = { "", "break", "continue", "discard" };
+
+static int indent = 0;
+static void do_indent(FILE *io)
+{
+    int i;
+    for (i = 0; i < indent; i++) {
+        fprintf(io, "    ");
+    }
+}
+
 static void print_ast(FILE *io, const SDL_bool substmt, const void *_ast)
 {
     const SDL_SHADER_AstNode *ast = (const SDL_SHADER_AstNode *) _ast;
     const char *nl = substmt ? "" : "\n";
     const int typeint = ast ? ((int) ast->ast.type) : 0;
-    static int indent = 0;
     int isblock = 0;
-    int indenti;
-
-    /* These _HAVE_ to be in the same order as SDL_SHADER_AstNodeType! */
-    static const char *binary[] = {
-        "*", "/", "%", "+", "-", "<<", ">>", "<", ">", "<=", ">=", "==", "!=", "&", "^", "|", "&&", "||"
-    };
-
-    static const char *assign[] = {
-        "=", "*=", "/=", "%=", "+=", "-=", "<<=", ">>=", "&=", "^=", "|="
-    };
-
-    static const char *pre_unary[] = { "+", "-", "~", "!" };
-
-    static const char *simple_stmt[] = { "", "break", "continue", "discard" };
-    static const char *inpmod[] = { "", "in ", "out ", "in out ", "uniform " };
-    static const char *fnstorage[] = { "", "inline " };
 
     if (!ast) {
         return;
     }
 
-    #define DO_INDENT do { \
-        if (!substmt) { for (indenti = 0; indenti < indent; indenti++) fprintf(io, "    "); } \
-    } while (SDL_FALSE)
+    #define DO_INDENT do { if (!substmt) { do_indent(io); } } while (SDL_FALSE)
 
     switch (ast->ast.type) {
         case SDL_SHADER_AST_OP_POSITIVE:
@@ -484,6 +487,574 @@ static void print_ast(FILE *io, const SDL_bool substmt, const void *_ast)
     #undef DO_INDENT
 }
 
+static void print_ast_xml(FILE *io, const void *_ast)
+{
+    const SDL_SHADER_AstNode *ast = (const SDL_SHADER_AstNode *) _ast;
+    const int typeint = ast ? ((int) ast->ast.type) : 0;
+
+    if (!ast) {
+        return;
+    }
+
+    #define DO_INDENT do_indent(io)
+
+    switch (ast->ast.type) {
+        case SDL_SHADER_AST_OP_POSITIVE:
+        case SDL_SHADER_AST_OP_NEGATE:
+        case SDL_SHADER_AST_OP_COMPLEMENT:
+        case SDL_SHADER_AST_OP_NOT:
+        case SDL_SHADER_AST_OP_PARENTHESES:
+            DO_INDENT; fprintf(io, "<unary_expression operator='%s'>\n", pre_unary[(typeint-SDL_SHADER_AST_OP_START_RANGE_UNARY)-1]);
+            indent++;
+            print_ast_xml(io, ast->unary.operand);
+            indent--;
+            DO_INDENT; fprintf(io, "</unary_expression>\n");
+            break;
+
+        case SDL_SHADER_AST_OP_MULTIPLY:
+        case SDL_SHADER_AST_OP_DIVIDE:
+        case SDL_SHADER_AST_OP_MODULO:
+        case SDL_SHADER_AST_OP_ADD:
+        case SDL_SHADER_AST_OP_SUBTRACT:
+        case SDL_SHADER_AST_OP_LSHIFT:
+        case SDL_SHADER_AST_OP_RSHIFT:
+        case SDL_SHADER_AST_OP_LESSTHAN:
+        case SDL_SHADER_AST_OP_GREATERTHAN:
+        case SDL_SHADER_AST_OP_LESSTHANOREQUAL:
+        case SDL_SHADER_AST_OP_GREATERTHANOREQUAL:
+        case SDL_SHADER_AST_OP_EQUAL:
+        case SDL_SHADER_AST_OP_NOTEQUAL:
+        case SDL_SHADER_AST_OP_BINARYAND:
+        case SDL_SHADER_AST_OP_BINARYXOR:
+        case SDL_SHADER_AST_OP_BINARYOR:
+        case SDL_SHADER_AST_OP_LOGICALAND:
+        case SDL_SHADER_AST_OP_LOGICALOR:
+        case SDL_SHADER_AST_OP_DEREF_ARRAY:
+            DO_INDENT; fprintf(io, "<binary_expression operator='%s'>\n", binary[(typeint - SDL_SHADER_AST_OP_START_RANGE_BINARY) - 1]);
+            indent++;
+            DO_INDENT; fprintf(io, "<left>\n");
+            indent++;
+            print_ast_xml(io, ast->binary.left);
+            indent--;
+            DO_INDENT; fprintf(io, "</left>\n");
+            DO_INDENT; fprintf(io, "<right>\n");
+            indent++;
+            print_ast_xml(io, ast->binary.right);
+            indent--;
+            DO_INDENT; fprintf(io, "</right>\n");
+            indent--;
+            DO_INDENT; fprintf(io, "</binary_expression>\n");
+            break;
+
+        case SDL_SHADER_AST_OP_DEREF_STRUCT:
+            DO_INDENT; fprintf(io, "<deref_struct_expression field='%s'>\n", ast->structderef.field);
+            indent++;
+            DO_INDENT; fprintf(io, "<object>\n");
+            indent++;
+            print_ast_xml(io, ast->structderef.expr);
+            indent--;
+            DO_INDENT; fprintf(io, "</object>\n");
+            indent--;
+            DO_INDENT; fprintf(io, "</deref_struct_expression>\n");
+            break;
+
+        case SDL_SHADER_AST_OP_CONDITIONAL:
+            DO_INDENT; fprintf(io, "<ternary_expression operator='%s'>\n", "?");
+            indent++;
+            DO_INDENT; fprintf(io, "<left>\n");
+            indent++;
+            print_ast_xml(io, ast->ternary.left);
+            indent--;
+            DO_INDENT; fprintf(io, "</left>\n");
+            DO_INDENT; fprintf(io, "<center>\n");
+            indent++;
+            print_ast_xml(io, ast->ternary.center);
+            indent--;
+            DO_INDENT; fprintf(io, "</center>\n");
+            DO_INDENT; fprintf(io, "<right>\n");
+            indent++;
+            print_ast_xml(io, ast->ternary.right);
+            indent--;
+            DO_INDENT; fprintf(io, "</right>\n");
+            indent--;
+            DO_INDENT; fprintf(io, "</ternary_expression>\n");
+            break;
+
+        case SDL_SHADER_AST_OP_IDENTIFIER:
+            DO_INDENT; fprintf(io, "<identifier_expression name='%s' />\n", ast->identifier.name);
+            break;
+
+        case SDL_SHADER_AST_OP_INT_LITERAL:
+            DO_INDENT; fprintf(io, "<int_literal_expression value='%lld' />\n", (long long) ast->intliteral.value);
+            break;
+
+        case SDL_SHADER_AST_OP_FLOAT_LITERAL: {
+            const double f = ast->floatliteral.value;
+            const long long flr = (long long) f;
+            DO_INDENT; fprintf(io, "<float_literal_expression value='");
+            if (((float) flr) == f) {
+                fprintf(io, "%lld.0", flr);
+            } else {
+                fprintf(io, "%.16g", f);
+            }
+            fprintf(io, "' />\n");
+            break;
+        }
+
+        case SDL_SHADER_AST_OP_BOOLEAN_LITERAL:
+            DO_INDENT; fprintf(io, "<boolean_literal_expression value='%s' />\n", ast->boolliteral.value ? "true" : "false");
+            break;
+
+        case SDL_SHADER_AST_OP_CALLFUNC:
+            DO_INDENT; fprintf(io, "<function_call_expression name='%s'", ast->fncall.fnname);
+            if (!ast->fncall.arguments) {
+                fprintf(io, " />\n");
+            } else {
+                SDL_SHADER_AstArgument *i;
+                fprintf(io, ">\n");
+                indent++;
+                DO_INDENT; fprintf(io, "<arguments>\n");
+                indent++;
+                for (i = ast->fncall.arguments->head; i != NULL; i = i->next) {
+                    DO_INDENT; fprintf(io, "<argument>\n");
+                    indent++;
+                    print_ast_xml(io, i->arg);
+                    indent--;
+                    DO_INDENT; fprintf(io, "</argument>\n");
+                }
+                indent--;
+                DO_INDENT; fprintf(io, "</arguments>\n");
+                indent--;
+                DO_INDENT; fprintf(io, "</function_call_expression>\n");
+            }
+            break;
+
+        case SDL_SHADER_AST_STATEMENT_EMPTY:
+            DO_INDENT; fprintf(io, "<empty_statement/>\n");
+            break;
+
+        case SDL_SHADER_AST_STATEMENT_BREAK:
+        case SDL_SHADER_AST_STATEMENT_CONTINUE:
+        case SDL_SHADER_AST_STATEMENT_DISCARD:
+            DO_INDENT; fprintf(io, "<%s_statement/>\n", simple_stmt[(typeint-SDL_SHADER_AST_STATEMENT_START_RANGE)-1]);
+            break;
+
+        case SDL_SHADER_AST_STATEMENT_VARDECL: {
+            SDL_SHADER_AstVarDeclaration *vardecl = ast->vardeclstmt.vardecl;
+            DO_INDENT; fprintf(io, "<variable_declartion_statement datatype='%s' name='%s'", vardecl->datatype_name, vardecl->name);
+            if (!vardecl->initializer) {
+                fprintf(io, " />\n");
+            } else {
+                fprintf(io, ">\n");
+                indent++;
+                DO_INDENT; fprintf(io, "<initializer>\n");
+                indent++;
+                print_ast_xml(io, vardecl->initializer);
+                indent--;
+                DO_INDENT; fprintf(io, "</initializer>\n");
+                indent--;
+                DO_INDENT; fprintf(io, "</variable_declartion_statement>\n");
+            }
+            break;
+        }
+
+        case SDL_SHADER_AST_STATEMENT_DO:
+            DO_INDENT; fprintf(io, "<do_statement>\n");
+            indent++;
+            DO_INDENT; fprintf(io, "<code>\n");
+            indent++;
+            print_ast_xml(io, ast->dostmt.code);
+            indent--;
+            DO_INDENT; fprintf(io, "</code>\n");
+            DO_INDENT; fprintf(io, "<condition>\n");
+            indent++;
+            print_ast_xml(io, ast->dostmt.condition);
+            indent--;
+            DO_INDENT; fprintf(io, "</condition>\n");
+            indent--;
+            DO_INDENT; fprintf(io, "</do_statement>\n");
+            break;
+
+        case SDL_SHADER_AST_STATEMENT_WHILE:
+            DO_INDENT; fprintf(io, "<while_statement>\n");
+            indent++;
+            DO_INDENT; fprintf(io, "<condition>\n");
+            indent++;
+            print_ast_xml(io, ast->whilestmt.condition);
+            indent--;
+            DO_INDENT; fprintf(io, "</condition>\n");
+            DO_INDENT; fprintf(io, "<code>\n");
+            indent++;
+            print_ast_xml(io, ast->whilestmt.code);
+            indent--;
+            DO_INDENT; fprintf(io, "</code>\n");
+            indent--;
+            DO_INDENT; fprintf(io, "</while_statement>\n");
+            break;
+
+        case SDL_SHADER_AST_STATEMENT_FOR: {
+            SDL_SHADER_AstForDetails *details = ast->forstmt.details;
+            DO_INDENT; fprintf(io, "<for_statement>\n");
+            indent++;
+            if (details->initializer) {
+                DO_INDENT; fprintf(io, "<initializer>\n");
+                indent++;
+                print_ast_xml(io, details->initializer);
+                indent--;
+                DO_INDENT; fprintf(io, "</initializer>\n");
+            }
+            if (details->condition) {
+                DO_INDENT; fprintf(io, "<condition>\n");
+                indent++;
+                print_ast_xml(io, details->condition);
+                indent--;
+                DO_INDENT; fprintf(io, "</condition>\n");
+            }
+            if (details->step) {
+                DO_INDENT; fprintf(io, "<step>\n");
+                indent++;
+                print_ast_xml(io, details->step);
+                indent--;
+                DO_INDENT; fprintf(io, "</step>\n");
+            }
+
+            DO_INDENT; fprintf(io, "<code>\n");
+            indent++;
+            print_ast_xml(io, ast->forstmt.code);
+            indent--;
+            DO_INDENT; fprintf(io, "</code>\n");
+            indent--;
+            DO_INDENT; fprintf(io, "</for_statement>\n");
+            break;
+        }
+
+        case SDL_SHADER_AST_STATEMENT_IF:
+            DO_INDENT; fprintf(io, "<if_statement>\n");
+            indent++;
+            DO_INDENT; fprintf(io, "<condition>\n");
+            indent++;
+            print_ast_xml(io, ast->ifstmt.condition);
+            indent--;
+            DO_INDENT; fprintf(io, "</condition>\n");
+            DO_INDENT; fprintf(io, "<code>\n");
+            indent++;
+            print_ast_xml(io, ast->ifstmt.code);
+            indent--;
+            DO_INDENT; fprintf(io, "</code>\n");
+            if (ast->ifstmt.else_code) {
+                DO_INDENT; fprintf(io, "<else_code>\n");
+                indent++;
+                print_ast_xml(io, ast->ifstmt.else_code);
+                indent--;
+                DO_INDENT; fprintf(io, "</else_code>\n");
+            }
+            indent--;
+            DO_INDENT; fprintf(io, "</if_statement>\n");
+            break;
+
+        case SDL_SHADER_AST_STATEMENT_SWITCH:
+            DO_INDENT; fprintf(io, "<switch_statement>\n");
+            indent++;
+            DO_INDENT; fprintf(io, "<condition>\n");
+            indent++;
+            print_ast_xml(io, ast->switchstmt.condition);
+            indent--;
+            DO_INDENT; fprintf(io, "</condition>\n");
+
+            if (ast->switchstmt.cases) {
+                SDL_SHADER_AstSwitchCase *i;
+                DO_INDENT; fprintf(io, "<cases>\n");
+                indent++;
+                for (i = ast->switchstmt.cases->head; i != NULL; i = i->next) {
+                    if (i->condition) {
+                        DO_INDENT; fprintf(io, "<case>\n");
+                        indent++;
+                        if (i->condition) {
+                            DO_INDENT; fprintf(io, "<condition>\n");
+                            indent++;
+                            print_ast_xml(io, i->condition);
+                            indent--;
+                            DO_INDENT; fprintf(io, "</condition>\n");
+                        }
+                        if (i->code) {
+                            DO_INDENT; fprintf(io, "<code>\n");
+                            indent++;
+                            print_ast_xml(io, i->code);
+                            indent--;
+                            DO_INDENT; fprintf(io, "</code>\n");
+                        }
+                        indent--;
+                        DO_INDENT; fprintf(io, "</case>\n");
+                    } else {
+                        DO_INDENT; fprintf(io, "<default_case>\n");
+                        indent++;
+                        if (i->code) {
+                            DO_INDENT; fprintf(io, "<code>\n");
+                            indent++;
+                            print_ast_xml(io, i->code);
+                            indent--;
+                            DO_INDENT; fprintf(io, "</code>\n");
+                        }
+                        indent--;
+                        DO_INDENT; fprintf(io, "</default_case>\n");
+                    }
+                }
+                indent--;
+                DO_INDENT; fprintf(io, "</cases>\n");
+            }
+            indent--;
+            DO_INDENT; fprintf(io, "</switch_statement>\n");
+            break;
+
+        case SDL_SHADER_AST_STATEMENT_RETURN:
+            DO_INDENT; fprintf(io, "<return_statement");
+            if (!ast->returnstmt.value) {
+                fprintf(io, "/>\n");
+            } else {
+                fprintf(io, ">\n");
+                indent++;
+                DO_INDENT; fprintf(io, "<value>\n");
+                indent++;
+                print_ast_xml(io, ast->returnstmt.value);
+                indent--;
+                DO_INDENT; fprintf(io, "</value>\n");
+                indent--;
+                DO_INDENT; fprintf(io, "</return_statement>\n");
+            }
+            break;
+
+        case SDL_SHADER_AST_STATEMENT_BLOCK: {
+            SDL_SHADER_AstStatement *i;
+            DO_INDENT; fprintf(io, "<statement_block>\n");
+            indent++;
+            for (i = ast->stmtblock.head; i != NULL; i = i->next) {
+                print_ast_xml(io, i);
+            }
+            indent--;
+            DO_INDENT; fprintf(io, "</statement_block>\n");
+            break;
+        }
+
+        case SDL_SHADER_AST_STATEMENT_PREINCREMENT:
+            DO_INDENT; fprintf(io, "<statement_preincrement>\n");
+            indent++;
+            print_ast_xml(io, ast->incrementstmt.assignment);
+            indent--;
+            DO_INDENT; fprintf(io, "</statement_preincrement>\n");
+            break;
+
+        case SDL_SHADER_AST_STATEMENT_POSTINCREMENT:
+            DO_INDENT; fprintf(io, "<statement_postincrement>\n");
+            indent++;
+            print_ast_xml(io, ast->incrementstmt.assignment);
+            indent--;
+            DO_INDENT; fprintf(io, "</statement_postincrement>\n");
+            break;
+
+        case SDL_SHADER_AST_STATEMENT_PREDECREMENT:
+            DO_INDENT; fprintf(io, "<statement_predecrement>\n");
+            indent++;
+            print_ast_xml(io, ast->incrementstmt.assignment);
+            indent--;
+            DO_INDENT; fprintf(io, "</statement_predecrement>\n");
+            break;
+
+        case SDL_SHADER_AST_STATEMENT_POSTDECREMENT:
+            DO_INDENT; fprintf(io, "<statement_postdecrement>\n");
+            indent++;
+            print_ast_xml(io, ast->incrementstmt.assignment);
+            indent--;
+            DO_INDENT; fprintf(io, "</statement_postdecrement>\n");
+            break;
+
+        case SDL_SHADER_AST_STATEMENT_FUNCTION_CALL:
+            DO_INDENT; fprintf(io, "<function_call_statement name='%s'", ast->fncallstmt.expr->fnname);
+            if (!ast->fncallstmt.expr->arguments) {
+                fprintf(io, " />\n");
+            } else {
+                SDL_SHADER_AstArgument *i;
+                fprintf(io, ">\n");
+                indent++;
+                for (i = ast->fncallstmt.expr->arguments->head; i != NULL; i = i->next) {
+                    print_ast_xml(io, i->arg);
+                }
+                indent--;
+                DO_INDENT; fprintf(io, "</function_call_statement>\n");
+            }
+
+            fprintf(io, "<function_call_statement name='%s'", ast->fncallstmt.expr->fnname);
+            if (!ast->fncallstmt.expr->arguments) {
+                fprintf(io, " />\n");
+            } else {
+                SDL_SHADER_AstArgument *i;
+                fprintf(io, ">\n");
+                indent++;
+                DO_INDENT; fprintf(io, "<arguments>\n");
+                indent++;
+                for (i = ast->fncallstmt.expr->arguments->head; i != NULL; i = i->next) {
+                    DO_INDENT; fprintf(io, "<argument>\n");
+                    indent++;
+                    print_ast_xml(io, i->arg);
+                    indent--;
+                    DO_INDENT; fprintf(io, "</argument>\n");
+                }
+                indent--;
+                DO_INDENT; fprintf(io, "</arguments>\n");
+                indent--;
+                DO_INDENT; fprintf(io, "</function_call_statement>\n");
+            }
+            break;
+
+        case SDL_SHADER_AST_STATEMENT_ASSIGNMENT:
+            DO_INDENT; fprintf(io, "<assignment_statement>\n");
+            indent++;
+            if (!ast->assignstmt.assignments) {
+                SDL_assert(!"Assignment statement without targets? This is a bug!");
+            } else {
+                SDL_SHADER_AstAssignment *i;
+                DO_INDENT; fprintf(io, "<assignments>\n");
+                indent++;
+                for (i = ast->assignstmt.assignments->head; i != NULL; i = i->next) {
+                    print_ast_xml(io, i->expr);
+                }
+                indent--;
+                DO_INDENT; fprintf(io, "</assignments>\n");
+            }
+            DO_INDENT; fprintf(io, "<value>\n");
+            indent++;
+            print_ast_xml(io, ast->assignstmt.value);
+            indent--;
+            DO_INDENT; fprintf(io, "</value>\n");
+            indent--;
+            DO_INDENT; fprintf(io, "</assignment_statement>\n");
+            break;
+
+        case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNMUL:
+        case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNDIV:
+        case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNMOD:
+        case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNADD:
+        case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNSUB:
+        case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNLSHIFT:
+        case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNRSHIFT:
+        case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNAND:
+        case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNXOR:
+        case SDL_SHADER_AST_STATEMENT_COMPOUNDASSIGNOR:
+            DO_INDENT; fprintf(io, "<compound_assignment_statement operator='%s'>\n", assign[(typeint - SDL_SHADER_AST_STATEMENT_ASSIGNMENT_START_RANGE) - 1]);
+            indent++;
+            DO_INDENT; fprintf(io, "<assignment>\n");
+            indent++;
+            print_ast_xml(io, ast->compoundassignstmt.assignment);
+            indent--;
+            DO_INDENT; fprintf(io, "</assignment>\n");
+            DO_INDENT; fprintf(io, "<value>\n");
+            indent++;
+            print_ast_xml(io, ast->compoundassignstmt.value);
+            indent--;
+            DO_INDENT; fprintf(io, "</value>\n");
+            indent--;
+            DO_INDENT; fprintf(io, "</compound_assignment_statement>\n");
+            break;
+
+        case SDL_SHADER_AST_TRANSUNIT_FUNCTION: {
+            SDL_SHADER_AstFunction *fn = ast->fnunit.fn;
+            DO_INDENT; fprintf(io, "<function datatype='%s' name='%s'>\n", fn->datatype_name ? fn->datatype_name : "void", fn->name);
+            indent++;
+            print_ast_xml(io, fn->attribute);
+            if (fn->params) {
+                SDL_SHADER_AstFunctionParam *i;
+                DO_INDENT; fprintf(io, "<parameters>\n");
+                indent++;
+                for (i = fn->params->head; i != NULL; i = i->next) {
+                    DO_INDENT; fprintf(io, "<parameter datatype='%s' name='%s'", i->datatype_name, i->name);
+                    if (!i->attribute) {
+                        fprintf(io, " />\n");
+                    } else {
+                        fprintf(io, ">\n");
+                        indent++;
+                        print_ast_xml(io, i->attribute);
+                        indent--;
+                        DO_INDENT; fprintf(io, "</parameter>\n");
+                    }
+                }
+                indent--;
+                DO_INDENT; fprintf(io, "</parameters>\n");
+            }
+            DO_INDENT; fprintf(io, "<code>\n");
+            indent++;
+            print_ast_xml(io, fn->code);
+            indent--;
+            DO_INDENT; fprintf(io, "</code>\n");
+            indent--;
+            DO_INDENT; fprintf(io, "</function>\n");
+            break;
+        }
+
+        case SDL_SHADER_AST_TRANSUNIT_STRUCT:
+            print_ast_xml(io, ast->structdeclunit.decl);
+            break;
+
+        case SDL_SHADER_AST_STRUCT_DECLARATION:
+            DO_INDENT; fprintf(io, "<struct_declaration name='%s'>\n", ast->structdecl.name);
+            indent++;
+            if (ast->structdecl.members) {
+                SDL_SHADER_AstStructMember *i;
+                DO_INDENT; fprintf(io, "<struct_members>\n");
+                indent++;
+                for (i = ast->structdecl.members->head; i != NULL; i = i->next) {
+                    DO_INDENT; fprintf(io, "<struct_member datatype='%s' name='%s'", i->datatype_name, i->name);
+                    if (!i->arraysize && !i->attribute) {
+                        fprintf(io, " />\n");
+                    } else {
+                        fprintf(io, ">\n");
+                        indent++;
+                        if (i->arraysize) {
+                            DO_INDENT; fprintf(io, "<arraysize>\n");
+                            indent++;
+                            print_ast_xml(io, i->arraysize);
+                            indent--;
+                            DO_INDENT; fprintf(io, "</arraysize>\n");
+                        }
+                        print_ast_xml(io, i->attribute);
+                        indent--;
+                        DO_INDENT; fprintf(io, "</struct_member>\n");
+                    }
+                }
+                indent--;
+                DO_INDENT; fprintf(io, "</struct_members>\n");
+            }
+            indent--;
+            DO_INDENT; fprintf(io, "</struct_declaration>\n");
+            break;
+
+        case SDL_SHADER_AST_AT_ATTRIBUTE:
+            DO_INDENT; fprintf(io, "<attribute name='%s'", ast->at_attribute.name);
+            if (ast->at_attribute.has_argument) {
+                fprintf(io, " value='%lld'", (long long) ast->at_attribute.argument);
+            }
+            fprintf(io, " />\n");
+            break;
+
+        case SDL_SHADER_AST_SHADER:
+            DO_INDENT; fprintf(io, "<shader>\n");
+            indent++;
+            if (ast->shader.units) {
+                SDL_SHADER_AstTranslationUnit *i;
+                for (i = ast->shader.units->head; i != NULL; i = i->next) {
+                    print_ast_xml(io, i);
+                }
+            }
+            indent--;
+            DO_INDENT; fprintf(io, "</shader>\n");
+            break;
+
+        default:
+            SDL_assert(!"Unexpected AST type");
+            break;
+    }
+
+    #undef DO_INDENT
+}
+
 static int preprocess(const SDL_SHADER_CompilerParams *params, const char *outfile, FILE *io)
 {
     const SDL_SHADER_PreprocessData *pd;
@@ -514,15 +1085,34 @@ static int preprocess(const SDL_SHADER_CompilerParams *params, const char *outfi
 
 static int ast(const SDL_SHADER_CompilerParams *params, const char *outfile, FILE *io)
 {
-    const SDL_SHADER_AstData *ad;
     int retval = 0;
-
-    ad = SDL_SHADER_ParseAst(params);
+    const SDL_SHADER_AstData *ad = SDL_SHADER_ParseAst(params);
     
     if (ad->error_count > 0) {
         print_errors(ad->errors, ad->error_count);
     } else {
         print_ast(io, SDL_FALSE, ad->shader);
+        if ((outfile != NULL) && (fclose(io) == EOF)) {
+            fprintf(stderr, " ... fclose('%s') failed.\n", outfile);
+        } else {
+            retval = 1;
+        }
+    }
+
+    SDL_SHADER_FreeAstData(ad);
+
+    return retval;
+}
+
+static int ast_xml(const SDL_SHADER_CompilerParams *params, const char *outfile, FILE *io)
+{
+    int retval = 0;
+    const SDL_SHADER_AstData *ad = SDL_SHADER_ParseAst(params);
+
+    if (ad->error_count > 0) {
+        print_errors(ad->errors, ad->error_count);
+    } else {
+        print_ast_xml(io, ad->shader);
         if ((outfile != NULL) && (fclose(io) == EOF)) {
             fprintf(stderr, " ... fclose('%s') failed.\n", outfile);
         } else {
@@ -568,6 +1158,7 @@ typedef enum
     ACTION_VERSION,
     ACTION_PREPROCESS,
     ACTION_AST,
+    ACTION_AST_XML,
     ACTION_COMPILE,
 } Action;
 
@@ -617,6 +1208,11 @@ int main(int argc, char **argv)
                 fail("Multiple actions specified");
             }
             action = ACTION_AST;
+        } else if (strcmp(arg, "-X") == 0) {
+            if ((action != ACTION_UNKNOWN) && (action != ACTION_AST_XML)) {
+                fail("Multiple actions specified");
+            }
+            action = ACTION_AST_XML;
         } else if (strcmp(arg, "-C") == 0) {
             if ((action != ACTION_UNKNOWN) && (action != ACTION_COMPILE)) {
                 fail("Multiple actions specified");
@@ -703,6 +1299,8 @@ int main(int argc, char **argv)
         retval = (!preprocess(&params, outfile, outio));
     } else if (action == ACTION_AST) {
         retval = (!ast(&params, outfile, outio));
+    } else if (action == ACTION_AST_XML) {
+        retval = (!ast_xml(&params, outfile, outio));
     } else if (action == ACTION_COMPILE) {
         retval = (!compile(&params, outfile, outio));
     }
