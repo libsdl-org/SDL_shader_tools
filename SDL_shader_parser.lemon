@@ -147,12 +147,13 @@ statement(A) ::= BREAK SEMICOLON. { A = new_break_statement(ctx); }
 statement(A) ::= CONTINUE SEMICOLON. { A = new_continue_statement(ctx); }
 statement(A) ::= DISCARD SEMICOLON.  { A = new_discard_statement(ctx); } // obviously only valid in fragment shaders; semantic analysis will check that.
 statement(A) ::= var_declaration(B) SEMICOLON. { A = new_var_declaration_statement(ctx, B); }
-statement(A) ::= DO statement_block(B) WHILE LPAREN expression(C) RPAREN SEMICOLON. { A = new_do_statement(ctx, B, C); }
-statement(A) ::= WHILE LPAREN expression(B) RPAREN statement_block(C). { A = new_while_statement(ctx, B, C); }
+statement(A) ::= DO statement_block(B) WHILE expression(C) SEMICOLON. { A = new_do_statement(ctx, B, C); }
+statement(A) ::= WHILE expression(B) statement_block(C). { A = new_while_statement(ctx, B, C); }
 statement(A) ::= FOR LPAREN for_details(B) RPAREN statement_block(C). { A = new_for_statement(ctx, B, C); }
-statement(A) ::= IF LPAREN expression(B) RPAREN statement_block(C). { A = new_if_statement(ctx, B, C, NULL); }
-statement(A) ::= IF LPAREN expression(B) RPAREN statement_block(C) ELSE statement_block(D). { A = new_if_statement(ctx, B, C, D); }
-statement(A) ::= SWITCH LPAREN expression(B) RPAREN LBRACE switch_case_list(C) RBRACE. { A = new_switch_statement(ctx, B, C); }
+statement(A) ::= FOR for_details(B) statement_block(C). { A = new_for_statement(ctx, B, C); }
+statement(A) ::= IF expression(B) statement_block(C). { A = new_if_statement(ctx, B, C, NULL); }
+statement(A) ::= IF expression(B) statement_block(C) ELSE statement_block(D). { A = new_if_statement(ctx, B, C, D); }
+statement(A) ::= SWITCH expression(B) LBRACE switch_case_list(C) RBRACE. { A = new_switch_statement(ctx, B, C); }
 // NO EXPRESSIONS AS STANDALONE STATEMENTS! statement(A) ::= expression(B) SEMICOLON.
 statement(A) ::= RETURN SEMICOLON. { A = new_return_statement(ctx, NULL); }
 statement(A) ::= RETURN expression(B) SEMICOLON. { A = new_return_statement(ctx, B); }

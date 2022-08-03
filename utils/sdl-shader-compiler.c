@@ -220,16 +220,16 @@ static void print_ast(FILE *io, const SDL_bool substmt, const void *_ast)
             if (!isblock) { indent--; }
 
             DO_INDENT;
-            fprintf(io, "while (");
+            fprintf(io, "while ");
             print_ast(io, SDL_FALSE, ast->dostmt.condition);
-            fprintf(io, ");\n");
+            fprintf(io, ";\n");
             break;
 
         case SDL_SHADER_AST_STATEMENT_WHILE:
             DO_INDENT;
-            fprintf(io, "while (");
+            fprintf(io, "while ");
             print_ast(io, SDL_FALSE, ast->whilestmt.condition);
-            fprintf(io, ")\n");
+            fprintf(io, "\n");
 
             isblock = ast->whilestmt.code->ast.type == SDL_SHADER_AST_STATEMENT_BLOCK;
             if (!isblock) { indent++; }
@@ -267,9 +267,9 @@ static void print_ast(FILE *io, const SDL_bool substmt, const void *_ast)
 
         case SDL_SHADER_AST_STATEMENT_IF:
             DO_INDENT;
-            fprintf(io, "if (");
+            fprintf(io, "if ");
             print_ast(io, SDL_TRUE, ast->ifstmt.condition);
-            fprintf(io, ")\n");
+            fprintf(io, "\n");
             isblock = ast->ifstmt.code->ast.type == SDL_SHADER_AST_STATEMENT_BLOCK;
             if (!isblock) { indent++; }
             print_ast(io, SDL_FALSE, ast->ifstmt.code);
@@ -286,9 +286,9 @@ static void print_ast(FILE *io, const SDL_bool substmt, const void *_ast)
 
         case SDL_SHADER_AST_STATEMENT_SWITCH:
             DO_INDENT;
-            fprintf(io, "switch (");
+            fprintf(io, "switch ");
             print_ast(io, SDL_TRUE, ast->switchstmt.condition);
-            fprintf(io, ")\n");
+            fprintf(io, "\n");
             DO_INDENT;
             fprintf(io, "{\n");
             indent++;

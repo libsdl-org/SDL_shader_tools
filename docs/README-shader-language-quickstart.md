@@ -112,6 +112,18 @@ if (x == 1) {
 This is just about removing a footgun from C semantics.
 
 
+## Flow control statements don't need parentheses.
+
+If you love them, you can use them, but they aren't required:
+
+```c
+if x == 1 {   // this compiles! We can parse this because we require braces!
+    do_something();
+}
+
+if (x == 1) {}  // this compiles, too, so you can ignore all this if you want.
+```
+
 ## Most C operators match.
 
 The things you'd expect, like `+` and `/` and stuff are all there.
