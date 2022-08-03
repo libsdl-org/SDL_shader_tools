@@ -294,6 +294,14 @@ typedef struct SDL_SHADER_AstBreakStatement
 
 typedef SDL_SHADER_AstBreakStatement SDL_SHADER_AstContinueStatement;
 
+typedef struct SDL_SHADER_AstStatementBlock
+{
+    SDL_SHADER_AstNodeInfo ast;
+    SDL_SHADER_AstStatement *next;
+    SDL_SHADER_AstStatement *head;
+    SDL_SHADER_AstStatement *tail;
+} SDL_SHADER_AstStatementBlock;
+
 typedef struct SDL_SHADER_AstForDetails
 {
     SDL_SHADER_AstStatement *initializer;
@@ -306,7 +314,7 @@ typedef struct SDL_SHADER_AstForStatement
     SDL_SHADER_AstNodeInfo ast;
     SDL_SHADER_AstStatement *next;
     SDL_SHADER_AstForDetails *details;
-    SDL_SHADER_AstStatement *code;
+    SDL_SHADER_AstStatementBlock *code;
 } SDL_SHADER_AstForStatement;
 
 typedef struct SDL_SHADER_AstVarDeclStatement
@@ -320,7 +328,7 @@ typedef struct SDL_SHADER_AstDoStatement
 {
     SDL_SHADER_AstNodeInfo ast;
     SDL_SHADER_AstStatement *next;
-    SDL_SHADER_AstStatement *code;
+    SDL_SHADER_AstStatementBlock *code;
     SDL_SHADER_AstExpression *condition;
 } SDL_SHADER_AstDoStatement;
 
@@ -328,7 +336,7 @@ typedef struct SDL_SHADER_AstWhileStatement
 {
     SDL_SHADER_AstNodeInfo ast;
     SDL_SHADER_AstStatement *next;
-    SDL_SHADER_AstStatement *code;
+    SDL_SHADER_AstStatementBlock *code;
     SDL_SHADER_AstExpression *condition;
 } SDL_SHADER_AstWhileStatement;
 
@@ -337,8 +345,8 @@ typedef struct SDL_SHADER_AstIfStatement
     SDL_SHADER_AstNodeInfo ast;
     SDL_SHADER_AstStatement *next;
     SDL_SHADER_AstExpression *condition;
-    SDL_SHADER_AstStatement *code;
-    SDL_SHADER_AstStatement *else_code;  /* NULL if there's no else clause. */
+    SDL_SHADER_AstStatementBlock *code;
+    SDL_SHADER_AstStatementBlock *else_code;  /* NULL if there's no else clause. */
 } SDL_SHADER_AstIfStatement;
 
 typedef struct SDL_SHADER_AstSwitchCase
@@ -411,14 +419,6 @@ typedef struct SDL_SHADER_AstFunctionCallStatement
     SDL_SHADER_AstStatement *next;
     SDL_SHADER_AstFunctionCallExpression *expr;
 } SDL_SHADER_AstFunctionCallStatement;
-
-typedef struct SDL_SHADER_AstStatementBlock
-{
-    SDL_SHADER_AstNodeInfo ast;
-    SDL_SHADER_AstStatement *next;
-    SDL_SHADER_AstStatement *head;
-    SDL_SHADER_AstStatement *tail;
-} SDL_SHADER_AstStatementBlock;
 
 union SDL_SHADER_AstForInitializer
 {

@@ -385,7 +385,21 @@ static void delete_var_declaration_statement(Context *ctx, SDL_SHADER_AstVarDecl
     Free(ctx, vdstmt);
 }
 
-static SDL_SHADER_AstStatement *new_do_statement(Context *ctx, SDL_SHADER_AstStatement *code, SDL_SHADER_AstExpression *condition)
+static SDL_SHADER_AstStatementBlock *new_statement_block(Context *ctx, SDL_SHADER_AstStatement *first)
+{
+    NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstStatementBlock, SDL_SHADER_AST_STATEMENT_BLOCK);
+    retval->head = retval->tail = first;
+    return retval;
+}
+
+static void delete_statement_block(Context *ctx, SDL_SHADER_AstStatementBlock *stmtblock)
+{
+    DELETE_AST_STATEMENT_NODE(stmtblock);
+    delete_statement(ctx, stmtblock->next);
+    DELETE_AST_LIST(stmtblock, SDL_SHADER_AstStatement, delete_statement);  /* this happens to work, but watch out if that macro changes! */
+}
+
+static SDL_SHADER_AstStatement *new_do_statement(Context *ctx, SDL_SHADER_AstStatementBlock *code, SDL_SHADER_AstExpression *condition)
 {
     NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstDoStatement, SDL_SHADER_AST_STATEMENT_DO);
     retval->code = code;
@@ -396,13 +410,13 @@ static SDL_SHADER_AstStatement *new_do_statement(Context *ctx, SDL_SHADER_AstSta
 static void delete_do_statement(Context *ctx, SDL_SHADER_AstDoStatement *dostmt)
 {
     DELETE_AST_STATEMENT_NODE(dostmt);
-    delete_statement(ctx, dostmt->code);
+    delete_statement_block(ctx, dostmt->code);
     delete_expression(ctx, dostmt->condition);
     delete_statement(ctx, dostmt->next);
     Free(ctx, dostmt);
 }
 
-static SDL_SHADER_AstStatement *new_while_statement(Context *ctx, SDL_SHADER_AstExpression *condition, SDL_SHADER_AstStatement *code)
+static SDL_SHADER_AstStatement *new_while_statement(Context *ctx, SDL_SHADER_AstExpression *condition, SDL_SHADER_AstStatementBlock *code)
 {
     NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstWhileStatement, SDL_SHADER_AST_STATEMENT_WHILE);
     retval->code = code;
@@ -413,7 +427,7 @@ static SDL_SHADER_AstStatement *new_while_statement(Context *ctx, SDL_SHADER_Ast
 static void delete_while_statement(Context *ctx, SDL_SHADER_AstWhileStatement *wstmt)
 {
     DELETE_AST_STATEMENT_NODE(wstmt);
-    delete_statement(ctx, wstmt->code);
+    delete_statement_block(ctx, wstmt->code);
     delete_expression(ctx, wstmt->condition);
     delete_statement(ctx, wstmt->next);
     Free(ctx, wstmt);
@@ -440,7 +454,7 @@ static void delete_for_details(Context *ctx, SDL_SHADER_AstForDetails *fordetail
     }
 }
 
-static SDL_SHADER_AstStatement *new_for_statement(Context *ctx, SDL_SHADER_AstForDetails *details, SDL_SHADER_AstStatement *code)
+static SDL_SHADER_AstStatement *new_for_statement(Context *ctx, SDL_SHADER_AstForDetails *details, SDL_SHADER_AstStatementBlock *code)
 {
     NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstForStatement, SDL_SHADER_AST_STATEMENT_FOR);
     retval->details = details;
@@ -452,12 +466,12 @@ static void delete_for_statement(Context *ctx, SDL_SHADER_AstForStatement *forst
 {
     DELETE_AST_STATEMENT_NODE(forstmt);
     delete_for_details(ctx, forstmt->details);
-    delete_statement(ctx, forstmt->code);
+    delete_statement_block(ctx, forstmt->code);
     delete_statement(ctx, forstmt->next);
     Free(ctx, forstmt);
 }
 
-static SDL_SHADER_AstStatement *new_if_statement(Context *ctx, SDL_SHADER_AstExpression *condition, SDL_SHADER_AstStatement *code, SDL_SHADER_AstStatement *else_code)
+static SDL_SHADER_AstStatement *new_if_statement(Context *ctx, SDL_SHADER_AstExpression *condition, SDL_SHADER_AstStatementBlock *code, SDL_SHADER_AstStatementBlock *else_code)
 {
     NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstIfStatement, SDL_SHADER_AST_STATEMENT_IF);
     retval->condition = condition;
@@ -470,8 +484,8 @@ static void delete_if_statement(Context *ctx, SDL_SHADER_AstIfStatement *ifstmt)
 {
     DELETE_AST_STATEMENT_NODE(ifstmt);
     delete_expression(ctx, ifstmt->condition);
-    delete_statement(ctx, ifstmt->code);
-    delete_statement(ctx, ifstmt->else_code);
+    delete_statement_block(ctx, ifstmt->code);
+    delete_statement_block(ctx, ifstmt->else_code);
     delete_statement(ctx, ifstmt->next);
     Free(ctx, ifstmt);
 }
@@ -649,20 +663,6 @@ static void delete_fncall_statement(Context *ctx, SDL_SHADER_AstFunctionCallStat
     delete_fncall_expression(ctx, fnstmt->expr);
     delete_statement(ctx, fnstmt->next);
     Free(ctx, fnstmt);
-}
-
-static SDL_SHADER_AstStatementBlock *new_statement_block(Context *ctx, SDL_SHADER_AstStatement *first)
-{
-    NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstStatementBlock, SDL_SHADER_AST_STATEMENT_BLOCK);
-    retval->head = retval->tail = first;
-    return retval;
-}
-
-static void delete_statement_block(Context *ctx, SDL_SHADER_AstStatementBlock *stmtblock)
-{
-    DELETE_AST_STATEMENT_NODE(stmtblock);
-    delete_statement(ctx, stmtblock->next);
-    DELETE_AST_LIST(stmtblock, SDL_SHADER_AstStatement, delete_statement);  /* this happens to work, but watch out if that macro changes! */
 }
 
 static void delete_statement(Context *ctx, SDL_SHADER_AstStatement *stmt)
