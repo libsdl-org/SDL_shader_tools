@@ -68,8 +68,6 @@ Token preprocessor_lexer(IncludeState *s)
     L = [a-zA-Z_];
     H = [a-fA-F0-9];
     E = [Ee] [+-]? D+;
-    FS = [fFhH];
-    IS = [uUlL]*;
     ESC = [\\] ([abfnrtv?'"\\] | "x" H+ | O+);
     PP = "#" [ \t]*;
     NEWLINE = ("\r\n" | "\r" | "\n");
@@ -102,11 +100,11 @@ scanner_loop:
 
     L (L|D)*        { RET(TOKEN_IDENTIFIER); }
     
-    ("0" [xX] H+ IS?) | ("0" D+ IS?) | (D+ IS?) |
+    ("0" [xX] H+) | ("0" D+) | (D+) |
     (['] (ESC|ANY\[\r\n\\'])* ['])
                     { RET(TOKEN_INT_LITERAL); }
     
-    (D+ E FS?) | (D* "." D+ E? FS?) | (D+ "." D* E? FS?)
+    (D+ E) | (D* "." D+ E?) | (D+ "." D* E?)
                     { RET(TOKEN_FLOAT_LITERAL); }
 
     ">>="           { RET(TOKEN_RSHIFTASSIGN); }
