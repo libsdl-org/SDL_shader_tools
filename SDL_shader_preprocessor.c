@@ -121,12 +121,6 @@ static const char *attempt_include_open(const char *path, const char *fname,
                                         char *failstr, size_t failstrlen,
                                         SDL_SHADER_Malloc m, SDL_SHADER_Free f, void *d)
 {
-    #if defined(__WINDOWS__) || defined(__OS2__)
-    const char dirsep = '\\';
-    #else
-    const char dirsep = '/';
-    #endif
-
     char *ptr;
     Sint64 flen;
     SDL_RWops *io = NULL;
@@ -149,7 +143,7 @@ static const char *attempt_include_open(const char *path, const char *fname,
         if (ch == '\0') {
             break;
         } else if (ch == '/') {
-            *ptr = dirsep;
+            *ptr = '\\';
         }
         ptr++;
     }
