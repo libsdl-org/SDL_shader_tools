@@ -52,6 +52,11 @@ function float myfunction(float x)
 ```
 
 
+## Everything is case sensitive.
+
+Like C, you can't say "MyFunction" to call "myfunction"
+
+
 ## There is a preprocessor.
 
 This isn't dramatic; it works as closely to a standard C preprocessor as
@@ -162,6 +167,7 @@ space 16-bits gives you to work with. If in doubt, use "float" instead.
 
 `bool` is just `true` or `false`. Integers do not treat non-zero as `true`
 since there's an actual bool datatype.
+
 
 ## Float literals don't end with 'f'.
 
@@ -308,6 +314,47 @@ if we see an assignment between declaration and first use, but that's our
 problem, not yours.
 
 
+## Variable initialization can't reference itself.
+
+Why does C even allow this?
+
+```c
+int x = x + 1;
+```
+
+In C, `x` is in scope as soon as the parser sees `int x`, but this allows you
+to reference a variable that is _definitely_ not initialized during its own
+initializer! Doing so is _always_ a bug, so we just don't allow it. In that
+statement, `x` will not come into scope until after the initializer is
+complete...so this will fail to compile, letting you catch the problem
+upfront.
+
+
+## Variables must be unique in all scopes.
+
+C lets you do this:
+
+```c
+int x = 1;
+if (x > 0) {
+    int x = 2;
+    printf("%d\n", x);
+}
+printf("%d\n", x);
+```
+
+Which will print:
+
+```
+2
+1
+```
+
+We don't allow the same variable name in children scopes. This will fail to
+compile, so you can't accidentally access the wrong variable by human error or
+a refactor gone bad. Pick a different name.
+
+
 ## For-loops are mostly C-like, sort of.
 
 For-loops look like you'd expect from C...
@@ -332,6 +379,49 @@ You can declare a variable in the first section:
 ```c
 for (var int i = 0; i < 5; i++) {}
 ```
+
+## Variable declaration can be C-like, or not.
+
+If you like C, variable/param/field declarations are like you'd expect
+(disregarding the `var` and `function` keywords) ...
+
+```c
+struct mystruct {
+    int stuff[5];
+};
+
+function int myfunc(mystruct x) {
+    var int y = 5;
+    return x.stuff[2] + y;
+}
+```
+
+But if you have more modern sensibilities (or extremely oldschool
+sensibilities, Pascal fans), you can do this with `varname : vartype` syntax
+instead:
+
+```c
+struct mystruct {
+    stuff : int[5];
+};
+
+function myfunc(x : mystruct) : int {
+    var y : int = 5;
+    return x.stuff[2] + y;
+}
+```
+
+You can mix and match, too, but I wouldn't personally recommend it:
+
+```c
+struct mystruct {
+    stuff : int[5];
+    int other_stuff[5];
+};
+
+function int myfunc(int y, x : mystruct) {}
+```
+
 
 ## Multiple assignments as syntactic sugar.
 
@@ -409,7 +499,7 @@ get it?).
 For example, your fragment shader entry point will have one:
 
 ```c
-function float4 main_fragment(void) @fragment
+function @fragment float4 main_fragment(void)
 {
     return float4(1,1,1,1);  // always pure white.
 }
@@ -449,7 +539,7 @@ field is what should be used for the vertex's coordinates.
 Later, when setting up the vertex shader's main function:
 
 ```c
-function VertexOutput vertex_main(VertexInput Input @inputs) @vertex
+function @vertex VertexOutput vertex_main(VertexInput Input @inputs)
 {
     // ...
 }

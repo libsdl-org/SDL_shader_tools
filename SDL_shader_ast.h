@@ -128,6 +128,7 @@ typedef enum SDL_SHADER_AstNodeType
     SDL_SHADER_AST_FUNCTION_PARAM,
     SDL_SHADER_AST_FUNCTION,
     SDL_SHADER_AST_VARIABLE_DECLARATION,
+    SDL_SHADER_AST_ARRAY_BOUNDS,
     SDL_SHADER_AST_STRUCT_DECLARATION,
     SDL_SHADER_AST_STRUCT_MEMBER,
     SDL_SHADER_AST_SWITCH_CASE,
@@ -242,13 +243,33 @@ typedef struct SDL_SHADER_AstFunctionCallExpression
     struct SDL_SHADER_AstFunction *fn;  /* always NULL until semantic analysis (and will remain NULL for constructors) */
 } SDL_SHADER_AstFunctionCallExpression;
 
+typedef struct SDL_SHADER_AstArrayBounds
+{
+    SDL_SHADER_AstNodeInfo ast;
+    SDL_SHADER_AstExpression *size;
+    struct SDL_SHADER_AstArrayBounds *next;
+} SDL_SHADER_AstArrayBounds;
+
+typedef struct SDL_SHADER_AstArrayBoundsList
+{
+    SDL_SHADER_AstArrayBounds *head;
+    SDL_SHADER_AstArrayBounds *tail;
+} SDL_SHADER_AstArrayBoundsList;
+
+typedef struct SDL_SHADER_AstVarDeclaration
+{
+    SDL_SHADER_AstNodeInfo ast;
+    SDL_bool c_style;  /* SDL_TRUE if "float x;", SDL_FALSE if "x : float;" */
+    const char *datatype_name;  /* not resolved until semantic analysis */
+    const char *name;
+    SDL_SHADER_AstArrayBoundsList *arraybounds;
+    SDL_SHADER_AstAtAttribute *attribute;
+} SDL_SHADER_AstVarDeclaration;
+
 typedef struct SDL_SHADER_AstStructMember
 {
     SDL_SHADER_AstNodeInfo ast;
-    const char *datatype_name;  /* not resolved until semantic analysis */
-    const char *name;
-    SDL_SHADER_AstExpression *arraysize;
-    SDL_SHADER_AstAtAttribute *attribute;
+    SDL_SHADER_AstVarDeclaration *vardecl;
     struct SDL_SHADER_AstStructMember *next;
 } SDL_SHADER_AstStructMember;
 
@@ -265,15 +286,6 @@ typedef struct SDL_SHADER_AstStructDeclaration
     SDL_SHADER_AstStructMembers *members;
     struct SDL_SHADER_AstStructDeclaration *nextstruct;  /* semantic analysis uses this, you should ignore it. */
 } SDL_SHADER_AstStructDeclaration;
-
-// !!! FIXME: need array declaration
-typedef struct SDL_SHADER_AstVarDeclaration
-{
-    SDL_SHADER_AstNodeInfo ast;
-    const char *datatype_name;  /* not resolved until semantic analysis */
-    const char *name;
-    SDL_SHADER_AstExpression *initializer;  /* NULL if none specified. */
-} SDL_SHADER_AstVarDeclaration;
 
 typedef struct SDL_SHADER_AstStatement
 {
@@ -322,6 +334,7 @@ typedef struct SDL_SHADER_AstVarDeclStatement
     SDL_SHADER_AstNodeInfo ast;
     SDL_SHADER_AstStatement *next;
     SDL_SHADER_AstVarDeclaration *vardecl;
+    SDL_SHADER_AstExpression *initializer;
 } SDL_SHADER_AstVarDeclStatement;
 
 typedef struct SDL_SHADER_AstDoStatement
@@ -431,9 +444,7 @@ union SDL_SHADER_AstForInitializer
 typedef struct SDL_SHADER_AstFunctionParam
 {
     SDL_SHADER_AstNodeInfo ast;
-    const char *datatype_name;  /* not resolved until semantic analysis (NULL==void) */
-    const char *name;
-    SDL_SHADER_AstAtAttribute *attribute;
+    SDL_SHADER_AstVarDeclaration *vardecl;
     struct SDL_SHADER_AstFunctionParam *next;
 } SDL_SHADER_AstFunctionParam;
 
@@ -455,10 +466,8 @@ typedef struct SDL_SHADER_AstFunction
 {
     SDL_SHADER_AstNodeInfo ast;
     SDL_SHADER_AstFunctionType fntype;  /* SDL_SHADER_AST_FNTYPE_UNKNOWN until semantic analysis */
-    const char *datatype_name;  /* not resolved until semantic analysis (NULL==void) */
-    const char *name;
+    SDL_SHADER_AstVarDeclaration *vardecl;
     SDL_SHADER_AstFunctionParams *params;  /* NULL==void */
-    SDL_SHADER_AstAtAttribute *attribute;
     SDL_SHADER_AstStatementBlock *code;
     struct SDL_SHADER_AstFunction *nextfn;  /* semantic analysis uses this, you should ignore it. */
 } SDL_SHADER_AstFunction;
@@ -513,6 +522,7 @@ typedef union SDL_SHADER_AstNode
     SDL_SHADER_AstStructMember structmember;
     SDL_SHADER_AstStructDeclaration structdecl;
     SDL_SHADER_AstVarDeclaration vardecl;
+    SDL_SHADER_AstArrayBounds arraybounds;
     SDL_SHADER_AstStatement stmt;
     SDL_SHADER_AstSimpleStatement simplestmt;
     SDL_SHADER_AstEmptyStatement emptystmt;

@@ -30,6 +30,38 @@
     } \
 }
 
+static Uint32 datatype_element_count(const DataType *dt)
+{
+    if (dt) {
+        switch (dt->dtype) {
+            case DT_BOOLEAN:
+            case DT_INT:
+            case DT_UINT:
+            case DT_HALF:
+            case DT_FLOAT:
+                return 1;
+
+            case DT_VECTOR:
+                return dt->info.vector.elements;
+
+            case DT_MATRIX:
+                return dt->info.matrix.rows * dt->info.matrix.childdt->info.vector.elements;
+
+            case DT_ARRAY:
+                return dt->info.array.elements;
+
+            case DT_STRUCT:
+                return dt->info.structure.num_members;
+
+            default:
+                SDL_assert(!"Unexpected datatype in constructor!");  /* no ctx here to ICE with */
+                break;
+        }
+    }
+
+    return 1;
+}
+
 static SDL_bool is_reserved_keyword(const char *str)
 {
     /* !!! FIXME: write me */
@@ -153,19 +185,20 @@ static void semantic_analysis_build_globals_lists(Context *ctx)
 
 static void semantic_analysis_check_globals_for_duplicates(Context *ctx)
 {
+    // !!! FIXME: some/all of this can probably move to a generic "sanity check SDL_SHADER_AstVarDeclaration object" function.
     if (ctx->functions) {
         const SDL_SHADER_AstFunction *i;
         for (i = ctx->functions; i != NULL; i = i->nextfn) {
-            if (is_reserved_keyword(i->name)) {
-                failf_ast(ctx, &i->ast, "Cannot name a function with reserved keyword '%s'", i->name);
+            if (is_reserved_keyword(i->vardecl->name)) {
+                failf_ast(ctx, &i->ast, "Cannot name a function with reserved keyword '%s'", i->vardecl->name);
             } else {
                 const SDL_SHADER_AstFunction *j;
                 /* we don't have to check before i->nextfn, because it's either a comparison we already made or it's ourself. */
                 for (j = i->nextfn; j != NULL; j = j->nextfn) {
                     /* we do not allow user-defined function overloading, so reusing an identifier at all is an error. */
-                    if (i->name == j->name) {  /* strcache'd, so pointer comparison will show equality. */
-                        failf_ast(ctx, &j->ast, "redefinition of function '%s'", j->name);
-                        failf_ast(ctx, &i->ast, "previous definition of '%s' is here", j->name);
+                    if (i->vardecl->name == j->vardecl->name) {  /* strcache'd, so pointer comparison will show equality. */
+                        failf_ast(ctx, &j->ast, "redefinition of function '%s'", j->vardecl->name);
+                        failf_ast(ctx, &i->ast, "previous definition of '%s' is here", j->vardecl->name);
                     }
                 }
             }
@@ -243,19 +276,6 @@ static const DataType *add_array_datatype(Context *ctx, const char *name, const 
     return dt;
 }
 
-static const DataType *resolve_datatype(Context *ctx, const SDL_SHADER_AstNodeInfo *ast, const char *name)
-{
-    const DataType *dt = NULL;
-    if (!hash_find(ctx->datatypes, name, (const void **) &dt)) {
-        failf_ast(ctx, ast, "Unknown data type '%s'", name);
-        dt = ctx->datatype_int;
-    } else if (dt == NULL) {
-        ICE(ctx, ast, "Successfully looked up datatype but the datatype turned out to be NULL!");
-        dt = ctx->datatype_int;  /* oh well */
-    }
-    return dt;
-}
-
 static const char *get_array_datatype_name(Context *ctx, const char *datatype_name, const Sint32 iarraylen)
 {
     const char *retval = NULL;
@@ -272,6 +292,42 @@ static const char *get_array_datatype_name(Context *ctx, const char *datatype_na
         }
     }
     return retval;
+}
+
+static const DataType *resolve_datatype(Context *ctx, SDL_SHADER_AstVarDeclaration *vardecl)
+{
+    SDL_SHADER_AstNodeInfo *ast = &vardecl->ast;
+    const DataType *dt = ast->dt;
+
+    if (dt == NULL) {
+        if (!hash_find(ctx->datatypes, vardecl->datatype_name, (const void **) &dt)) {
+            failf_ast(ctx, ast, "Unknown data type '%s'", vardecl->datatype_name);
+            dt = ctx->datatype_int;
+        } else if (dt == NULL) {
+            ICE(ctx, ast, "Successfully looked up datatype but the datatype turned out to be NULL!");
+            dt = ctx->datatype_int;  /* oh well */
+        }
+
+        #if 0  /* !!! FIXME: rewrite to deal with multiple array dimensions. */
+        if (vardecl->arraybounds != NULL) {
+            Sint32 iarraylen = resolve_constant_int_from_ast_expression(ctx, mem->arraysize, 1);
+            if (iarraylen <= 0) {
+                fail_ast(ctx, &mem->arraysize->ast, "Array size must be > 0");
+                iarraylen = 1;
+            }
+            const char *arraydt_name = get_array_datatype_name(ctx, mem->datatype_name, iarraylen);  /* strcache'd. */
+            const DataType *arraydt = NULL;
+            if (!hash_find(ctx->datatypes, arraydt_name, (const void **) &arraydt)) {
+                arraydt = add_array_datatype(ctx, arraydt_name, members[memidx].dt, iarraylen);
+            }
+            dt = arraydt;
+        }
+        #endif
+
+        ast->dt = dt;
+    }
+
+    return dt;
 }
 
 static void add_global_user_datatypes(Context *ctx)
@@ -308,21 +364,8 @@ static void add_global_user_datatypes(Context *ctx)
         if (members) {
             Uint32 memidx = 0;
             for (mem = i->members->head; mem != NULL; mem = mem->next, memidx++) {
-                members[memidx].name = mem->name;  /* strcache'd */
-                members[memidx].dt = resolve_datatype(ctx, &mem->ast, mem->datatype_name);
-                if (mem->arraysize != NULL) {
-                    Sint32 iarraylen = resolve_constant_int_from_ast_expression(ctx, mem->arraysize, 1);
-                    if (iarraylen <= 0) {
-                        fail_ast(ctx, &mem->arraysize->ast, "Array size must be > 0");
-                        iarraylen = 1;
-                    }
-                    const char *arraydt_name = get_array_datatype_name(ctx, mem->datatype_name, iarraylen);  /* strcache'd. */
-                    const DataType *arraydt = NULL;
-                    if (!hash_find(ctx->datatypes, arraydt_name, (const void **) &arraydt)) {
-                        arraydt = add_array_datatype(ctx, arraydt_name, members[memidx].dt, iarraylen);
-                    }
-                    members[memidx].dt = arraydt;
-                }
+                members[memidx].name = mem->vardecl->name;  /* strcache'd */
+                members[memidx].dt = resolve_datatype(ctx, mem->vardecl);
             }
             ICE_IF(ctx, &ctx->ast_before, memidx != num_members, "We created a struct datatype with an unexpected number of members!");
         }
@@ -383,11 +426,11 @@ static void semantic_analysis_prepare_functions(Context *ctx)
     if (ctx->functions) {
         SDL_SHADER_AstFunction *fn;
         for (fn = ctx->functions; fn != NULL; fn = fn->nextfn) {
-            fn->ast.dt = fn->datatype_name ? resolve_datatype(ctx, &fn->ast, fn->datatype_name) : NULL;
+            fn->ast.dt = fn->vardecl->datatype_name ? resolve_datatype(ctx, fn->vardecl) : NULL;
             if (fn->params != NULL) {  /* NULL here means "void" */
                 SDL_SHADER_AstFunctionParam *i;
                 for (i = fn->params->head; i != NULL; i = i->next) {
-                    i->ast.dt = resolve_datatype(ctx, &i->ast, i->datatype_name);
+                    i->ast.dt = resolve_datatype(ctx, i->vardecl);
                 }
             }
         }
@@ -677,7 +720,7 @@ static SDL_bool semantic_analysis_validate_at_attribute(Context *ctx, const SDL_
 
 static void semantic_analysis_validate_function_at_attribute(Context *ctx, SDL_SHADER_AstFunction *fn)
 {
-    SDL_SHADER_AstAtAttribute *atattr = fn->attribute;
+    SDL_SHADER_AstAtAttribute *atattr = fn->vardecl->attribute;
 
     fn->fntype = SDL_SHADER_AST_FNTYPE_NORMAL;
     if (atattr) {
@@ -686,7 +729,7 @@ static void semantic_analysis_validate_function_at_attribute(Context *ctx, SDL_S
         } else if (semantic_analysis_validate_at_attribute(ctx, atattr, "fragment", SDL_FALSE)) {
             fn->fntype = SDL_SHADER_AST_FNTYPE_FRAGMENT;
         } else {
-            failf_ast(ctx, &atattr->ast, "Unknown function attribute '@%s' on function '%s'", atattr->name, fn->name);
+            failf_ast(ctx, &atattr->ast, "Unknown function attribute '@%s' on function '%s'", atattr->name, fn->vardecl->name);
         }
     }
 }
@@ -773,6 +816,114 @@ static SDL_SHADER_AstStatement *find_continue_parent(Context *ctx)
     }
 
     return NULL;  /* didn't find anything. Should this be an ICE? */
+}
+
+
+#if 0
+this is a mess, replace this
+static SDL_bool is_datatype_valid_for_constructor_argument(const DataType *dt, const DataType *argdt)
+{
+    if (!dt || !argdt) {
+        return SDL_FALSE;
+    }
+
+    switch (dt->dtype) {
+        case DT_BOOLEAN:
+            return ast_is_boolean(argdt) || ast_is_integer(argdt);
+
+        case DT_INT:
+        case DT_UINT:
+        case DT_HALF:
+        case DT_FLOAT:
+            return ast_is_boolean(argdt) || ast_is_number(argdt);
+
+        case DT_VECTOR:
+            if (argdt->dtype == DT_VECTOR) {
+            if (!ast_is_boolean(arg) && !ast_is_number(arg)) {
+                failf_ast(ctx, &fncall->ast, "Invalid datatype for %s constructor argument", dt->name);
+            }
+            break;
+
+            case DT_MATRIX:
+                num_elements = dt->info.matrix.rows * dt->info.matrix.childdt->info.vector.elements;
+                break;
+
+            case DT_ARRAY:
+                num_elements = dt->info.array.elements;
+                break;
+
+            case DT_STRUCT:
+                num_elements = dt->info.structur.num_members;
+                break;
+
+            default:
+                ICE(ctx, &fncall->ast, "Unexpected datatype in constructor!");
+                return;
+        }
+
+static void semantic_analysis_validate_constructor_arguments(Context *ctx, SDL_SHADER_AstFunctionCallExpression *fncall)
+{
+    const DataType *dt = fncall->ast.dt;
+    const Uint32 num_elements = datatype_element_count(dt);
+    SDL_SHADER_AstArgument *arg;
+    Uint32 num_args = 0;
+
+    SDL_assert(dt != NULL);
+
+    for (arg = fncall->arguments ? fncall->arguments->head : NULL; arg; arg = arg->next) {
+        semantic_analysis_treewalk(ctx, arg->arg);
+        num_args++;
+        if (!is_datatype_valid_for_constructor_argument(dt, arg->arg->dt)) {
+            failf_ast(ctx, &arg->ast, "Argument #%d's datatype is invalid for %s constructor", (int) num_args, dt->name);
+        }
+    }
+
+    if (num_args == 0) {
+        failf_ast(ctx, &fncall->ast, "Constructor with no arguments");  /* there's no place where this is valid. */
+    } else if (num_args > num_elements) {
+        failf_ast(ctx, &fncall->ast, "Constructor expected %d arguments, had %d", (int) num_elements, (int) num_args);
+    }
+}
+#endif
+
+static void semantic_analysis_treewalk(Context *ctx, void *_ast);
+
+static void semantic_analysis_validate_function_call_arguments(Context *ctx, SDL_SHADER_AstFunctionCallExpression *fncall)
+{
+    SDL_SHADER_AstFunction *fn = fncall->fn;
+    SDL_SHADER_AstArgument *arg = fncall->arguments ? fncall->arguments->head : NULL;
+    SDL_SHADER_AstFunctionParam *param = fn->params ? fn->params->head : NULL;
+    Uint32 num_args = 0;
+    Uint32 num_params = 0;
+
+    while (arg || param) {
+        if (arg) {
+            semantic_analysis_treewalk(ctx, arg->arg);
+            num_args++;
+        }
+
+        if (param) {
+            /* these are already treewalked, don't do it again. */
+            num_params++;
+        }
+
+        if (arg && param) {
+            if (!ast_datatypes_match(arg->arg, param)) {
+                failf_ast(ctx, &arg->arg->ast, "Argument #%d does not match function's parameter datatype", (int) num_args);
+            }
+        }
+
+        if (arg) {
+            arg = arg->next;
+        }
+        if (param) {
+            param = param->next;
+        }
+    }
+
+    if (num_args != num_params) {
+        failf_ast(ctx, &fncall->ast, "Function call expected %d arguments, had %d", (int) num_params, (int) num_args);
+    }
 }
 
 /*
@@ -1062,7 +1213,7 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
                 } else if ((nodetype == SDL_SHADER_AST_VARIABLE_DECLARATION) && (ast->identifier.name == scope->ast->vardecl.name)) {  /* strcache'd, can compare string pointers */
                     ast->ast.dt = scope->ast->ast.dt;
                     break;
-                } else if ((nodetype == SDL_SHADER_AST_FUNCTION_PARAM) && (ast->identifier.name == scope->ast->fnparam.name)) {  /* strcache'd, can compare string pointers */
+                } else if ((nodetype == SDL_SHADER_AST_FUNCTION_PARAM) && (ast->identifier.name == scope->ast->fnparam.vardecl->name)) {  /* strcache'd, can compare string pointers */
                     ast->ast.dt = scope->ast->ast.dt;
                     break;
                 }
@@ -1093,44 +1244,15 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
             const char *name = fncall->fnname;
             SDL_SHADER_AstFunction *i;
             for (i = ctx->functions; i != NULL; i = i->nextfn) {
-                if (i->name == name) {  /* strcache'd, we can compare pointers. */
+                if (i->vardecl->name == name) {  /* strcache'd, we can compare pointers. */
                     break;
                 }
             }
 
             if (i != NULL) {  /* `i != NULL` means "this is a user-defined function" */
-                SDL_SHADER_AstArgument *arg = fncall->arguments ? fncall->arguments->head : NULL;
-                SDL_SHADER_AstFunctionParam *param = i->params ? i->params->head : NULL;
-                Uint32 num_args = 0;
-                Uint32 num_params = 0;
-                fncall->ast.dt = i->ast.dt;
                 fncall->fn = i;
-                while (arg || param) {
-                    if (arg) {
-                        semantic_analysis_treewalk(ctx, arg->arg);
-                        num_args++;
-                    }
-                    if (param) {
-                        /* these are already treewalked, don't do it again. */
-                        num_params++;
-                    }
-                    if (arg && param) {
-                        if (!ast_datatypes_match(arg->arg, param)) {
-                            failf_ast(ctx, &arg->arg->ast, "Argument #%d does not match function's parameter datatype", (int) num_args);
-                        }
-                    }
-
-                    if (arg) {
-                        arg = arg->next;
-                    }
-                    if (param) {
-                        param = param->next;
-                    }
-                }
-
-                if (num_args != num_params) {
-                    failf_ast(ctx, &fncall->ast, "Function call expected %d arguments, had %d", (int) num_params, (int) num_args);
-                }
+                fncall->ast.dt = i->ast.dt;
+                semantic_analysis_validate_function_call_arguments(ctx, fncall);
 
             // !!! FIXME: } else { search intrinsic functions
 
@@ -1139,7 +1261,7 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
                     ICE(ctx, &ast->ast, "Successfully looked up datatype but the datatype turned out to be NULL!");
                     fncall->ast.dt = ctx->datatype_int;  /* oh well */
                 } else {
-//                    fixme make sure we have valid arguments.
+// !!! FIXME                    semantic_analysis_validate_constructor_arguments(ctx, fncall);
                 }
             } else {
                 failf_ast(ctx, &ast->ast, "Function '%s' undeclared", name);  /* !!! FIXME: gcc limits this to one error per function for each undeclared identifier. */
@@ -1185,6 +1307,16 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
 
         case SDL_SHADER_AST_STATEMENT_VARDECL:
             semantic_analysis_treewalk(ctx, ast->vardeclstmt.vardecl);
+            if (ast->vardeclstmt.initializer != NULL) {
+                semantic_analysis_treewalk(ctx, ast->vardeclstmt.initializer);
+                if (!ast_datatypes_match(ast, ast->vardeclstmt.initializer)) {
+                    failf_ast(ctx, &ast->ast, "Datatypes must match between a variable declaration and its initializer");
+                }
+            }
+            /* note that this adds itself to the scope _after_ walking the initializer, so it'll be an error if
+               if the initializer attempts to reference the currently-uninitialized value.
+               (or at least it'll look for an initialized identifier of the same name higher up the scope stack! */
+            push_scope(ctx, ast);  /* add this to the scope stack; it will pop when the function leaves scope. */
             return;  /* no data type on statements, nothing else to do. */
 
         case SDL_SHADER_AST_STATEMENT_DO:
@@ -1363,20 +1495,9 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
             return;
 
         case SDL_SHADER_AST_VARIABLE_DECLARATION:
-            // !!! FIXME: need array declaration
-            /* !!! FIXME: warn if this shadows a function parameter */
             /* !!! FIXME: fail if there is already a variable in this scope with the same name. */
-            ast->ast.dt = resolve_datatype(ctx, &ast->ast, ast->vardecl.datatype_name);
-            if (ast->vardecl.initializer != NULL) {
-                semantic_analysis_treewalk(ctx, ast->vardecl.initializer);
-                if (!ast_datatypes_match(ast, ast->vardecl.initializer)) {
-                    failf_ast(ctx, &ast->ast, "Datatypes must match between a variable declaration and its initializer");
-                }
-            }
-            /* note that this adds itself to the scope _after_ walking the initializer, so it'll be an error if
-               if the initializer attempts to reference the currently-uninitialized value.
-               (or at least it'll look for an initialized identifier of the same name higher up the scope stack! */
-            push_scope(ctx, ast);  /* add this to the scope stack; it will pop when the function leaves scope. */
+            ast->ast.dt = resolve_datatype(ctx, &ast->vardecl);
+            /* this does NOT add things to the current scope because it doesn't have the information needed to do so! Handle elsewhere! */
             return;
 
         case SDL_SHADER_AST_TRANSUNIT_FUNCTION:  /* just walk further into the contained AST node */

@@ -215,7 +215,10 @@ typedef struct SDL_SHADER_CompilerParams
  *  code, you don't need to explicitly use the preprocessor, as the compiler
  *  will use it behind the scenes. In fact, you probably never need this
  *  function unless you are debugging a custom tool (or debugging this library
- *  itself).
+ *  itself), but it's possible having access to an easy to embed, C callable
+ *  C preprocessor could be useful in some situations, too.
+ *
+ * !!! FIXME: move most of this documentation to SDL_SHADER_CompilerParams
  *
  * Preprocessing roughly follows the syntax of an ANSI C preprocessor.
  *
@@ -326,6 +329,8 @@ typedef struct SDL_SHADER_CompileData
 
 /*
  * Use this function to compile shader program source code.
+ *
+ * !!! FIXME: move most of this documentation to SDL_SHADER_CompilerParams
  *
  * (srcprofile) specifies the source language of the shader. For now, this
  *  must be NULL to signify a default.

@@ -354,26 +354,56 @@ static void delete_continue_statement(Context *ctx, SDL_SHADER_AstContinueStatem
     Free(ctx, contstmt);
 }
 
-static SDL_SHADER_AstVarDeclaration *new_var_declaration(Context *ctx, const char *datatype_name, const char *name, SDL_SHADER_AstExpression *initializer)
+static SDL_SHADER_AstArrayBounds *new_array_bounds(Context *ctx, SDL_SHADER_AstExpression *size)
+{
+    NEW_AST_NODE(retval, SDL_SHADER_AstArrayBounds, SDL_SHADER_AST_ARRAY_BOUNDS);
+    retval->size = size;
+    return retval;
+}
+
+static void delete_array_bounds(Context *ctx, SDL_SHADER_AstArrayBounds *ab)
+{
+    DELETE_AST_NODE(ab);
+    delete_expression(ctx, ab->size);
+    delete_array_bounds(ctx, ab->next);
+    Free(ctx, ab);
+}
+
+static SDL_SHADER_AstArrayBoundsList *new_array_bounds_list(Context *ctx, SDL_SHADER_AstArrayBounds *first)
+{
+    NEW_AST_LIST(retval, SDL_SHADER_AstArrayBoundsList, first);
+    return retval;
+}
+
+static void delete_array_bounds_list(Context *ctx, SDL_SHADER_AstArrayBoundsList *abl)
+{
+    DELETE_AST_LIST(abl, SDL_SHADER_AstArrayBounds, delete_array_bounds);
+}
+
+static SDL_SHADER_AstVarDeclaration *new_var_declaration(Context *ctx, int c_style, const char *datatype_name, const char *name, SDL_SHADER_AstArrayBoundsList *arraybounds, SDL_SHADER_AstAtAttribute *attribute)
 {
     NEW_AST_NODE(retval, SDL_SHADER_AstVarDeclaration, SDL_SHADER_AST_VARIABLE_DECLARATION);
+    retval->c_style = c_style ? SDL_TRUE : SDL_FALSE;
     retval->datatype_name = datatype_name;  /* strcache'd */
     retval->name = name; /* strcache'd */
-    retval->initializer = initializer;
+    retval->arraybounds = arraybounds;
+    retval->attribute = attribute;
     return retval;
 }
 
 static void delete_var_declaration(Context *ctx, SDL_SHADER_AstVarDeclaration *vardecl)
 {
     DELETE_AST_NODE(vardecl);
-    delete_expression(ctx, vardecl->initializer);
+    delete_array_bounds_list(ctx, vardecl->arraybounds);
+    delete_at_attribute(ctx, vardecl->attribute);
     Free(ctx, vardecl);
 }
 
-static SDL_SHADER_AstStatement *new_var_declaration_statement(Context *ctx, SDL_SHADER_AstVarDeclaration *vardecl)
+static SDL_SHADER_AstStatement *new_var_declaration_statement(Context *ctx, SDL_SHADER_AstVarDeclaration *vardecl, SDL_SHADER_AstExpression *initializer)
 {
     NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstVarDeclStatement, SDL_SHADER_AST_STATEMENT_VARDECL);
     retval->vardecl = vardecl;
+    retval->initializer = initializer;
     return (SDL_SHADER_AstStatement *) retval;
 }
 
@@ -381,6 +411,7 @@ static void delete_var_declaration_statement(Context *ctx, SDL_SHADER_AstVarDecl
 {
     DELETE_AST_STATEMENT_NODE(vdstmt);
     delete_var_declaration(ctx, vdstmt->vardecl);
+    delete_expression(ctx, vdstmt->initializer);
     delete_statement(ctx, vdstmt->next);
     Free(ctx, vdstmt);
 }
@@ -395,7 +426,6 @@ static SDL_SHADER_AstStatementBlock *new_statement_block(Context *ctx, SDL_SHADE
 static void delete_statement_block(Context *ctx, SDL_SHADER_AstStatementBlock *stmtblock)
 {
     DELETE_AST_STATEMENT_NODE(stmtblock);
-    delete_statement(ctx, stmtblock->next);
     DELETE_AST_LIST(stmtblock, SDL_SHADER_AstStatement, delete_statement);  /* this happens to work, but watch out if that macro changes! */
 }
 
@@ -710,13 +740,10 @@ static void delete_statement(Context *ctx, SDL_SHADER_AstStatement *stmt)
     SDL_assert(!"Unexpected statement type");
 }
 
-static SDL_SHADER_AstStructMember *new_struct_member(Context *ctx, const char *datatype_name, const char *name, SDL_SHADER_AstExpression *arraysize, SDL_SHADER_AstAtAttribute *atattr)
+static SDL_SHADER_AstStructMember *new_struct_member(Context *ctx, SDL_SHADER_AstVarDeclaration *vardecl)
 {
     NEW_AST_NODE(retval, SDL_SHADER_AstStructMember,SDL_SHADER_AST_STRUCT_MEMBER);
-    retval->datatype_name = datatype_name;  /* strcache'd */
-    retval->name = name;  /* strcache'd */
-    retval->arraysize = arraysize;
-    retval->attribute = atattr;
+    retval->vardecl = vardecl;
     retval->next = NULL;
     return retval;
 }
@@ -724,8 +751,7 @@ static SDL_SHADER_AstStructMember *new_struct_member(Context *ctx, const char *d
 static void delete_struct_member(Context *ctx, SDL_SHADER_AstStructMember *member)
 {
     DELETE_AST_NODE(member);
-    delete_expression(ctx, member->arraysize);
-    delete_at_attribute(ctx, member->attribute);
+    delete_var_declaration(ctx, member->vardecl);
     delete_struct_member(ctx, member->next);
     Free(ctx, member);
 }
@@ -774,12 +800,10 @@ static void delete_struct_declaration_unit(Context *ctx, SDL_SHADER_AstStructDec
     Free(ctx, strunit);
 }
 
-static SDL_SHADER_AstFunctionParam *new_function_param(Context *ctx, const char *datatype_name, const char *name, SDL_SHADER_AstAtAttribute *atattr)
+static SDL_SHADER_AstFunctionParam *new_function_param(Context *ctx, SDL_SHADER_AstVarDeclaration *vardecl)
 {
     NEW_AST_NODE(retval, SDL_SHADER_AstFunctionParam, SDL_SHADER_AST_FUNCTION_PARAM);
-    retval->datatype_name = datatype_name;  /* strcache'd */
-    retval->name = name;  /* strcache'd */
-    retval->attribute = atattr;
+    retval->vardecl = vardecl;
     retval->next = NULL;
     return retval;
 }
@@ -787,7 +811,7 @@ static SDL_SHADER_AstFunctionParam *new_function_param(Context *ctx, const char 
 static void delete_function_param(Context *ctx, SDL_SHADER_AstFunctionParam *param)
 {
     DELETE_AST_NODE(param);
-    delete_at_attribute(ctx, param->attribute);
+    delete_var_declaration(ctx, param->vardecl);
     delete_function_param(ctx, param->next);
     Free(ctx, param);
 }
@@ -803,14 +827,12 @@ static void delete_function_params(Context *ctx, SDL_SHADER_AstFunctionParams *p
     DELETE_AST_LIST(params, SDL_SHADER_AstFunctionParam, delete_function_param);
 }
 
-static SDL_SHADER_AstFunction *new_function(Context *ctx, const char *rettype, const char *name, SDL_SHADER_AstFunctionParams *params, SDL_SHADER_AstAtAttribute *atattr, SDL_SHADER_AstStatementBlock *code)
+static SDL_SHADER_AstFunction *new_function(Context *ctx, int c_style, const char *rettype, const char *name, SDL_SHADER_AstFunctionParams *params, SDL_SHADER_AstAtAttribute *atattr, SDL_SHADER_AstStatementBlock *code)
 {
     NEW_AST_NODE(retval, SDL_SHADER_AstFunction, SDL_SHADER_AST_FUNCTION);
     retval->fntype = SDL_SHADER_AST_FNTYPE_UNKNOWN;  /* until semantic analysis */
-    retval->datatype_name = rettype; /* strcache'd (or NULL for "void") */
-    retval->name = name; /* strcache'd */
+    retval->vardecl = new_var_declaration(ctx, c_style, rettype, name, NULL, atattr);
     retval->params = params;  /* NULL==void */
-    retval->attribute = atattr;
     retval->code = code;
     retval->nextfn = NULL;
     return retval;
@@ -819,8 +841,8 @@ static SDL_SHADER_AstFunction *new_function(Context *ctx, const char *rettype, c
 static void delete_function(Context *ctx, SDL_SHADER_AstFunction *fn)
 {
     DELETE_AST_NODE(fn);
+    delete_var_declaration(ctx, fn->vardecl);
     delete_function_params(ctx, fn->params);
-    delete_at_attribute(ctx, fn->attribute);
     delete_statement_block(ctx, fn->code);
     /* don't delete fn->nextfn, it's a separate linked list and you'll delete things twice. */
     Free(ctx, fn);

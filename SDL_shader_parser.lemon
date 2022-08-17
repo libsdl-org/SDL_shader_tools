@@ -96,15 +96,15 @@ struct_member_list(A) ::= struct_member_list(B) struct_member(C). { B->tail->nex
 // array size can be an expression, as long as it folds down to a constant int.
 %type struct_member { SDL_SHADER_AstStructMember * }
 %destructor struct_member { delete_struct_member(ctx, $$); }
-struct_member(A) ::= IDENTIFIER(B) IDENTIFIER(C) SEMICOLON. { A = new_struct_member(ctx, B.string, C.string, NULL, NULL); }
-struct_member(A) ::= IDENTIFIER(B) IDENTIFIER(C) at_attrib(D) SEMICOLON. { A = new_struct_member(ctx, B.string, C.string, NULL, D); }
-struct_member(A) ::= IDENTIFIER(B) IDENTIFIER(C) LBRACKET expression(D) RBRACKET SEMICOLON. { A = new_struct_member(ctx, B.string, C.string, D, NULL); }
-struct_member(A) ::= IDENTIFIER(B) IDENTIFIER(C) LBRACKET expression(D) RBRACKET at_attrib(E) SEMICOLON. { A = new_struct_member(ctx, B.string, C.string, D, E); }
+struct_member(A) ::= var_declaration(B) SEMICOLON. { A = new_struct_member(ctx, B); }
 
 %type function { SDL_SHADER_AstFunction * }
 %destructor function { delete_function(ctx, $$); }
-function(A) ::= FUNCTION return_type(B) IDENTIFIER(C) function_params(D) statement_block(E). { A = new_function(ctx, B, C.string, D, NULL, E); }
-function(A) ::= FUNCTION return_type(B) IDENTIFIER(C) function_params(D) at_attrib(E) statement_block(F). { A = new_function(ctx, B, C.string, D, E, F); }
+function(A) ::= FUNCTION return_type(B) IDENTIFIER(C) function_params(D) statement_block(E). { A = new_function(ctx, 1, B, C.string, D, NULL, E); }
+function(A) ::= FUNCTION at_attrib(B) return_type(C) IDENTIFIER(D) function_params(E) statement_block(F). { A = new_function(ctx, 1, C, D.string, E, B, F); }
+// to keep consistent with optional "myvar : mytype" declarations, we let you do "function x (params) : rettype" too.
+function(A) ::= FUNCTION IDENTIFIER(B) function_params(C) COLON return_type(D) statement_block(E). { A = new_function(ctx, 0, D, B.string, C, NULL, E); }
+function(A) ::= FUNCTION at_attrib(B) IDENTIFIER(C) function_params(D) COLON return_type(E) statement_block(F). { A = new_function(ctx, 0, E, C.string, D, B, F); }
 
 %type return_type { const char * }
 %destructor return_type {}  // these are NULL or strcache'd, don't free them.
@@ -119,16 +119,8 @@ function_params(A) ::= LPAREN function_param_list(B) RPAREN. { A = B; }
 
 %type function_param_list { SDL_SHADER_AstFunctionParams * }
 %destructor function_param_list { delete_function_params(ctx, $$); }
-function_param_list(A) ::= function_param(B). { A = new_function_params(ctx, B); }
-function_param_list(A) ::= function_param_list(B) COMMA function_param(C). { B->tail->next = C; B->tail = C; A = B; }
-
-// the first identifier is a datatype, but it might be a user-defined struct. To simplify the
-// grammar, we don't treat the many built-in types as unique tokens or have a USERTYPE token,
-// and let semantic analysis sort it out.
-%type function_param { SDL_SHADER_AstFunctionParam * }
-%destructor function_param { delete_function_param(ctx, $$); }
-function_param(A) ::= IDENTIFIER(B) IDENTIFIER(C). { A = new_function_param(ctx, B.string, C.string, NULL); }
-function_param(A) ::= IDENTIFIER(B) IDENTIFIER(C) at_attrib(D). { A = new_function_param(ctx, B.string, C.string, D); }
+function_param_list(A) ::= var_declaration(B). { A = new_function_params(ctx, new_function_param(ctx, B)); }
+function_param_list(A) ::= function_param_list(B) COMMA var_declaration(C). { B->tail->next = new_function_param(ctx, C); B->tail = B->tail->next; A = B; }
 
 %type statement_block { SDL_SHADER_AstStatementBlock * }
 %destructor statement_block { delete_statement_block(ctx, $$); }
@@ -146,7 +138,7 @@ statement(A) ::= SEMICOLON. { A = new_empty_statement(ctx); }
 statement(A) ::= BREAK SEMICOLON. { A = new_break_statement(ctx); }
 statement(A) ::= CONTINUE SEMICOLON. { A = new_continue_statement(ctx); }
 statement(A) ::= DISCARD SEMICOLON.  { A = new_discard_statement(ctx); } // obviously only valid in fragment shaders; semantic analysis will check that.
-statement(A) ::= var_declaration(B) SEMICOLON. { A = new_var_declaration_statement(ctx, B); }
+statement(A) ::= VAR var_declaration_statement(B) SEMICOLON. { A = B; }
 statement(A) ::= DO statement_block(B) WHILE expression(C) SEMICOLON. { A = new_do_statement(ctx, B, C); }
 statement(A) ::= WHILE expression(B) statement_block(C). { A = new_while_statement(ctx, B, C); }
 statement(A) ::= FOR LPAREN for_details(B) RPAREN statement_block(C). { A = new_for_statement(ctx, B, C); }
@@ -163,6 +155,11 @@ statement(A) ::= increment_statement(B) SEMICOLON. { A = B; }  // created in inc
 statement(A) ::= function_call_statement(B) SEMICOLON. { A = B; }  // created in function_call_statement
 statement(A) ::= statement_block(B). { A = (SDL_SHADER_AstStatement *) B; }
 //statement(A) ::= error SEMICOLON. { A = NULL; }  // !!! FIXME: research using the error nonterminal
+
+%type var_declaration_statement { SDL_SHADER_AstStatement * }
+%destructor var_declaration_statement { delete_statement(ctx, $$); }
+var_declaration_statement(A) ::= var_declaration(B). { A = new_var_declaration_statement(ctx, B, NULL); }
+var_declaration_statement(A) ::= var_declaration(B) ASSIGN expression(C). { A = new_var_declaration_statement(ctx, B, C); }
 
 // assignment is a statement, not an expression (although we tapdance to make this work with a C-like for loop syntax),
 // which solves a nasty class of bugs in C programs for not much loss in power.
@@ -213,7 +210,7 @@ for_details(A) ::= for_initializer(B) SEMICOLON SEMICOLON for_step(C). { A = new
 
 %type for_initializer { SDL_SHADER_AstStatement * }
 %destructor for_initializer { delete_statement(ctx, $$); }
-for_initializer(A) ::= var_declaration(B). { A = new_var_declaration_statement(ctx, B); }
+for_initializer(A) ::= VAR var_declaration_statement(B). { A = B; }
 for_initializer(A) ::= assignment_statement(B). { A = B; }
 for_initializer(A) ::= compound_assignment_statement(B). { A = B; }
 for_initializer(A) ::= increment_statement(B). { A = B; }
@@ -241,14 +238,29 @@ switch_case(A) ::= CASE expression(B) COLON. { A = new_switch_case(ctx, B, NULL)
 switch_case(A) ::= DEFAULT COLON statement(B). { A = new_switch_case(ctx, NULL, B); }
 switch_case(A) ::= DEFAULT COLON. { A = new_switch_case(ctx, NULL, NULL); }
 
-// the first identifier is a datatype, but it might be a user-defined struct. To simplify the
+// one identifier is a datatype, but it might be a user-defined struct. To simplify the
 // grammar, we don't treat the many built-in types as unique tokens or have a USERTYPE token,
-// and let semantic analysis sort it out.
+// and let semantic analysis sort it out later.
 %type var_declaration { SDL_SHADER_AstVarDeclaration * }
 %destructor var_declaration { delete_var_declaration(ctx, $$); }
-// !!! FIXME: need array declaration
-var_declaration(A) ::= VAR IDENTIFIER(B) IDENTIFIER(C). { A = new_var_declaration(ctx, B.string, C.string, NULL); }
-var_declaration(A) ::= VAR IDENTIFIER(B) IDENTIFIER(C) ASSIGN expression(D). { A = new_var_declaration(ctx, B.string, C.string, D); }
+var_declaration(A) ::= IDENTIFIER(B) IDENTIFIER(C). { A = new_var_declaration(ctx, 1, B.string, C.string, NULL, NULL); }
+var_declaration(A) ::= IDENTIFIER(B) IDENTIFIER(C) at_attrib(D). { A = new_var_declaration(ctx, 1, B.string, C.string, NULL, D); }
+var_declaration(A) ::= IDENTIFIER(B) IDENTIFIER(C) array_bounds_list(D). { A = new_var_declaration(ctx, 1, B.string, C.string, D, NULL); }
+var_declaration(A) ::= IDENTIFIER(B) IDENTIFIER(C) array_bounds_list(D) at_attrib(E). { A = new_var_declaration(ctx, 1, B.string, C.string, D, E); }
+// We let you do "var int i;" or "var i: int;"
+var_declaration(A) ::= IDENTIFIER(B) COLON IDENTIFIER(C). { A = new_var_declaration(ctx, 0, C.string, B.string, NULL, NULL); }
+var_declaration(A) ::= IDENTIFIER(B) COLON IDENTIFIER(C) at_attrib(D). { A = new_var_declaration(ctx, 0, C.string, B.string, NULL, D); }
+var_declaration(A) ::= IDENTIFIER(B) COLON IDENTIFIER(C) array_bounds_list(D). { A = new_var_declaration(ctx, 0, C.string, B.string, D, NULL); }
+var_declaration(A) ::= IDENTIFIER(B) COLON IDENTIFIER(C) array_bounds_list(D) at_attrib(E). { A = new_var_declaration(ctx, 0, C.string, B.string, D, E); }
+
+%type array_bounds_list { SDL_SHADER_AstArrayBoundsList * }
+%destructor array_bounds_list { delete_array_bounds_list(ctx, $$); }
+array_bounds_list(A) ::= array_bounds(B). { A = new_array_bounds_list(ctx, B); }
+array_bounds_list(A) ::= array_bounds_list(B) array_bounds(C). { B->tail->next = C; B->tail = C; A = B; }
+
+%type array_bounds { SDL_SHADER_AstArrayBounds * }
+%destructor array_bounds { delete_array_bounds(ctx, $$); }
+array_bounds(A) ::= LBRACKET expression(B) RBRACKET. { A = new_array_bounds(ctx, B); }
 
 %type arguments { SDL_SHADER_AstArguments * }
 %destructor arguments { delete_arguments(ctx, $$); }

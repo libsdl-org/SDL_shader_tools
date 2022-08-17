@@ -198,17 +198,16 @@ static void print_ast(FILE *io, const SDL_bool substmt, const void *_ast)
             fprintf(io, "%s;%s", simple_stmt[(typeint-SDL_SHADER_AST_STATEMENT_START_RANGE)-1], nl);
             break;
 
-        case SDL_SHADER_AST_STATEMENT_VARDECL: {
-            SDL_SHADER_AstVarDeclaration *vardecl = ast->vardeclstmt.vardecl;
+        case SDL_SHADER_AST_STATEMENT_VARDECL:
             DO_INDENT;
-            fprintf(io, "var %s %s", vardecl->datatype_name, vardecl->name);
-            if (vardecl->initializer) {
+            fprintf(io, "var ");
+            print_ast(io, SDL_TRUE, ast->vardeclstmt.vardecl);
+            if (ast->vardeclstmt.initializer) {
                 fprintf(io, " = ");
-                print_ast(io, SDL_TRUE, vardecl->initializer);
+                print_ast(io, SDL_TRUE, ast->vardeclstmt.initializer);
             }
             fprintf(io, ";%s", nl);
             break;
-        }
 
         case SDL_SHADER_AST_STATEMENT_DO:
             DO_INDENT;
@@ -410,24 +409,70 @@ static void print_ast(FILE *io, const SDL_bool substmt, const void *_ast)
 
         case SDL_SHADER_AST_TRANSUNIT_FUNCTION: {
             SDL_SHADER_AstFunction *fn = ast->fnunit.fn;
+            SDL_SHADER_AstVarDeclaration *vardecl = fn->vardecl;
             DO_INDENT;
-            fprintf(io, "function %s %s(", fn->datatype_name ? fn->datatype_name : "void", fn->name);
+
+            fprintf(io, "function");
+            if (vardecl->attribute) {
+                print_ast(io, SDL_TRUE, vardecl->attribute);
+            }
+            fprintf(io, " ");
+
+            if (vardecl->c_style) {
+                fprintf(io, "%s %s(", vardecl->datatype_name ? vardecl->datatype_name : "void", vardecl->name);
+            } else {
+                fprintf(io, "%s(", vardecl->name);
+            }
+
             if (!fn->params) {
                 fprintf(io, "void");
             } else {
                 SDL_SHADER_AstFunctionParam *i;
                 for (i = fn->params->head; i != NULL; i = i->next) {
-                    fprintf(io, "%s %s", i->datatype_name, i->name);
-                    print_ast(io, SDL_TRUE, i->attribute);
+                    print_ast(io, SDL_TRUE, i->vardecl);
                     if (i->next) {
                         fprintf(io, ", ");
                     }
                 }
             }
             fprintf(io, ")");
-            print_ast(io, SDL_TRUE, fn->attribute);
+
+            if (!vardecl->c_style) {
+                fprintf(io, " : %s", vardecl->datatype_name ? vardecl->datatype_name : "void");
+            }
+
             fprintf(io, "\n");
             print_ast(io, SDL_FALSE, fn->code);
+            break;
+        }
+
+        case SDL_SHADER_AST_VARIABLE_DECLARATION: {
+            const SDL_SHADER_AstVarDeclaration *vardecl = &ast->vardecl;
+            DO_INDENT;
+            if (vardecl->c_style) {
+                fprintf(io, "%s %s", vardecl->datatype_name, vardecl->name);
+            } else {
+                fprintf(io, "%s : %s", vardecl->name, vardecl->datatype_name);
+            }
+
+            if (vardecl->arraybounds) {
+                SDL_SHADER_AstArrayBounds *i;
+                for (i = vardecl->arraybounds->head; i != NULL; i = i->next) {
+                    print_ast(io, SDL_TRUE, i);
+                }
+            }
+
+            if (vardecl->attribute) {
+                print_ast(io, SDL_TRUE, vardecl->attribute);
+            }
+            break;
+        }
+
+        case SDL_SHADER_AST_ARRAY_BOUNDS: {
+            DO_INDENT;
+            fprintf(io, "[");
+            print_ast(io, SDL_TRUE, ast->arraybounds.size);
+            fprintf(io, "]");
             break;
         }
 
@@ -443,14 +488,7 @@ static void print_ast(FILE *io, const SDL_bool substmt, const void *_ast)
                 SDL_SHADER_AstStructMember *i;
                 indent++;
                 for (i = ast->structdecl.members->head; i != NULL; i = i->next) {
-                    DO_INDENT;
-                    fprintf(io, "%s %s", i->datatype_name, i->name);
-                    if (i->arraysize) {
-                        fprintf(io, "[");
-                        print_ast(io, SDL_TRUE, i->arraysize);
-                        fprintf(io, "]");
-                    }
-                    print_ast(io, SDL_TRUE, i->attribute);
+                    print_ast(io, SDL_FALSE, i->vardecl);
                     fprintf(io, ";\n");
                 }
                 indent--;
@@ -639,24 +677,20 @@ static void print_ast_xml(FILE *io, const void *_ast)
             DO_INDENT; fprintf(io, "<%s_statement/>\n", simple_stmt[(typeint-SDL_SHADER_AST_STATEMENT_START_RANGE)-1]);
             break;
 
-        case SDL_SHADER_AST_STATEMENT_VARDECL: {
-            SDL_SHADER_AstVarDeclaration *vardecl = ast->vardeclstmt.vardecl;
-            DO_INDENT; fprintf(io, "<variable_declartion_statement datatype='%s' name='%s'", vardecl->datatype_name, vardecl->name);
-            if (!vardecl->initializer) {
-                fprintf(io, " />\n");
-            } else {
-                fprintf(io, ">\n");
+        case SDL_SHADER_AST_STATEMENT_VARDECL:
+            DO_INDENT; fprintf(io, "<variable_declaration_statement>\n");
+            indent++;
+            print_ast_xml(io, ast->vardeclstmt.vardecl);
+            if (ast->vardeclstmt.initializer) {
+                DO_INDENT; fprintf(io, "<variable_declaration_initializer>\n");
                 indent++;
-                DO_INDENT; fprintf(io, "<initializer>\n");
-                indent++;
-                print_ast_xml(io, vardecl->initializer);
+                print_ast_xml(io, ast->vardeclstmt.initializer);
                 indent--;
-                DO_INDENT; fprintf(io, "</initializer>\n");
-                indent--;
-                DO_INDENT; fprintf(io, "</variable_declartion_statement>\n");
+                DO_INDENT; fprintf(io, "</variable_declaration_intializer>\n");
             }
+            indent--;
+            DO_INDENT; fprintf(io, "</variable_declaration_statement>\n");
             break;
-        }
 
         case SDL_SHADER_AST_STATEMENT_DO:
             DO_INDENT; fprintf(io, "<do_statement>\n");
@@ -955,30 +989,24 @@ static void print_ast_xml(FILE *io, const void *_ast)
             DO_INDENT; fprintf(io, "</compound_assignment_statement>\n");
             break;
 
+
         case SDL_SHADER_AST_TRANSUNIT_FUNCTION: {
             SDL_SHADER_AstFunction *fn = ast->fnunit.fn;
-            DO_INDENT; fprintf(io, "<function datatype='%s' name='%s'>\n", fn->datatype_name ? fn->datatype_name : "void", fn->name);
+            SDL_SHADER_AstVarDeclaration *vardecl = fn->vardecl;
+            DO_INDENT; fprintf(io, "<function name='%s' return_type='%s' c_style='%s'>", vardecl->name, vardecl->datatype_name ? vardecl->datatype_name : "void", vardecl->c_style ? "true" : "false");
             indent++;
-            print_ast_xml(io, fn->attribute);
+            print_ast_xml(io, vardecl->attribute);
             if (fn->params) {
                 SDL_SHADER_AstFunctionParam *i;
-                DO_INDENT; fprintf(io, "<parameters>\n");
+                DO_INDENT; fprintf(io, "<params>\n");
                 indent++;
                 for (i = fn->params->head; i != NULL; i = i->next) {
-                    DO_INDENT; fprintf(io, "<parameter datatype='%s' name='%s'", i->datatype_name, i->name);
-                    if (!i->attribute) {
-                        fprintf(io, " />\n");
-                    } else {
-                        fprintf(io, ">\n");
-                        indent++;
-                        print_ast_xml(io, i->attribute);
-                        indent--;
-                        DO_INDENT; fprintf(io, "</parameter>\n");
-                    }
+                    print_ast_xml(io, i->vardecl);
                 }
                 indent--;
-                DO_INDENT; fprintf(io, "</parameters>\n");
+                DO_INDENT; fprintf(io, "</params>\n");
             }
+            print_ast_xml(io, vardecl->attribute);
             DO_INDENT; fprintf(io, "<code>\n");
             indent++;
             print_ast_xml(io, fn->code);
@@ -1001,29 +1029,44 @@ static void print_ast_xml(FILE *io, const void *_ast)
                 DO_INDENT; fprintf(io, "<struct_members>\n");
                 indent++;
                 for (i = ast->structdecl.members->head; i != NULL; i = i->next) {
-                    DO_INDENT; fprintf(io, "<struct_member datatype='%s' name='%s'", i->datatype_name, i->name);
-                    if (!i->arraysize && !i->attribute) {
-                        fprintf(io, " />\n");
-                    } else {
-                        fprintf(io, ">\n");
-                        indent++;
-                        if (i->arraysize) {
-                            DO_INDENT; fprintf(io, "<arraysize>\n");
-                            indent++;
-                            print_ast_xml(io, i->arraysize);
-                            indent--;
-                            DO_INDENT; fprintf(io, "</arraysize>\n");
-                        }
-                        print_ast_xml(io, i->attribute);
-                        indent--;
-                        DO_INDENT; fprintf(io, "</struct_member>\n");
-                    }
+                    print_ast_xml(io, i->vardecl);
                 }
                 indent--;
                 DO_INDENT; fprintf(io, "</struct_members>\n");
             }
             indent--;
             DO_INDENT; fprintf(io, "</struct_declaration>\n");
+            break;
+
+        case SDL_SHADER_AST_VARIABLE_DECLARATION: {
+            const SDL_SHADER_AstVarDeclaration *vardecl = &ast->vardecl;
+            SDL_SHADER_AstArrayBounds *i;
+            const SDL_bool flat = (vardecl->arraybounds || vardecl->attribute) ? SDL_FALSE : SDL_TRUE;
+            DO_INDENT; fprintf(io, "<variable_declaration name='%s' datatype='%s' c_style='%s'%s>\n", vardecl->name, vardecl->datatype_name, vardecl->c_style ? "true" : "false", flat ? " /" : "");
+            indent++;
+            if (vardecl->arraybounds) {
+                DO_INDENT; fprintf(io, "<array_bounds>\n");
+                indent++;
+                for (i = vardecl->arraybounds->head; i != NULL; i = i->next) {
+                    print_ast_xml(io, i);
+                }
+                indent--;
+                DO_INDENT; fprintf(io, "</array_bounds>\n");
+            }
+            print_ast_xml(io, vardecl->attribute);
+            indent--;
+            if (!flat) {
+                DO_INDENT; fprintf(io, "</variable_declaration>\n");
+            }
+            break;
+        }
+
+        case SDL_SHADER_AST_ARRAY_BOUNDS:
+            DO_INDENT; fprintf(io, "<dimension>\n");
+            indent++;
+            print_ast_xml(io, ast->arraybounds.size);
+            indent--;
+            DO_INDENT; fprintf(io, "</dimension>\n");
             break;
 
         case SDL_SHADER_AST_AT_ATTRIBUTE:
