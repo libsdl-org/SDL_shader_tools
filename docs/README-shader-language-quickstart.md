@@ -304,7 +304,6 @@ var float4 y = 5.0;  // legal!
 return y / 3.3;  // legal! Returns a float4.
 ```
 
-
 ## Uninitialized variables default to zero.
 
 If you don't initialize a variable, we'll pick a reasonable default for it;
@@ -312,6 +311,13 @@ zero for most things, false for bools, etc. There are no such thing as
 uninitialized variables. When possible, we'll throw away the default value
 if we see an assignment between declaration and first use, but that's our
 problem, not yours.
+
+
+## Variables can be declared anywhere in a function.
+
+Old, old C needed them to be at the top of a block, before any code; this
+is not required here. Like C, you can't use a variable above the line where
+it's declared.
 
 
 ## Variable initialization can't reference itself.
