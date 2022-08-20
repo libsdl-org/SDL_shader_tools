@@ -463,6 +463,19 @@ static SDL_bool ast_is_boolean(const void *_ast)
     return (ast->ast.dt->dtype == DT_BOOLEAN) ? SDL_TRUE : SDL_FALSE;
 }
 
+static SDL_bool ast_is_booleanish(const void *_ast)
+{
+    const SDL_SHADER_AstNode *ast = (SDL_SHADER_AstNode *) _ast;
+    DataTypeType dtt = ast->ast.dt->dtype;
+    if (dtt == DT_VECTOR) {
+        dtt = ast->ast.dt->info.vector.childdt->dtype;
+    } else if (dtt == DT_MATRIX) {
+        SDL_assert(ast->ast.dt->info.matrix.childdt->dtype == DT_VECTOR);
+        dtt = ast->ast.dt->info.matrix.childdt->info.vector.childdt->dtype;
+    }
+    return (dtt == DT_BOOLEAN) ? SDL_TRUE : SDL_FALSE;
+}
+
 static SDL_bool ast_is_mathish(const void *_ast)
 {
     const SDL_SHADER_AstNode *ast = (SDL_SHADER_AstNode *) _ast;
@@ -479,6 +492,26 @@ static SDL_bool ast_is_mathish(const void *_ast)
         case DT_UINT:
         case DT_HALF:
         case DT_FLOAT:
+            return SDL_TRUE;
+        default: break;
+    }
+    return SDL_FALSE;
+}
+
+static SDL_bool ast_is_mathish_integer(const void *_ast)
+{
+    const SDL_SHADER_AstNode *ast = (SDL_SHADER_AstNode *) _ast;
+    DataTypeType dtt = ast->ast.dt->dtype;
+    if (dtt == DT_VECTOR) {
+        dtt = ast->ast.dt->info.vector.childdt->dtype;
+    } else if (dtt == DT_MATRIX) {
+        SDL_assert(ast->ast.dt->info.matrix.childdt->dtype == DT_VECTOR);
+        dtt = ast->ast.dt->info.matrix.childdt->info.vector.childdt->dtype;
+    }
+
+    switch (dtt) {
+        case DT_INT:
+        case DT_UINT:
             return SDL_TRUE;
         default: break;
     }
@@ -947,9 +980,8 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
         case SDL_SHADER_AST_OP_POSITIVE:
         case SDL_SHADER_AST_OP_NEGATE:
             semantic_analysis_treewalk(ctx, ast->unary.operand);
-            /* !!! FIXME: these should work with numeric vectors and matrices, too */
-            if (!ast_is_number(ast->unary.operand)) {
-                failf_ast(ctx, &ast->unary.operand->ast, "Datatype for unary '%s' must be a number", ast_opstr(asttype));
+            if (!ast_is_mathish(ast->unary.operand)) {
+                failf_ast(ctx, &ast->unary.operand->ast, "Can't use a datatype of '%s' with unary '%s' operator", ast->unary.operand->ast.dt->name, ast_opstr(asttype));
                 ast->ast.dt = ctx->datatype_int;
             } else {
                 ast->ast.dt = ast->unary.operand->ast.dt;
@@ -957,10 +989,9 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
             return;
 
         case SDL_SHADER_AST_OP_COMPLEMENT:
-            /* !!! FIXME: these should work with integer vectors and matrices, too */
             semantic_analysis_treewalk(ctx, ast->unary.operand);
-            if (!ast_is_integer(ast->unary.operand)) {
-                failf_ast(ctx, &ast->unary.operand->ast, "Datatype for '%s' must be an integer", ast_opstr(asttype));
+            if (!ast_is_mathish_integer(ast->unary.operand)) {
+                failf_ast(ctx, &ast->unary.operand->ast, "Can't use a datatype of '%s' with '%s' operator", ast->unary.operand->ast.dt->name, ast_opstr(asttype));
                 ast->ast.dt = ctx->datatype_int;
             } else {
                 ast->ast.dt = ast->unary.operand->ast.dt;
@@ -969,8 +1000,8 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
 
         case SDL_SHADER_AST_OP_NOT:
             semantic_analysis_treewalk(ctx, ast->unary.operand);
-            if (!ast_is_boolean(ast->unary.operand)) {  /* GLSL does not dither ints to bools either. */
-                failf_ast(ctx, &ast->unary.operand->ast, "Datatype for '%s' must be an boolean", ast_opstr(asttype));
+            if (!ast_is_booleanish(ast->unary.operand)) {  /* GLSL does not dither ints to bools either. */
+                failf_ast(ctx, &ast->unary.operand->ast, "Can't use a datatype of '%s' with '%s' operator", ast->unary.operand->ast.dt->name, ast_opstr(asttype));
                 ast->ast.dt = ctx->datatype_boolean;
             } else {
                 ast->ast.dt = ast->unary.operand->ast.dt;
@@ -1078,14 +1109,13 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
         case SDL_SHADER_AST_OP_BINARYAND:
         case SDL_SHADER_AST_OP_BINARYXOR:
         case SDL_SHADER_AST_OP_BINARYOR:
-            /* !!! FIXME: these should work with integer vectors and matrices, too */
             semantic_analysis_treewalk(ctx, ast->binary.left);
-            if (!ast_is_integer(ast->binary.left)) {
-                failf_ast(ctx, &ast->binary.left->ast, "Datatypes for '%s' operator must be integers", ast_opstr(asttype));
+            if (!ast_is_mathish_integer(ast->binary.left)) {
+                failf_ast(ctx, &ast->binary.left->ast, "Can't use a datatype of '%s' with the '%s' operator", ast->binary.left->ast.dt->name, ast_opstr(asttype));
             }
             semantic_analysis_treewalk(ctx, ast->binary.right);
-            if (!ast_is_integer(ast->binary.right)) {
-                failf_ast(ctx, &ast->binary.right->ast, "Datatypes for '%s' operator must be integers", ast_opstr(asttype));
+            if (!ast_is_mathish_integer(ast->binary.right)) {
+                failf_ast(ctx, &ast->binary.right->ast, "Can't use a datatype of '%s' with the '%s' operator", ast->binary.right->ast.dt->name, ast_opstr(asttype));
             }
             if (!ast_datatypes_match(ast->binary.left, ast->binary.right)) {
                 failf_ast(ctx, &ast->ast, "Datatypes must match with the '%s' operator", ast_opstr(asttype));
@@ -1425,12 +1455,11 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
         case SDL_SHADER_AST_STATEMENT_POSTINCREMENT:
         case SDL_SHADER_AST_STATEMENT_PREDECREMENT:
         case SDL_SHADER_AST_STATEMENT_POSTDECREMENT:
-            /* !!! FIXME: these should work with integer vectors and matrices, too */
             semantic_analysis_treewalk(ctx, ast->incrementstmt.assignment);
             if (!ast_is_lvalue(ctx, ast->incrementstmt.assignment)) {
                 failf_ast(ctx, &ast->incrementstmt.assignment->ast, "Object for '%s' must be an lvalue", ast_opstr(asttype));
-            } else if (!ast_is_number(ast->incrementstmt.assignment)) {
-                failf_ast(ctx, &ast->unary.operand->ast, "Datatype for '%s' must be a number", ast_opstr(asttype));
+            } else if (!ast_is_mathish(ast->incrementstmt.assignment)) {
+                failf_ast(ctx, &ast->unary.operand->ast, "Can't use a datatype of '%s' with the '%s' operator", ast->unary.operand->ast.dt->name, ast_opstr(asttype));
             }
             return;
 
