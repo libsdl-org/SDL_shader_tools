@@ -185,6 +185,13 @@ let alone pointer manipulation.
 There are arrays, and you can pass variables by reference to functions.
 
 
+## There are no line labels or goto statements.
+
+You weren't using these anyhow...right?!  The switch statement still exists
+and works like C, and smells a little like a collection of line labels, but
+it isn't the same thing. You can't make arbitrary jumps around the code.
+
+
 ## Assignments are not expressions.
 
 You can not assign in an expression, which means you can't accidentally do
