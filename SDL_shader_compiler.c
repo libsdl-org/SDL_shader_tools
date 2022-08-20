@@ -1372,6 +1372,7 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
 
         case SDL_SHADER_AST_STATEMENT_VARDECL:
             semantic_analysis_treewalk(ctx, ast->vardeclstmt.vardecl);
+            ast->ast.dt = ast->vardeclstmt.vardecl->ast.dt;
             if (ast->vardeclstmt.initializer != NULL) {
                 semantic_analysis_treewalk(ctx, ast->vardeclstmt.initializer);
                 if (!ast_datatypes_match(ast, ast->vardeclstmt.initializer)) {
@@ -1381,7 +1382,7 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
             /* note that this adds itself to the scope _after_ walking the initializer, so it'll be an error if
                if the initializer attempts to reference the currently-uninitialized value.
                (or at least it'll look for an initialized identifier of the same name higher up the scope stack! */
-            push_scope(ctx, ast);  /* add this to the scope stack; it will pop when the function leaves scope. */
+            push_scope(ctx, (SDL_SHADER_AstNode *) ast->vardeclstmt.vardecl);  /* add this to the scope stack; it will pop when the function leaves scope. */
             return;  /* no data type on statements, nothing else to do. */
 
         case SDL_SHADER_AST_STATEMENT_DO:
