@@ -959,6 +959,30 @@ static void semantic_analysis_validate_function_call_arguments(Context *ctx, SDL
     }
 }
 
+
+static void semantic_analysis_validate_array_index(Context *ctx, SDL_SHADER_AstExpression *left, SDL_SHADER_AstExpression *right, Sint32 idx)
+{
+    Uint32 max_range = 0;
+    SDL_bool bad_index = SDL_FALSE;
+
+    if (idx < 0) {
+        bad_index = SDL_TRUE;
+    } else {
+        switch (left->ast.dt->dtype) {
+            case DT_VECTOR: max_range = left->ast.dt->info.vector.elements; break;
+            case DT_ARRAY: max_range = left->ast.dt->info.array.elements; break;
+            case DT_MATRIX: max_range = left->ast.dt->info.matrix.rows; break;
+            default: ICE(ctx, &right->ast, "Unexpected datatype in array index validation!"); return;
+        }
+        bad_index = (((Uint32) idx) >= max_range) ? SDL_TRUE : SDL_FALSE;
+    }
+
+    if (bad_index) {
+        failf_ast(ctx, &right->ast, "Invalid array index: is %d, must be between 0 and %u", (int) idx, (unsigned int) (max_range-1));
+    }
+}
+
+
 /*
  * Assign datatypes to everything in the tree than needs them, and
  * make sure datatypes all meet requirements (and emit warnings/errors if not),
@@ -1164,21 +1188,32 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
             ast->ast.dt = ctx->datatype_boolean;
             return;
 
-        case SDL_SHADER_AST_OP_DEREF_ARRAY:
+        case SDL_SHADER_AST_OP_DEREF_ARRAY: {
+            Sint32 idx = 0;
+            SDL_bool isarray;
+
             semantic_analysis_treewalk(ctx, ast->binary.left);
-            if (!ast_is_array_dereferenceable(ast->binary.left)) {
+            isarray = ast_is_array_dereferenceable(ast->binary.left);
+            if (!isarray) {
                 failf_ast(ctx, &ast->binary.left->ast, "Datatype to the left of '%s' operator must be array, vector, or matrix", ast_opstr(asttype));
                 ast->ast.dt = ast->binary.left->ast.dt;  /* oh well */
             } else {
                 ast->ast.dt = ast->binary.left->ast.dt->info.array.childdt;
             }
+
             semantic_analysis_treewalk(ctx, ast->binary.right);
             if (!ast_is_integer(ast->binary.right)) {
                 failf_ast(ctx, &ast->binary.right->ast, "Datatype in the '%s' operator must be integer", ast_opstr(asttype));
             }
-            /* !!! FIXME: if this is a constant expression, fail if `left` is out of bounds */
-            /* !!! FIXME: GLSL appears to allow `my_vec4[x]` where `x` is a variable >= 4 ... what happens in this case at runtime? */
+
+            if (isarray) {
+                if (ast_calc_int(ast->binary.right, &idx)) {  /* if a constant int, we can check bounds at compile time. */
+                    semantic_analysis_validate_array_index(ctx, ast->binary.left, ast->binary.right, idx);
+                }
+            }
+
             return;
+        }
 
         case SDL_SHADER_AST_OP_DEREF_STRUCT:
             semantic_analysis_treewalk(ctx, ast->structderef.expr);
