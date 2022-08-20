@@ -358,6 +358,7 @@ static SDL_SHADER_AstArrayBounds *new_array_bounds(Context *ctx, SDL_SHADER_AstE
 {
     NEW_AST_NODE(retval, SDL_SHADER_AstArrayBounds, SDL_SHADER_AST_ARRAY_BOUNDS);
     retval->size = size;
+    retval->next = NULL;
     return retval;
 }
 
