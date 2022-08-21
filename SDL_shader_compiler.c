@@ -1373,6 +1373,11 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
         case SDL_SHADER_AST_STATEMENT_VARDECL:
             semantic_analysis_treewalk(ctx, ast->vardeclstmt.vardecl);
             ast->ast.dt = ast->vardeclstmt.vardecl->ast.dt;
+
+            if (is_reserved_keyword(ast->vardeclstmt.vardecl->name)) {
+                failf_ast(ctx, &ast->ast, "Cannot name a variable with reserved keyword '%s'", ast->vardeclstmt.vardecl->name);
+            }
+
             if (ast->vardeclstmt.initializer != NULL) {
                 semantic_analysis_treewalk(ctx, ast->vardeclstmt.initializer);
                 if (!ast_datatypes_match(ast, ast->vardeclstmt.initializer)) {
@@ -1556,6 +1561,9 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
         case SDL_SHADER_AST_FUNCTION_PARAM:
             /* we already resolved the datatype, so don't do that here. */
             semantic_analysis_validate_function_param_at_attribute(ctx, &ast->fnparam);
+            if (is_reserved_keyword(ast->fnparam.vardecl->name)) {
+                failf_ast(ctx, &ast->ast, "Cannot name a function parameter with reserved keyword '%s'", ast->fnparam.vardecl->name);
+            }
             push_scope(ctx, ast);  /* add this to the scope stack; it will pop when the function leaves scope. */
             return;
 
