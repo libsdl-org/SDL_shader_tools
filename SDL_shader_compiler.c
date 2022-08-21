@@ -308,21 +308,23 @@ static const DataType *resolve_datatype(Context *ctx, SDL_SHADER_AstVarDeclarati
             dt = ctx->datatype_int;  /* oh well */
         }
 
-        #if 0  /* !!! FIXME: rewrite to deal with multiple array dimensions. */
         if (vardecl->arraybounds != NULL) {
-            Sint32 iarraylen = resolve_constant_int_from_ast_expression(ctx, mem->arraysize, 1);
-            if (iarraylen <= 0) {
-                fail_ast(ctx, &mem->arraysize->ast, "Array size must be > 0");
-                iarraylen = 1;
+            SDL_SHADER_AstArrayBounds *i;
+            for (i = vardecl->arraybounds->head; i != NULL; i = i->next) {
+                Sint32 iarraylen = resolve_constant_int_from_ast_expression(ctx, i->size, 1);
+                const DataType *arraydt = NULL;
+                const char *arraydt_name;
+                if (iarraylen <= 0) {
+                    fail_ast(ctx, &i->ast, "Array size must be > 0");
+                    iarraylen = 1;
+                }
+                arraydt_name = get_array_datatype_name(ctx, dt->name, iarraylen);  /* strcache'd. */
+                if (!hash_find(ctx->datatypes, arraydt_name, (const void **) &arraydt)) {
+                    arraydt = add_array_datatype(ctx, arraydt_name, dt, iarraylen);
+                }
+                dt = arraydt;
             }
-            const char *arraydt_name = get_array_datatype_name(ctx, mem->datatype_name, iarraylen);  /* strcache'd. */
-            const DataType *arraydt = NULL;
-            if (!hash_find(ctx->datatypes, arraydt_name, (const void **) &arraydt)) {
-                arraydt = add_array_datatype(ctx, arraydt_name, members[memidx].dt, iarraylen);
-            }
-            dt = arraydt;
         }
-        #endif
 
         ast->dt = dt;
     }
