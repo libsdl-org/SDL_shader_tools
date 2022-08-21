@@ -1232,8 +1232,10 @@ int main(int argc, char **argv)
     params.deallocate = UtilFree;
     params.allocate_data = NULL;
 
-    /* !!! FIXME: check for allocation failure! */
     params.local_include_paths = (const char **) SDL_malloc(sizeof (char *));
+    if (!params.local_include_paths) {
+        fail("Out of memory");
+    }
     params.local_include_paths[0] = ".";
     params.local_include_path_count = 1;
 
@@ -1280,18 +1282,25 @@ int main(int argc, char **argv)
             if (arg == NULL) {
                 fail("no path after '-I'");
             }
-            /* !!! FIXME: check for allocation failure */
             params.local_include_paths = (const char **) SDL_realloc(params.local_include_paths, (params.local_include_path_count + 1) * sizeof (char *));
+            if (!params.local_include_paths) {
+                fail("Out of memory");
+            }
             params.local_include_paths[params.local_include_path_count] = arg;
             params.local_include_path_count++;
         } else if (strncmp(arg, "-D", 2) == 0) {
             SDL_SHADER_PreprocessorDefine *defs = (SDL_SHADER_PreprocessorDefine *) params.defines;
             char *ident = strdup(arg + 2);
-            char *ptr = strchr(ident, '=');
             const char *val = "";
+            char *ptr;
+
+            if (!ident) {
+                fail("Out of memory");
+            }
 
             arg += 2;
 
+            ptr = strchr(ident, '=');
             if (ptr) {
                 *ptr = '\0';
                 val = ptr + 1;
