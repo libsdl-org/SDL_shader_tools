@@ -72,7 +72,6 @@ typedef union TokenData
 
 static void delete_expression(Context *ctx, SDL_SHADER_AstExpression *expr);
 static void delete_statement(Context *ctx, SDL_SHADER_AstStatement *stmt);
-static void delete_assignment_statement(Context *ctx, SDL_SHADER_AstAssignStatement *asstmt);  /* !!! FIXME: stupid for-loop! */
 static void delete_translation_unit(Context *ctx, SDL_SHADER_AstTranslationUnit *unit);
 
 static SDL_SHADER_AstAtAttribute *new_at_attribute(Context *ctx, const char *name, const Sint64 *argument)
