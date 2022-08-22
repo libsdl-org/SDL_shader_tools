@@ -30,6 +30,102 @@
     } \
 }
 
+
+static ScopeItem *push_scope(Context *ctx, SDL_SHADER_AstNode *ast)
+{
+    ScopeItem *item;
+    if (ctx->scope_pool == NULL) {
+        item = (ScopeItem *) Malloc(ctx, sizeof (*item));
+        if (!item) {
+            return NULL;
+        }
+    } else {
+        item = ctx->scope_pool;
+        ctx->scope_pool = item->next;
+    }
+
+    item->ast = ast;
+    item->next = ctx->scope_stack;
+    ctx->scope_stack = item;
+
+    return item;
+}
+
+static void pop_scope(Context *ctx, ScopeItem *item)
+{
+    if (item) {
+        ScopeItem *top_of_stack = ctx->scope_stack;
+        ctx->scope_stack = item->next;
+        item->next = ctx->scope_pool;
+        ctx->scope_pool = top_of_stack;
+    }
+}
+
+static ScopeItem *find_parent_scope(Context *ctx, SDL_SHADER_AstNodeType typ)
+{
+    ScopeItem *i;
+    for (i = ctx->scope_stack; i != NULL; i = i->next) {
+        if (i->ast->ast.type == typ) {
+            return i;
+        }
+    }
+    return NULL;
+}
+
+static SDL_SHADER_AstStatement *find_break_parent(Context *ctx)
+{
+    ScopeItem *scope;
+    for (scope = ctx->scope_stack; scope != NULL; scope = scope->next) {
+        switch (scope->ast->ast.type) {
+            case SDL_SHADER_AST_TRANSUNIT_FUNCTION:
+                return NULL;  /* hit a parent function and not found? Give up, there's nothing in scope. */
+
+            case SDL_SHADER_AST_STATEMENT_DO:
+            case SDL_SHADER_AST_STATEMENT_WHILE:
+            case SDL_SHADER_AST_STATEMENT_FOR:
+            case SDL_SHADER_AST_STATEMENT_SWITCH:
+                return &scope->ast->stmt;
+        }
+    }
+
+    return NULL;  /* didn't find anything. Should this be an ICE? */
+}
+
+static SDL_SHADER_AstStatement *find_continue_parent(Context *ctx)
+{
+    ScopeItem *scope;
+    for (scope = ctx->scope_stack; scope != NULL; scope = scope->next) {
+        switch (scope->ast->ast.type) {
+            case SDL_SHADER_AST_TRANSUNIT_FUNCTION:
+                return NULL;  /* hit a parent function and not found? Give up, there's nothing in scope. */
+
+            case SDL_SHADER_AST_STATEMENT_DO:
+            case SDL_SHADER_AST_STATEMENT_WHILE:
+            case SDL_SHADER_AST_STATEMENT_FOR:
+                return &scope->ast->stmt;
+        }
+    }
+
+    return NULL;  /* didn't find anything. Should this be an ICE? */
+}
+
+static SDL_SHADER_AstNode *find_symbol_in_scope(Context *ctx, const char *sym)
+{
+    ScopeItem *scope;
+    for (scope = ctx->scope_stack; scope != NULL; scope = scope->next) {
+        SDL_SHADER_AstNode *ast = scope->ast;
+        const SDL_SHADER_AstNodeType nodetype = ast->ast.type;
+        if ((nodetype == SDL_SHADER_AST_FUNCTION) && (sym == ast->fn.vardecl->name)) {  /* strcache'd, can compare string pointers */
+            return ast;
+        } else if ((nodetype == SDL_SHADER_AST_VARIABLE_DECLARATION) && (sym == ast->vardecl.name)) {  /* strcache'd, can compare string pointers */
+            return ast;
+        } else if ((nodetype == SDL_SHADER_AST_FUNCTION_PARAM) && (sym == ast->fnparam.vardecl->name)) {  /* strcache'd, can compare string pointers */
+            return ast;
+        }
+    }
+    return NULL;
+}
+
 static Uint32 datatype_element_count(const DataType *dt)
 {
     if (dt) {
@@ -435,6 +531,7 @@ static void semantic_analysis_prepare_functions(Context *ctx)
                     i->ast.dt = resolve_datatype(ctx, i->vardecl);
                 }
             }
+            push_scope(ctx, (SDL_SHADER_AstNode *) fn);
         }
     }
 }
@@ -773,84 +870,6 @@ static void semantic_analysis_validate_function_param_at_attribute(Context *ctx,
 {
     //SDL_SHADER_AstAtAttribute *atattr = fnparam->attribute;
     /* !!! FIXME: write me */
-}
-
-static ScopeItem *push_scope(Context *ctx, SDL_SHADER_AstNode *ast)
-{
-    ScopeItem *item;
-    if (ctx->scope_pool == NULL) {
-        item = (ScopeItem *) Malloc(ctx, sizeof (*item));
-        if (!item) {
-            return NULL;
-        }
-    } else {
-        item = ctx->scope_pool;
-        ctx->scope_pool = item->next;
-    }
-
-    item->ast = ast;
-    item->next = ctx->scope_stack;
-    ctx->scope_stack = item;
-
-    return item;
-}
-
-static void pop_scope(Context *ctx, ScopeItem *item)
-{
-    if (item) {
-        ScopeItem *top_of_stack = ctx->scope_stack;
-        ctx->scope_stack = item->next;
-        item->next = ctx->scope_pool;
-        ctx->scope_pool = top_of_stack;
-    }
-}
-
-static ScopeItem *find_parent_scope(Context *ctx, SDL_SHADER_AstNodeType typ)
-{
-    ScopeItem *i;
-    for (i = ctx->scope_stack; i != NULL; i = i->next) {
-        if (i->ast->ast.type == typ) {
-            return i;
-        }
-    }
-    return NULL;
-}
-
-static SDL_SHADER_AstStatement *find_break_parent(Context *ctx)
-{
-    ScopeItem *scope;
-    for (scope = ctx->scope_stack; scope != NULL; scope = scope->next) {
-        switch (scope->ast->ast.type) {
-            case SDL_SHADER_AST_FUNCTION:
-                return NULL;  /* hit a parent function and not found? Give up, there's nothing in scope. */
-
-            case SDL_SHADER_AST_STATEMENT_DO:
-            case SDL_SHADER_AST_STATEMENT_WHILE:
-            case SDL_SHADER_AST_STATEMENT_FOR:
-            case SDL_SHADER_AST_STATEMENT_SWITCH:
-                return &scope->ast->stmt;
-        }
-    }
-
-    return NULL;  /* didn't find anything. Should this be an ICE? */
-}
-
-static SDL_SHADER_AstStatement *find_continue_parent(Context *ctx)
-{
-    ScopeItem *scope;
-    for (scope = ctx->scope_stack; scope != NULL; scope = scope->next) {
-        switch (scope->ast->ast.type) {
-            case SDL_SHADER_AST_FUNCTION:
-                return NULL;  /* hit a parent function and not found? Give up, there's nothing in scope. */
-
-            case SDL_SHADER_AST_STATEMENT_DO:
-            case SDL_SHADER_AST_STATEMENT_WHILE:
-            case SDL_SHADER_AST_STATEMENT_FOR:
-                return &scope->ast->stmt;
-        }
-    }
-
-    return NULL;  /* didn't find anything. Should this be an ICE? */
 }
 
 
@@ -1272,27 +1291,22 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
             ast->ast.dt = ast->ternary.center->ast.dt;
             return;
 
-        case SDL_SHADER_AST_OP_IDENTIFIER:
-            for (scope = ctx->scope_stack; scope != NULL; scope = scope->next) {
-                const SDL_SHADER_AstNodeType nodetype = scope->ast->ast.type;
-                if (nodetype == SDL_SHADER_AST_FUNCTION) {  /* hit the function and not found? Give up. We don't, at the moment, have any global variables. */
-                    break;
-                } else if ((nodetype == SDL_SHADER_AST_VARIABLE_DECLARATION) && (ast->identifier.name == scope->ast->vardecl.name)) {  /* strcache'd, can compare string pointers */
-                    ast->ast.dt = scope->ast->ast.dt;
-                    break;
-                } else if ((nodetype == SDL_SHADER_AST_FUNCTION_PARAM) && (ast->identifier.name == scope->ast->fnparam.vardecl->name)) {  /* strcache'd, can compare string pointers */
-                    ast->ast.dt = scope->ast->ast.dt;
-                    break;
+        case SDL_SHADER_AST_OP_IDENTIFIER: {
+            const char *sym = ast->identifier.name;
+            SDL_SHADER_AstNode *obj = find_symbol_in_scope(ctx, sym);
+            if (obj) {
+                if (ast->ast.type == SDL_SHADER_AST_FUNCTION) {
+                    /* this would have landed in SDL_SHADER_AST_OP_CALLFUNC instead of _INDENTIFIER if they called the function instead of referencing it. */
+                    failf_ast(ctx, &ast->ast, "Trying to use function '%s' like a variable; did you mean to call this function?", sym);
                 }
-            }
-
-            /* !!! FIXME: if NULL, search functions and datatypes, and if it matches, give a clearer error message. */
-
-            if (ast->ast.dt == NULL) {
-                failf_ast(ctx, &ast->ast, "Variable '%s' undeclared", ast->identifier.name);  /* !!! FIXME: gcc limits this to one error per function for each undeclared identifier. */
-                ast->ast.dt = ctx->datatype_int;
+                ast->ast.dt = obj->ast.dt;  /* assume they meant to call the function if we hit the failf above. */
+            } else {
+                /* !!! FIXME: search datatypes and give a clearer error message if found. */
+                failf_ast(ctx, &ast->ast, "'%s' undeclared", sym);  /* !!! FIXME: gcc limits this to one error per function for each undeclared identifier. */
+                ast->ast.dt = NULL;
             }
             return;
+        }
 
         case SDL_SHADER_AST_OP_INT_LITERAL:
             ast->ast.dt = ctx->datatype_int;
@@ -1309,7 +1323,12 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
         case SDL_SHADER_AST_OP_CALLFUNC: {  /* this might be a function call or constructor. */
             SDL_SHADER_AstFunctionCallExpression *fncall = &ast->fncall;
             const char *name = fncall->fnname;
+            SDL_SHADER_AstNode *scoped_node;
             SDL_SHADER_AstFunction *i;
+            SDL_bool walk_args = SDL_TRUE;
+
+            ast->ast.dt = NULL;   /* until proven otherwise. */
+
             for (i = ctx->functions; i != NULL; i = i->nextfn) {
                 if (i->vardecl->name == name) {  /* strcache'd, we can compare pointers. */
                     break;
@@ -1319,6 +1338,7 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
             if (i != NULL) {  /* `i != NULL` means "this is a user-defined function" */
                 fncall->fn = i;
                 fncall->ast.dt = i->ast.dt;
+                walk_args = SDL_FALSE;
                 semantic_analysis_validate_function_call_arguments(ctx, fncall);
 
             // !!! FIXME: } else { search intrinsic functions
@@ -1326,17 +1346,27 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
             } else if (hash_find(ctx->datatypes, name, (const void **) &fncall->ast.dt)) {  /* if the name is a datatype, this is a constructor. */
                 if (fncall->ast.dt == NULL) {
                     ICE(ctx, &ast->ast, "Successfully looked up datatype but the datatype turned out to be NULL!");
-                    fncall->ast.dt = ctx->datatype_int;  /* oh well */
                 } else {
+// !!! FIXME                    walk_args = SDL_FALSE;
 // !!! FIXME                    semantic_analysis_validate_constructor_arguments(ctx, fncall);
                 }
+            } else if ((scoped_node = find_symbol_in_scope(ctx, name)) != NULL) {   /* maybe they referenced a non-function variable...? */
+                failf_ast(ctx, &ast->ast, "'%s' is not a function", name);
+                /* !!! FIXME: gcc helpfully shows you the line where `name` was declared here. */
             } else {
-                failf_ast(ctx, &ast->ast, "Function '%s' undeclared", name);  /* !!! FIXME: gcc limits this to one error per function for each undeclared identifier. */
-                fncall->ast.dt = ctx->datatype_int;
+                failf_ast(ctx, &ast->ast, "'%s' undeclared", name);  /* !!! FIXME: gcc limits this to one error per function for each undeclared identifier. */
             }
+
+            /* walk the arguments to validate them even though we can't actually use this as a function call. */
+            if (walk_args) {
+                SDL_SHADER_AstArgument *arg;
+                for (arg = fncall->arguments ? fncall->arguments->head : NULL; arg; arg = arg->next) {
+                    semantic_analysis_treewalk(ctx, arg->arg);
+                }
+            }
+
             return;
         }
-
 
         /* NOTE THAT STATEMENT *BLOCKS* WILL ITERATE CHILDREN, AND EACH STATEMENT DOES NOT RECURSE OVER ITS `next` FIELD. */
         /* STATEMENTS _DO_ RECURSE OVER THEIR OWN CHILDREN, AS THEY ARE THE ONLY ONES THAT KNOW ABOUT THEM. */
@@ -1359,15 +1389,10 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
             return;
 
         case SDL_SHADER_AST_STATEMENT_DISCARD:
-            for (scope = ctx->scope_stack; scope != NULL; scope = scope->next) {
-                const SDL_SHADER_AstNodeType nodetype = scope->ast->ast.type;
-                if (nodetype == SDL_SHADER_AST_FUNCTION) {
-                    break;
-                }
-            }
+            scope = find_parent_scope(ctx, SDL_SHADER_AST_TRANSUNIT_FUNCTION);
             if (!scope) {
-                fail_ast(ctx, &ast->ast, "Discard statement must be inside a function");  /* this _probably_ can't happen, but just in case. */
-            } else if (scope->ast->fn.fntype != SDL_SHADER_AST_FNTYPE_FRAGMENT) {
+                fail_ast(ctx, &ast->ast, "Discard statement must be inside a function");  /* Parsing _shouldn't_ allow this, but just in case. */
+            } else if (scope->ast->fnunit.fn->fntype != SDL_SHADER_AST_FNTYPE_FRAGMENT) {
                 fail_ast(ctx, &ast->ast, "Discard statements are only allowed in @fragment functions");
             }
             return;  /* no data type on statements, nothing else to do. */
@@ -1467,11 +1492,11 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
             if (ast->returnstmt.value) {
                 semantic_analysis_treewalk(ctx, ast->returnstmt.value);
             }
-            scope = find_parent_scope(ctx, SDL_SHADER_AST_FUNCTION);
+            scope = find_parent_scope(ctx, SDL_SHADER_AST_TRANSUNIT_FUNCTION);
             if (!scope) {
                 fail_ast(ctx, &ast->ast, "Return statement outside of a function");  /* in theory, parsing shouldn't allow this...? */
             } else {
-                SDL_SHADER_AstFunction *fn = &scope->ast->fn;
+                SDL_SHADER_AstFunction *fn = scope->ast->fnunit.fn;
                 if ((ast->returnstmt.value == NULL) && (fn->ast.dt != NULL)) {
                     fail_ast(ctx, &ast->ast, "Return statement with no value, but function does not return 'void'");
                 } else if ((ast->returnstmt.value != NULL) && (fn->ast.dt == NULL)) {
@@ -1547,8 +1572,8 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
             return;
 
         case SDL_SHADER_AST_FUNCTION:
-            scope = push_scope(ctx, ast);
-            /* we already resolved the return value datatype in semantic_analysis_prepare_functions() */
+            /* we already pushed all functions onto the scope stack, for symbol resolution purposes, so don't do it again here. */
+            /* we already resolved the return value datatype in semantic_analysis_prepare_functions(), too. */
             semantic_analysis_validate_function_at_attribute(ctx, &ast->fn);
             if (ast->fn.params != NULL) {  /* NULL here means "void" */
                 SDL_SHADER_AstFunctionParam *i;
@@ -1556,8 +1581,7 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
                     semantic_analysis_treewalk(ctx, i);
                 }
             }
-            semantic_analysis_treewalk(ctx, ast->fn.code);
-            pop_scope(ctx, scope);
+            semantic_analysis_treewalk(ctx, ast->fn.code);  /* analyze this function's code! */
             return;
 
         case SDL_SHADER_AST_FUNCTION_PARAM:
@@ -1576,7 +1600,11 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
             return;
 
         case SDL_SHADER_AST_TRANSUNIT_FUNCTION:  /* just walk further into the contained AST node */
+            /* the functions themselves are already in the global scope when walking the tree, for symbol resolution, so just push the translation unit
+               here so we can know when walking the scope stack out of the current function and into the global namespace. */
+            scope = push_scope(ctx, ast);
             semantic_analysis_treewalk(ctx, ast->fnunit.fn);
+            pop_scope(ctx, scope);
             return;
 
         case SDL_SHADER_AST_TRANSUNIT_STRUCT:  /* just walk further into the contained AST node */
@@ -1609,6 +1637,8 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
 
 static void semantic_analysis(Context *ctx, const SDL_SHADER_CompilerParams *params)
 {
+    ScopeItem *scope;
+
     ICE_IF(ctx, &ctx->ast_before, ctx->isfail, "Went on to semantic analysis even though parsing had failed!");
 
     if (!ctx->shader || !ctx->shader->units || !ctx->shader->units->head) {
@@ -1616,11 +1646,18 @@ static void semantic_analysis(Context *ctx, const SDL_SHADER_CompilerParams *par
         return;
     }
 
+    scope = push_scope(ctx, (SDL_SHADER_AstNode *) ctx->shader);
+    if (!scope) {
+        return;  /* will have set the out_of_memory flag. */
+    }
+
     semantic_analysis_build_globals_lists(ctx);
     semantic_analysis_check_globals_for_duplicates(ctx);
     semantic_analysis_gather_datatypes(ctx);
     semantic_analysis_prepare_functions(ctx);
     semantic_analysis_treewalk(ctx, ctx->shader);
+
+    pop_scope(ctx, scope);
 
     ICE_IF(ctx, &ctx->ast_after, ctx->scope_stack != NULL, "Scope stack isn't empty!");
 }
