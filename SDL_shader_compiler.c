@@ -406,6 +406,7 @@ static const DataType *resolve_datatype(Context *ctx, SDL_SHADER_AstVarDeclarati
 
         if (vardecl->arraybounds != NULL) {
             SDL_SHADER_AstArrayBounds *i;
+            ICE_IF(ctx, &vardecl->ast, dt->dtype == DT_VOID, "A void type with array bounds?!");
             for (i = vardecl->arraybounds->head; i != NULL; i = i->next) {
                 Sint32 iarraylen = resolve_constant_int_from_ast_expression(ctx, i->size, 1);
                 const DataType *arraydt = NULL;
@@ -431,11 +432,6 @@ static const DataType *resolve_datatype(Context *ctx, SDL_SHADER_AstVarDeclarati
 static void add_global_user_datatypes(Context *ctx)
 {
     const SDL_SHADER_AstStructDeclaration *i;
-
-    if (!ctx->datatype_int) {
-        ICE_IF(ctx, &ctx->ast_before, !ctx->out_of_memory, "We don't have an int datatype but aren't out of memory...?");  /* should be only reason... */
-        return;
-    }
 
     for (i = ctx->structs; i != NULL; i = i->nextstruct) {
         alloc_datatype(ctx, i->name, DT_STRUCT);  /* add all the structs first, uninitialized, so they can reference each other in any order. */
@@ -484,6 +480,12 @@ static void semantic_analysis_gather_datatypes(Context *ctx)
     char name[32];
     Uint32 i, j, k;
 
+    /* this is just for void function return values. */
+    ctx->datatype_void = add_scalar_datatype(ctx, "void", DT_VOID);
+    if (!ctx->datatype_void) {
+        return;  /* out of memory, probably. */
+    }
+
     for (i = 0; i < SDL_arraysize(base_types); i++) {
         const DataType *scalar = add_scalar_datatype(ctx, base_types[i].name, base_types[i].dtt);
         if (!scalar) {
@@ -524,7 +526,7 @@ static void semantic_analysis_prepare_functions(Context *ctx)
     if (ctx->functions) {
         SDL_SHADER_AstFunction *fn;
         for (fn = ctx->functions; fn != NULL; fn = fn->nextfn) {
-            fn->ast.dt = fn->vardecl->datatype_name ? resolve_datatype(ctx, fn->vardecl) : NULL;
+            fn->ast.dt = resolve_datatype(ctx, fn->vardecl);
             if (fn->params != NULL) {  /* NULL here means "void" */
                 SDL_SHADER_AstFunctionParam *i;
                 for (i = fn->params->head; i != NULL; i = i->next) {
@@ -1317,11 +1319,13 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
             const char *sym = ast->identifier.name;
             SDL_SHADER_AstNode *obj = find_symbol_in_scope(ctx, sym);
             if (obj) {
-                if (ast->ast.type == SDL_SHADER_AST_FUNCTION) {
+                if (obj->ast.type == SDL_SHADER_AST_FUNCTION) {
                     /* this would have landed in SDL_SHADER_AST_OP_CALLFUNC instead of _INDENTIFIER if they called the function instead of referencing it. */
                     failf_ast(ctx, &ast->ast, "Trying to use function '%s' like a variable; did you mean to call this function?", sym);
+                    ast->ast.dt = NULL;
+                } else {
+                    ast->ast.dt = obj->ast.dt;
                 }
-                ast->ast.dt = obj->ast.dt;  /* assume they meant to call the function if we hit the failf above. */
             } else {
                 /* !!! FIXME: search datatypes and give a clearer error message if found. */
                 failf_ast(ctx, &ast->ast, "'%s' undeclared", sym);  /* !!! FIXME: gcc limits this to one error per function for each undeclared identifier. */

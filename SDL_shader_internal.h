@@ -269,6 +269,7 @@ typedef SDL_SHADER_AstDataType DataType;
 
 typedef enum DataTypeType
 {
+    DT_VOID,
     DT_BOOLEAN,
     DT_INT,
     DT_UINT,
@@ -369,6 +370,7 @@ typedef struct Context
     HashTable *datatypes;
     SDL_SHADER_AstNodeInfo ast_before;  /* for fail_ast's use, for errors that count as "before" the source file */
     SDL_SHADER_AstNodeInfo ast_after;  /* for fail_ast's use, for errors that count as "after" the source file */
+    const DataType *datatype_void;  /* just a pointer to a value in datatypes (do not free) */
     const DataType *datatype_int;  /* just a pointer to a value in datatypes (do not free) */
     const DataType *datatype_float;  /* just a pointer to a value in datatypes (do not free) */
     const DataType *datatype_boolean;  /* just a pointer to a value in datatypes (do not free) */

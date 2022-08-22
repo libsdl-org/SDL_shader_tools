@@ -108,7 +108,7 @@ function(A) ::= FUNCTION at_attrib(B) IDENTIFIER(C) function_params(D) COLON ret
 
 %type return_type { const char * }
 %destructor return_type {}  // these are NULL or strcache'd, don't free them.
-return_type(A) ::= VOID. { A = NULL; }
+return_type(A) ::= VOID(B). { A = B.string; }
 return_type(A) ::= IDENTIFIER(B). { A = B.string; }  // let semantic analysis figure it out.
 
 %type function_params { SDL_SHADER_AstFunctionParams * }
