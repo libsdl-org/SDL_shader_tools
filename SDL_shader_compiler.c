@@ -1021,6 +1021,35 @@ static void semantic_analysis_validate_array_index(Context *ctx, SDL_SHADER_AstE
     }
 }
 
+static void report_undefined(Context *ctx, const SDL_SHADER_AstNodeInfo *ast, const char *sym)
+{
+    const size_t maxsyms = SDL_arraysize(ctx->undefined_identifiers);
+    const size_t total = ctx->num_undefined_identifiers;
+    size_t i;
+
+    for (i = 0; i < total; i++) {
+        if (sym == ctx->undefined_identifiers[i]) {   /* strcache'd, you can compare pointers. */
+            return;  /* we already complained about this one, don't report it again. */
+        }
+    }
+
+    if (total < maxsyms) {
+        failf_ast(ctx, ast, "'%s' undefined", sym);
+    }
+
+    if (!ctx->reported_undefined) {
+        ctx->reported_undefined = SDL_TRUE;
+        fail_ast(ctx, ast, "(Each undefined item is only reported once per-function.)");
+    }
+
+    if (total < maxsyms) {
+        ctx->undefined_identifiers[ctx->num_undefined_identifiers++] = sym;  /* strcache'd */
+    } else if (total == maxsyms) {
+        fail_ast(ctx, ast, "(Too many undefined items in this function; not reporting any more. Fix your program!)");
+        ctx->num_undefined_identifiers++;
+    }
+}
+
 
 /*
  * Assign datatypes to everything in the tree than needs them, and
@@ -1328,7 +1357,7 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
                 }
             } else {
                 /* !!! FIXME: search datatypes and give a clearer error message if found. */
-                failf_ast(ctx, &ast->ast, "'%s' undeclared", sym);  /* !!! FIXME: gcc limits this to one error per function for each undeclared identifier. */
+                report_undefined(ctx, &ast->ast, sym);
                 ast->ast.dt = NULL;
             }
             return;
@@ -1380,7 +1409,7 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
                 failf_ast(ctx, &ast->ast, "'%s' is not a function", name);
                 /* !!! FIXME: gcc helpfully shows you the line where `name` was declared here. */
             } else {
-                failf_ast(ctx, &ast->ast, "'%s' undeclared", name);  /* !!! FIXME: gcc limits this to one error per function for each undeclared identifier. */
+                report_undefined(ctx, &ast->ast, name);
             }
 
             /* walk the arguments to validate them even though we can't actually use this as a function call. */
@@ -1631,6 +1660,7 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
             scope = push_scope(ctx, ast);
             semantic_analysis_treewalk(ctx, ast->fnunit.fn);
             pop_scope(ctx, scope);
+            ctx->num_undefined_identifiers = 0;  /* reset for next function. */
             return;
 
         case SDL_SHADER_AST_TRANSUNIT_STRUCT:  /* just walk further into the contained AST node */

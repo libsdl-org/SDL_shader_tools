@@ -378,6 +378,9 @@ typedef struct Context
     ScopeItem *scope_pool;
     Uint8 *compile_output;
     size_t compile_output_len;
+    SDL_bool reported_undefined;
+    const char *undefined_identifiers[16];
+    size_t num_undefined_identifiers;
 
 #if 0 /* !!! FIXME, compiler code isn't built into the project yet! */
     SymbolMap variables;
