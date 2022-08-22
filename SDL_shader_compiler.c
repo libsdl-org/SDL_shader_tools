@@ -1640,16 +1640,13 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
         case SDL_SHADER_AST_SHADER: {
             /* shaders don't get a datatype, but they need to walk the tree to resolve everything else. */
             SDL_SHADER_AstTranslationUnit *i;
-            scope = push_scope(ctx, ast);
             for (i = ast->shader.units->head; i != NULL; i = i->next) {
                 semantic_analysis_treewalk(ctx, i);
             }
-            pop_scope(ctx, scope);
             return;
         }
 
         case SDL_SHADER_AST_STRUCT_DECLARATION: /* we handled these in semantic_analysis_gather_datatypes, etc */
-            ICE_IF(ctx, &ast->ast, !ctx->scope_stack || (ctx->scope_stack->ast->ast.type != SDL_SHADER_AST_SHADER), "Unexpected struct declaration!");
             return;  /* if we start to allow struct declarations outside of global scope, this will need to do something. */
 
         case SDL_SHADER_AST_SWITCH_CASE:  /* handled with SDL_SHADER_AST_STATEMENT_SWITCH */
