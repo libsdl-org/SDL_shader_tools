@@ -398,10 +398,10 @@ static const DataType *resolve_datatype(Context *ctx, SDL_SHADER_AstVarDeclarati
     if (dt == NULL) {
         if (!hash_find(ctx->datatypes, vardecl->datatype_name, (const void **) &dt)) {
             failf_ast(ctx, ast, "Unknown data type '%s'", vardecl->datatype_name);
-            dt = ctx->datatype_int;
+            dt = NULL;
         } else if (dt == NULL) {
             ICE(ctx, ast, "Successfully looked up datatype but the datatype turned out to be NULL!");
-            dt = ctx->datatype_int;  /* oh well */
+            dt = NULL;
         }
 
         if (vardecl->arraybounds != NULL) {
@@ -539,12 +539,14 @@ static void semantic_analysis_prepare_functions(Context *ctx)
 static SDL_bool ast_is_integer(const void *_ast)
 {
     const SDL_SHADER_AstNode *ast = (SDL_SHADER_AstNode *) _ast;
+    if (!ast || !ast->ast.dt) { return SDL_TRUE; }  /* assume we error'd elsewhere and let this pretend to work. */
     return ((ast->ast.dt->dtype == DT_INT) || (ast->ast.dt->dtype == DT_UINT)) ? SDL_TRUE : SDL_FALSE;
 }
 
 static SDL_bool ast_is_number(const void *_ast)
 {
     const SDL_SHADER_AstNode *ast = (SDL_SHADER_AstNode *) _ast;
+    if (!ast || !ast->ast.dt) { return SDL_TRUE; }  /* assume we error'd elsewhere and let this pretend to work. */
     switch (ast->ast.dt->dtype) {
         case DT_INT:
         case DT_UINT:
@@ -559,13 +561,16 @@ static SDL_bool ast_is_number(const void *_ast)
 static SDL_bool ast_is_boolean(const void *_ast)
 {
     const SDL_SHADER_AstNode *ast = (SDL_SHADER_AstNode *) _ast;
+    if (!ast || !ast->ast.dt) { return SDL_TRUE; }  /* assume we error'd elsewhere and let this pretend to work. */
     return (ast->ast.dt->dtype == DT_BOOLEAN) ? SDL_TRUE : SDL_FALSE;
 }
 
 static SDL_bool ast_is_booleanish(const void *_ast)
 {
     const SDL_SHADER_AstNode *ast = (SDL_SHADER_AstNode *) _ast;
-    DataTypeType dtt = ast->ast.dt->dtype;
+    DataTypeType dtt;
+    if (!ast || !ast->ast.dt) { return SDL_TRUE; }  /* assume we error'd elsewhere and let this pretend to work. */
+    dtt = ast->ast.dt->dtype;
     if (dtt == DT_VECTOR) {
         dtt = ast->ast.dt->info.vector.childdt->dtype;
     } else if (dtt == DT_MATRIX) {
@@ -578,7 +583,9 @@ static SDL_bool ast_is_booleanish(const void *_ast)
 static SDL_bool ast_is_mathish(const void *_ast)
 {
     const SDL_SHADER_AstNode *ast = (SDL_SHADER_AstNode *) _ast;
-    DataTypeType dtt = ast->ast.dt->dtype;
+    DataTypeType dtt;
+    if (!ast || !ast->ast.dt) { return SDL_TRUE; }  /* assume we error'd elsewhere and let this pretend to work. */
+    dtt = ast->ast.dt->dtype;
     if (dtt == DT_VECTOR) {
         dtt = ast->ast.dt->info.vector.childdt->dtype;
     } else if (dtt == DT_MATRIX) {
@@ -600,7 +607,9 @@ static SDL_bool ast_is_mathish(const void *_ast)
 static SDL_bool ast_is_mathish_integer(const void *_ast)
 {
     const SDL_SHADER_AstNode *ast = (SDL_SHADER_AstNode *) _ast;
-    DataTypeType dtt = ast->ast.dt->dtype;
+    DataTypeType dtt;
+    if (!ast || !ast->ast.dt) { return SDL_TRUE; }  /* assume we error'd elsewhere and let this pretend to work. */
+    dtt = ast->ast.dt->dtype;
     if (dtt == DT_VECTOR) {
         dtt = ast->ast.dt->info.vector.childdt->dtype;
     } else if (dtt == DT_MATRIX) {
@@ -620,6 +629,7 @@ static SDL_bool ast_is_mathish_integer(const void *_ast)
 static SDL_bool ast_is_array_dereferenceable(const void *_ast)
 {
     const SDL_SHADER_AstNode *ast = (SDL_SHADER_AstNode *) _ast;
+    if (!ast || !ast->ast.dt) { return SDL_TRUE; }  /* assume we error'd elsewhere and let this pretend to work. */
     switch (ast->ast.dt->dtype) {
         case DT_ARRAY:
         case DT_VECTOR:
@@ -634,6 +644,7 @@ static SDL_bool ast_is_array_dereferenceable(const void *_ast)
 static SDL_bool ast_is_struct_dereferenceable(const void *_ast)
 {
     const SDL_SHADER_AstNode *ast = (SDL_SHADER_AstNode *) _ast;
+    if (!ast || !ast->ast.dt) { return SDL_TRUE; }  /* assume we error'd elsewhere and let this pretend to work. */
     switch (ast->ast.dt->dtype) {
         case DT_STRUCT:
         case DT_VECTOR:
@@ -658,7 +669,9 @@ static SDL_bool ast_is_lvalue(Context *ctx, const SDL_SHADER_AstExpression *expr
 
 static SDL_bool ast_literal_can_promote_to(const SDL_SHADER_AstNodeType asttype, const DataType *dt)
 {
-    DataTypeType dtt = dt->dtype;
+    DataTypeType dtt;
+    if (!dt) { return SDL_TRUE; }  /* assume we error'd elsewhere and let this pretend to work. */
+    dtt = dt->dtype;
     if (dtt == DT_VECTOR) {
         dtt = dt->info.vector.childdt->dtype;
     } else if (dtt == DT_MATRIX) {
@@ -702,6 +715,9 @@ static SDL_bool ast_literal_can_promote_to(const SDL_SHADER_AstNodeType asttype,
  * Note this just checks if the datatypes are okay, it won't change the nodes in
  * any way, so a post-semantic-analysis stage will have to deal with that.
  *
+ * Note that a NULL datatype means there was an error elsewhere; call this a
+ * "match" so we don't generate a second (probably confusing) error here.
+ *
  * These void pointers are AST nodes. We'll cast to generic ASTs for you so you
  * don't have to!
  */
@@ -710,7 +726,7 @@ static SDL_bool ast_datatypes_match(const void *_a, const void *_b)
     const SDL_SHADER_AstNode *a = (const SDL_SHADER_AstNode *) _a;
     const SDL_SHADER_AstNode *b = (const SDL_SHADER_AstNode *) _b;
     if (!a || !b || !a->ast.dt || !b->ast.dt) {
-        return SDL_FALSE;  /* I guess... */
+        return SDL_TRUE;  /* If one is _missing_, we assume there was a (reported!) problem elsewhere and let it through. */
     } else if (a->ast.dt == b->ast.dt) {
         return SDL_TRUE;  /* easy peasy */
     } else if (ast_literal_can_promote_to(a->ast.type, b->ast.dt)) {
@@ -1027,7 +1043,7 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
             semantic_analysis_treewalk(ctx, ast->unary.operand);
             if (!ast_is_mathish(ast->unary.operand)) {
                 failf_ast(ctx, &ast->unary.operand->ast, "Can't use a datatype of '%s' with unary '%s' operator", ast->unary.operand->ast.dt->name, ast_opstr(asttype));
-                ast->ast.dt = ctx->datatype_int;
+                ast->ast.dt = NULL;
             } else {
                 ast->ast.dt = ast->unary.operand->ast.dt;
             }
@@ -1037,7 +1053,6 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
             semantic_analysis_treewalk(ctx, ast->unary.operand);
             if (!ast_is_mathish_integer(ast->unary.operand)) {
                 failf_ast(ctx, &ast->unary.operand->ast, "Can't use a datatype of '%s' with '%s' operator", ast->unary.operand->ast.dt->name, ast_opstr(asttype));
-                ast->ast.dt = ctx->datatype_int;
             } else {
                 ast->ast.dt = ast->unary.operand->ast.dt;
             }
@@ -1073,13 +1088,20 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
                 inputs_okay = SDL_FALSE;
             }
 
-            ast->ast.dt = left->ast.dt;  /* we might change this below. */
+            if (!left->ast.dt || !right->ast.dt) {
+                inputs_okay = SDL_FALSE;  /* we reported this elsewhere, don't generate new errors. */
+            }
 
             /* multiply will let you use any mathish thing, scalar, vector, or matrix, in either order, so we need some special cases here. */
             /* This (mostly?) follows GLSL conventions. */
-            if (inputs_okay) {
+            if (!inputs_okay) {
+                ast->ast.dt = NULL;
+            } else {
                 const DataTypeType ldtt = left->ast.dt->dtype;
                 const DataTypeType rdtt = right->ast.dt->dtype;
+
+                ast->ast.dt = left->ast.dt;  /* we might change this below. */
+
                 /* some of these don't use ast_datatypes_match because we know they aren't literals, and we need to do deal with child datatypes and not AST nodes */
                 if (ldtt == DT_VECTOR) {
                     if (rdtt == DT_VECTOR) {  /* (v * v) gives you datatype v */
@@ -1258,7 +1280,7 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
 
                         if (ast->ast.dt == NULL) {
                             failf_ast(ctx, &ast->ast, "No such field '%s' in struct '%s'", field, ast->structderef.expr->ast.dt->name);
-                            ast->ast.dt = ctx->datatype_int;  /* oh well */
+                            ast->ast.dt = NULL;
                         }
                         break;
                     }
@@ -1272,7 +1294,7 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
                 
                     default:
                         ICE(ctx, &ast->ast, "Unexpected struct deref type");
-                        ast->ast.dt = ctx->datatype_int;  /* oh well */
+                        ast->ast.dt = NULL;
                         break;
                 }
             }
