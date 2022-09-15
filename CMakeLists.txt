@@ -41,5 +41,11 @@ target_link_libraries(sdl-shader-compiler ${SDL2_LIBRARIES} ${SDL2_LIBRARY})
 
 SET_SOURCE_FILES_PROPERTIES(SDL_shader_ast.c PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/SDL_shader_parser.h")
 
+add_executable(sdl-shader-bytecode-dumper
+    utils/sdl-shader-bytecode-dumper.c
+)
+target_include_directories(sdl-shader-bytecode-dumper PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(sdl-shader-bytecode-dumper PRIVATE ${SDL2_INCLUDE_DIRS} ${SDL2_INCLUDE_DIR})
+
 # end of CMakeLists.txt ...
 
