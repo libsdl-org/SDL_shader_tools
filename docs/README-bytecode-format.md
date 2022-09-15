@@ -125,8 +125,8 @@ can be used in future calculations.
 - MODULO %output, %input1, %input2: `%output = %input1 % %input2;`
 - ADD %output, %input1, %input2: `%output = %input1 + %input2;`
 - SUBTRACT %output, %input1, %input2: `%output = %input1 - %input2;`
-- LSHIFT %output, %input1, %input2: `%output = %input1 << %input2;`
-- RSHIFT %output, %input1, %input2: `%output = %input1 >> %input2;`
+- SHIFTLEFT %output, %input1, %input2: `%output = %input1 << %input2;`
+- SHIFTRIGHT %output, %input1, %input2: `%output = %input1 >> %input2;`
 - LESSTHAN %output, %input1, %input2: `%output = %input1 < %input2;`
 - GREATERTHAN %output, %input1, %input2: `%output = %input1 > %input2;`
 - LESSTHANOREQUAL %output, %input1, %input2: `%output = %input1 <= %input2;`
@@ -212,10 +212,10 @@ _need_ high-level constructs, like GLSL or Shader Model 3 bytecode, etc).
     struct IfInstruction {
         Uint32 opcode;   // each instruction type has a unique value.
         Uint32 num_words;  // number of 32-bit words this struct uses.
-        Uint32 input;  // condition to test
-        Uint32 num_code_words;  // number of 32-bit words in `code`
-        Uint32 code_if_true[];  // num_code_words of 32-bit words; block of instructions if input is true. Can be zero words long.
-        Uint32 code_if_false[];  // num_words-num_code_words of 32-bit words; block of instructions if input is false (the "else" block). Can be zero words long.
+        Uint32 input;  // SSA id of condition to test
+        Uint32 num_true_code_words;  // number of 32-bit words in `code_if_true`
+        Uint32 code_if_true[];  // num_true_code_words of 32-bit words; block of instructions if input is true. Can be zero words long.
+        Uint32 code_if_false[];  // (num_words-4)-num_true_code_words of 32-bit words; block of instructions if input is false (the "else" block). Can be zero words long.
     };
 
 - CALL: Call a function.
@@ -251,20 +251,7 @@ _need_ high-level constructs, like GLSL or Shader Model 3 bytecode, etc).
     struct LoopInstruction {
         Uint32 opcode;   // each instruction type has a unique value.
         Uint32 num_words;  // number of 32-bit words this struct uses.
-        Uint32 code[];  // num_words-2 words of instructions to run once at start of loop.
-    };
-
-- SWITCH: Jump to a code block based on a constant value. This might dither
-  down to a collection of if-statements on some targets!
-
-    struct SwitchInstruction {
-        Uint32 opcode;   // each instruction type has a unique value.
-        Uint32 num_words;  // number of 32-bit words this struct uses.
-        Uint32 input;   // SSA id of value to test against.
-        Uint32 num_cases;  // number of 32-bit words in `cases`
-        Uint32 cases[];  // num_cases words of SSA ids to compare to `input`.
-        Uint32 offsets[];  // num_cases words of offsets into `code` for each case.
-        Uint32 code[];  // block of instructions,
+        Uint32 code[];  // num_words-2 words of instructions to run during loop.
     };
 
 - RETURN: Return from a previous CALL instruction. RETURNing from the entry
@@ -283,6 +270,29 @@ _need_ high-level constructs, like GLSL or Shader Model 3 bytecode, etc).
 - PHI: This uses BinaryOperationInstruction, with two SSA inputs that produce
   a new SSA output, and show up when a branch could cause a variable to end
   up with two different possibilities.
+
+
+### The Swizzle function
+
+- SWIZZLE: Permute a vector into a different order. It can duplicate elements,
+  remove them, or shuffle them around. The `swizvals` is split up into eight
+  bits per element, where 0 means "the value in the x position," 1 means
+  "the value in the y position", etc. A value > 3 means "this field is not used"
+  and once an unused field is seen, all futher fields are considered unused.
+
+  So if you had `myfloat4.yzz` the value would be 0xFF020201 (0x2 being `z`,
+  0x1 being `y`, and 0xFF meaning "unused," which means this spits out a
+  float3).
+
+    struct SwizzleInstruction {
+        Uint32 opcode;   // each instruction type has a unique value.
+        Uint32 num_words;  // always 5.
+        Uint32 output;  // SSA id of where to store the results (zero to not store).
+        Uint32 input;  // SSA id of operand to swizzle.
+        Uint32 swizvals;   // each 8 bits is an index into the vector.
+    };
+
+
 
 
 ### Intrinsic functions
