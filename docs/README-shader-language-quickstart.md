@@ -187,9 +187,19 @@ There are arrays, and you can pass variables by reference to functions.
 
 ## There are no line labels or goto statements.
 
-You weren't using these anyhow...right?!  The switch statement still exists
-and works like C, and smells a little like a collection of line labels, but
-it isn't the same thing. You can't make arbitrary jumps around the code.
+You weren't using these anyhow...right?! You can't make arbitrary jumps
+around the code.
+
+
+## There is no switch statement.
+
+This might change, but for now: the `switch` keyword (plus `case` and
+`default`) add a surprising amount of complexity, and won't necessarily
+dither down to a meaningful operation in many shader targets, and it's not
+clear to me at the moment if shaders really have a use for this anyhow.
+There are drafts of the compiler that understand this statement, though,
+if there's demand, we could re-add it, probably with some safety changes
+to avoid fallthrough bugs, etc.
 
 
 ## Assignments are not expressions.

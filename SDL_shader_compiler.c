@@ -83,7 +83,6 @@ static SDL_SHADER_AstStatement *find_break_parent(Context *ctx)
             case SDL_SHADER_AST_STATEMENT_DO:
             case SDL_SHADER_AST_STATEMENT_WHILE:
             case SDL_SHADER_AST_STATEMENT_FOR:
-            case SDL_SHADER_AST_STATEMENT_SWITCH:
                 return &scope->ast->stmt;
         }
     }
@@ -1512,37 +1511,6 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
             }
             return;  /* no data type on statements, nothing else to do. */
 
-        case SDL_SHADER_AST_STATEMENT_SWITCH: {
-            SDL_SHADER_AstSwitchCase *default_case = NULL;
-            scope = push_scope(ctx, ast);   /* apparently in C, you can declare variables in a case statement, and they are in scope for anything below it! Wild. */
-            semantic_analysis_treewalk(ctx, ast->switchstmt.condition);
-            if (!ast_is_integer(ast->switchstmt.condition)) {
-                fail_ast(ctx, &ast->switchstmt.condition->ast, "Datatype for switch statement condition must be integer");
-            } else {
-                SDL_SHADER_AstSwitchCase *i;
-                for (i = ast->switchstmt.cases->head; i != NULL; i = i->next) {
-                    if (i->condition == NULL) {
-                        if (default_case) {
-                            fail_ast(ctx, &ast->ast, "Switch statement has multiple default cases");
-                            fail_ast(ctx, &default_case->ast, "Previous default case is here");
-                        }
-                        default_case = i;
-                    } else {
-                        semantic_analysis_treewalk(ctx, i->condition);
-                        if (!ast_is_integer(i->condition)) {
-                            fail_ast(ctx, &i->condition->ast, "Datatype for switch case must be integer");
-                        } else {
-                            resolve_constant_int_from_ast_expression(ctx, i->condition, 0);
-                        }
-                        /* !!! FIXME: make sure it's not a duplicate */
-                    }
-                    semantic_analysis_treewalk(ctx, i->code);
-                }
-            }
-            pop_scope(ctx, scope);
-            return;  /* no data type on statements, nothing else to do. */
-        }
-
         case SDL_SHADER_AST_STATEMENT_RETURN:
             if (ast->returnstmt.value) {
                 semantic_analysis_treewalk(ctx, ast->returnstmt.value);
@@ -1679,7 +1647,6 @@ static void semantic_analysis_treewalk(Context *ctx, void *_ast)
         case SDL_SHADER_AST_STRUCT_DECLARATION: /* we handled these in semantic_analysis_gather_datatypes, etc */
             return;  /* if we start to allow struct declarations outside of global scope, this will need to do something. */
 
-        case SDL_SHADER_AST_SWITCH_CASE:  /* handled with SDL_SHADER_AST_STATEMENT_SWITCH */
         case SDL_SHADER_AST_STRUCT_MEMBER: /* we handled these in semantic_analysis_gather_datatypes, etc */
         case SDL_SHADER_AST_AT_ATTRIBUTE:  /* we don't (currently) do anything here. Specific AST nodes need to validate their params. */
         default:

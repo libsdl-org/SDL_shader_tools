@@ -145,7 +145,7 @@ statement(A) ::= FOR LPAREN for_details(B) RPAREN statement_block(C). { A = new_
 statement(A) ::= FOR for_details(B) statement_block(C). { A = new_for_statement(ctx, B, C); }
 statement(A) ::= IF expression(B) statement_block(C). { A = new_if_statement(ctx, B, C, NULL); }
 statement(A) ::= IF expression(B) statement_block(C) ELSE statement_block(D). { A = new_if_statement(ctx, B, C, D); }
-statement(A) ::= SWITCH expression(B) LBRACE switch_case_list(C) RBRACE. { A = new_switch_statement(ctx, B, C); }
+//statement(A) ::= SWITCH expression(B) LBRACE switch_case_list(C) RBRACE. { A = new_switch_statement(ctx, B, C); }
 // NO EXPRESSIONS AS STANDALONE STATEMENTS! statement(A) ::= expression(B) SEMICOLON.
 statement(A) ::= RETURN SEMICOLON. { A = new_return_statement(ctx, NULL); }
 statement(A) ::= RETURN expression(B) SEMICOLON. { A = new_return_statement(ctx, B); }
@@ -224,19 +224,20 @@ for_step(A) ::= increment_statement(B). { A = B; }
 for_step(A) ::= function_call_statement(B). { A = B; }
 for_step(A) ::= . { A = NULL; }
 
-%type switch_case_list { SDL_SHADER_AstSwitchCases * }
-%destructor switch_case_list { delete_switch_cases(ctx, $$); }
-switch_case_list(A) ::= switch_case(B). { A = new_switch_cases(ctx, B); }
-switch_case_list(A) ::= switch_case_list(B) switch_case(C). { B->tail->next = C; B->tail = C; A = B; }
+// `switch` and `case` are removed from the language, for now, but I might readd it later.
+//%type switch_case_list { SDL_SHADER_AstSwitchCases * }
+//%destructor switch_case_list { delete_switch_cases(ctx, $$); }
+//switch_case_list(A) ::= switch_case(B). { A = new_switch_cases(ctx, B); }
+//switch_case_list(A) ::= switch_case_list(B) switch_case(C). { B->tail->next = C; B->tail = C; A = B; }
 
-// You can do math here, as long as it produces an int constant.
-//  ...so "case 3+2:" works.
-%type switch_case { SDL_SHADER_AstSwitchCase * }
-%destructor switch_case { delete_switch_case(ctx, $$); }
-switch_case(A) ::= CASE expression(B) COLON statement(C). { A = new_switch_case(ctx, B, C); }
-switch_case(A) ::= CASE expression(B) COLON. { A = new_switch_case(ctx, B, NULL); }
-switch_case(A) ::= DEFAULT COLON statement(B). { A = new_switch_case(ctx, NULL, B); }
-switch_case(A) ::= DEFAULT COLON. { A = new_switch_case(ctx, NULL, NULL); }
+//// You can do math here, as long as it produces an int constant.
+////  ...so "case 3+2:" works.
+//%type switch_case { SDL_SHADER_AstSwitchCase * }
+//%destructor switch_case { delete_switch_case(ctx, $$); }
+//switch_case(A) ::= CASE expression(B) COLON statement(C). { A = new_switch_case(ctx, B, C); }
+//switch_case(A) ::= CASE expression(B) COLON. { A = new_switch_case(ctx, B, NULL); }
+//switch_case(A) ::= DEFAULT COLON statement(B). { A = new_switch_case(ctx, NULL, B); }
+//switch_case(A) ::= DEFAULT COLON. { A = new_switch_case(ctx, NULL, NULL); }
 
 // one identifier is a datatype, but it might be a user-defined struct. To simplify the
 // grammar, we don't treat the many built-in types as unique tokens or have a USERTYPE token,

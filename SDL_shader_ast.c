@@ -520,52 +520,6 @@ static void delete_if_statement(Context *ctx, SDL_SHADER_AstIfStatement *ifstmt)
     Free(ctx, ifstmt);
 }
 
-static SDL_SHADER_AstSwitchCase *new_switch_case(Context *ctx, SDL_SHADER_AstExpression *condition, SDL_SHADER_AstStatement *code)
-{
-    NEW_AST_NODE(retval, SDL_SHADER_AstSwitchCase, SDL_SHADER_AST_SWITCH_CASE);
-    retval->condition = condition;
-    retval->code = code;
-    retval->next = NULL;
-    return retval;
-}
-
-static void delete_switch_case(Context *ctx, SDL_SHADER_AstSwitchCase *swcase)
-{
-    DELETE_AST_NODE(swcase);
-    delete_expression(ctx, swcase->condition);
-    delete_statement(ctx, swcase->code);
-    delete_switch_case(ctx, swcase->next);
-    Free(ctx, swcase);
-}
-
-static SDL_SHADER_AstSwitchCases *new_switch_cases(Context *ctx, SDL_SHADER_AstSwitchCase *first)
-{
-    NEW_AST_LIST(retval, SDL_SHADER_AstSwitchCases, first);
-    return retval;
-}
-
-static void delete_switch_cases(Context *ctx, SDL_SHADER_AstSwitchCases *cases)
-{
-    DELETE_AST_LIST(cases, SDL_SHADER_AstSwitchCase, delete_switch_case);
-}
-
-static SDL_SHADER_AstStatement *new_switch_statement(Context *ctx, SDL_SHADER_AstExpression *condition, SDL_SHADER_AstSwitchCases *cases)
-{
-    NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstSwitchStatement, SDL_SHADER_AST_STATEMENT_SWITCH);
-    retval->condition = condition;
-    retval->cases = cases;
-    return (SDL_SHADER_AstStatement *) retval;
-}
-
-static void delete_switch_statement(Context *ctx, SDL_SHADER_AstSwitchStatement *swstmt)
-{
-    DELETE_AST_STATEMENT_NODE(swstmt);
-    delete_expression(ctx, swstmt->condition);
-    delete_switch_cases(ctx, swstmt->cases);
-    delete_statement(ctx, swstmt->next);
-    Free(ctx, swstmt);
-}
-
 static SDL_SHADER_AstStatement *new_return_statement(Context *ctx, SDL_SHADER_AstExpression *value)
 {
     NEW_AST_STATEMENT_NODE(retval, SDL_SHADER_AstReturnStatement, SDL_SHADER_AST_STATEMENT_RETURN);
@@ -709,7 +663,6 @@ static void delete_statement(Context *ctx, SDL_SHADER_AstStatement *stmt)
         case SDL_SHADER_AST_STATEMENT_WHILE: delete_while_statement(ctx, &ast->whilestmt); return;
         case SDL_SHADER_AST_STATEMENT_FOR: delete_for_statement(ctx, &ast->forstmt); return;
         case SDL_SHADER_AST_STATEMENT_IF: delete_if_statement(ctx, &ast->ifstmt); return;
-        case SDL_SHADER_AST_STATEMENT_SWITCH: delete_switch_statement(ctx, &ast->switchstmt); return;
         case SDL_SHADER_AST_STATEMENT_RETURN: delete_return_statement(ctx, &ast->returnstmt); return;
         case SDL_SHADER_AST_STATEMENT_ASSIGNMENT: delete_assignment_statement(ctx, &ast->assignstmt); return;
         case SDL_SHADER_AST_STATEMENT_FUNCTION_CALL: delete_fncall_statement(ctx, &ast->fncallstmt); return;
@@ -1021,9 +974,6 @@ static int convert_to_lemon_token(Context *ctx, const char *token, size_t tokenl
             if (tokencmp("for")) return TOKEN_SDLSL_FOR;
             if (tokencmp("do")) return TOKEN_SDLSL_DO;
             if (tokencmp("if")) return TOKEN_SDLSL_IF;
-            if (tokencmp("switch")) return TOKEN_SDLSL_SWITCH;
-            if (tokencmp("case")) return TOKEN_SDLSL_CASE;
-            if (tokencmp("default")) return TOKEN_SDLSL_DEFAULT;
             if (tokencmp("true")) return TOKEN_SDLSL_TRUE;
             if (tokencmp("false")) return TOKEN_SDLSL_FALSE;
             #undef tokencmp

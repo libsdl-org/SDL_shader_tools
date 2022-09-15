@@ -283,42 +283,6 @@ static void print_ast(FILE *io, const SDL_bool substmt, const void *_ast)
             }
             break;
 
-        case SDL_SHADER_AST_STATEMENT_SWITCH:
-            DO_INDENT;
-            fprintf(io, "switch ");
-            print_ast(io, SDL_TRUE, ast->switchstmt.condition);
-            fprintf(io, "\n");
-            DO_INDENT;
-            fprintf(io, "{\n");
-            indent++;
-
-            if (ast->switchstmt.cases) {
-                SDL_SHADER_AstSwitchCase *i;
-                for (i = ast->switchstmt.cases->head; i != NULL; i = i->next) {
-                    DO_INDENT;
-                    if (i->condition) {
-                        fprintf(io, "case ");
-                        print_ast(io, SDL_TRUE, i->condition);
-                        fprintf(io, ":\n");
-                    } else {
-                        fprintf(io, "default:\n");
-                    }
-                    if (i->code) {
-                        isblock = i->code->ast.type == SDL_SHADER_AST_STATEMENT_BLOCK;
-                        if (!isblock) { indent++; }
-                        print_ast(io, SDL_FALSE, i->code);
-                        if (!isblock) { indent--; }
-                        indent--;
-                    }
-                }
-            }
-
-            indent--;
-            fprintf(io, "\n");
-            DO_INDENT;
-            fprintf(io, "}\n");
-            break;
-
         case SDL_SHADER_AST_STATEMENT_RETURN:
             DO_INDENT;
             fprintf(io, "return");
@@ -784,60 +748,6 @@ static void print_ast_xml(FILE *io, const void *_ast)
             }
             indent--;
             DO_INDENT; fprintf(io, "</if_statement>\n");
-            break;
-
-        case SDL_SHADER_AST_STATEMENT_SWITCH:
-            DO_INDENT; fprintf(io, "<switch_statement>\n");
-            indent++;
-            DO_INDENT; fprintf(io, "<condition>\n");
-            indent++;
-            print_ast_xml(io, ast->switchstmt.condition);
-            indent--;
-            DO_INDENT; fprintf(io, "</condition>\n");
-
-            if (ast->switchstmt.cases) {
-                SDL_SHADER_AstSwitchCase *i;
-                DO_INDENT; fprintf(io, "<cases>\n");
-                indent++;
-                for (i = ast->switchstmt.cases->head; i != NULL; i = i->next) {
-                    if (i->condition) {
-                        DO_INDENT; fprintf(io, "<case>\n");
-                        indent++;
-                        if (i->condition) {
-                            DO_INDENT; fprintf(io, "<condition>\n");
-                            indent++;
-                            print_ast_xml(io, i->condition);
-                            indent--;
-                            DO_INDENT; fprintf(io, "</condition>\n");
-                        }
-                        if (i->code) {
-                            DO_INDENT; fprintf(io, "<code>\n");
-                            indent++;
-                            print_ast_xml(io, i->code);
-                            indent--;
-                            DO_INDENT; fprintf(io, "</code>\n");
-                        }
-                        indent--;
-                        DO_INDENT; fprintf(io, "</case>\n");
-                    } else {
-                        DO_INDENT; fprintf(io, "<default_case>\n");
-                        indent++;
-                        if (i->code) {
-                            DO_INDENT; fprintf(io, "<code>\n");
-                            indent++;
-                            print_ast_xml(io, i->code);
-                            indent--;
-                            DO_INDENT; fprintf(io, "</code>\n");
-                        }
-                        indent--;
-                        DO_INDENT; fprintf(io, "</default_case>\n");
-                    }
-                }
-                indent--;
-                DO_INDENT; fprintf(io, "</cases>\n");
-            }
-            indent--;
-            DO_INDENT; fprintf(io, "</switch_statement>\n");
             break;
 
         case SDL_SHADER_AST_STATEMENT_RETURN:
