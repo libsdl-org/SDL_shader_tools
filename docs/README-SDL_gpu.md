@@ -39,7 +39,6 @@ We will _not_ support:
 - Older OpenGL and Direct3D.
 - Wild old APIs like Sony PSP/Vita homebrew, etc.
 
-
 ## What does the shader language look like?
 
 You can examine [the Shader Language Quickstart document](README-shader-language-quickstart.md), and see some
@@ -103,8 +102,8 @@ Longer-form writing about all of this:
 
 ## Questions? Comments? Complaints?
 
-File them at the [current issue tracker](https://github.com/icculus/SDL/issues/new)
+File them at the [current issue tracker](https://github.com/icculus/SDL/issues/new).
 
-This will eventually merge with mainline SDL, but for now, this is where the
-magic happens.
+The API will eventually merge with mainline SDL, and the shader tools will migrate
+to SDL's github organization, but for now, this is where the magic happens.
 
