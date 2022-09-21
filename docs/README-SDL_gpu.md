@@ -55,6 +55,11 @@ which is about 1100 lines of C code and just clears the screen, and then
 show you the [same thing with the new API](https://github.com/icculus/SDL/blob/gpu-api/test/testgpu_simple_clear.c),
 in under 150 lines.
 
+[A spinning cube in GLES2](https://github.com/icculus/SDL/blob/gpu-api/test/testgles2.c) becomes
+[this in the new API](https://github.com/icculus/SDL/blob/gpu-api/test/testgpu_spinning_cube.c),
+but now can work with many different targets and platforms, and gives you an idea of what, you
+know, a _draw call_ looks like.
+
 
 ## Does this replace the existing SDL 2D rendering API?
 
