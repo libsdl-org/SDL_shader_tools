@@ -42,8 +42,8 @@ We will _not_ support:
 
 ## What does the shader language look like?
 
-Current discussion and examples are in [the shader syntax megathread](https://github.com/icculus/SDL_shader_tools/issues/3),
-And you can examine [the Shader Language Quickstart document](README-shader-language-quickstart.md), too.
+And you can examine [the Shader Language Quickstart document](README-shader-language-quickstart.md), and see some
+example code at the start of the [the shader syntax megathread discussion](https://github.com/icculus/SDL_shader_tools/issues/3),
 
 Mostly, it looks a lot like GLSL/HLSL with some footguns removed and some
 (mostly optional!) better syntax alternatives.
