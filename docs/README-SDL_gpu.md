@@ -75,6 +75,43 @@ redundant, but several of them will remain for targets the GPU API doesn't
 support.
 
 
+## Why a new shader language?
+
+HLSL, GLSL, and Metal Shader Language are all fairly complex languages, so to
+support them we would either need to build something that handles all their 
+intricacies, or pull in a large amount of source code we didn't write and don't
+have a strong understanding of...including, perhaps, a dependency on something
+massive like LLVM.
+
+By writing the compiler ourselves for a simple language, we could guarantee it'll
+be small, run fast, offer thread safety (so you can distribute compiles across CPU
+cores), accept a custom allocator, and be easily to embed in offline tools and also
+in games that want to compile shaders on-the-fly.
+
+Tools are readily available that will translate shader source from one language to
+another, so our gamble is that in the worst case, it's just one more target and
+developers can write in HLSL/GLSL as they would anyhow.
+
+But also...I think this is worth saying out loud: almost every popular shading
+language made a conscious choice to be as close to C code as possible, and we can
+make some changes to that syntax to make a _better_ language. We don't have to
+reinvent the wheel here, just make it a bit more round.
+
+
+## Why a new bytecode format?
+
+Part of the problem with existing solutions is that one must ship different cooked shaders
+for different targets, even if just targeting two possible APIs on the same operating system!
+This causes you to spend time compiling shaders more than once when building your
+project, and causes bloat in the final installation...not to mention having to manage these
+logistics in your build system and at runtime. Having one format that works everywhere that
+SDL_gpu does is a better option.
+
+The other question is usually: why didn't we take something off the shelf, like SPIR-V or
+DXIL? These formats are significantly (and in my personal opinion, unnecessarily) complex,
+and supporting them adds an enormous amount of complexity and risk to the project.
+
+
 ## Can I help fund this?
 
 YES. Initial work on this was funded by an Epic Megagrant, and while I'm
