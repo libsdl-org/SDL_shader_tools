@@ -50,19 +50,3 @@ If you just want to see it preprocess stuff, like a C preprocessor does:
 ./sdl-shader-compiler -P -I some_dir -DSOME_DEFINE=SOME_VALUE some_source.shader
 ```
 
-# Questions?
-
-If you have questions, please open an issue on the GitHub repository, or
-feel free to hit me up [on Twitter](https://twitter.com/icculus) or just
-[email me](mailto:icculus@icculus.org).
-
-# Pay me.
-
-Want to help fund this work?
-- [Become my patron on Patreon](https://patreon.com/icculus), or
-- [Sponsor me on GitHub](https://github.com/sponsors/icculus)
-
-Thanks!
-
---ryan.
-
