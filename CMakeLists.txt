@@ -41,16 +41,16 @@ if(CMAKE_CROSSCOMPILING)
         CMAKE_ARGS
             "-DCMAKE_BUILD_TYPE:STRING=Release"
             "-DCMAKE_TOOLCHAIN_FILE:FILEPATH=${BUILD_CMAKE_TOOLCHAIN_FILE}"
-            "-DLEMON_INSTALL:BOOL=ON"
-            "-DCMAKE_INSTALL_PREFIX:PATH=${PROJECT_BINARY_DIR}/lemon/prefix"
+            "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY:PATH=${PROJECT_BINARY_DIR}/lemon/bin"
         BUILD_ALWAYS 1
-        STEP_TARGETS install
+        INSTALL_COMMAND ""
+        STEP_TARGETS build
     )
     add_executable(lemon::lemon IMPORTED)
-    set_target_properties(lemon::lemon PROPERTIES IMPORTED_LOCATION "${PROJECT_BINARY_DIR}/lemon/prefix/bin/lemon")
-    add_dependencies(lemon::lemon lemon-install)
+    set_target_properties(lemon::lemon PROPERTIES IMPORTED_LOCATION "${PROJECT_BINARY_DIR}/lemon/bin/lemon")
+    add_dependencies(lemon::lemon lemon-build)
 else()
-    add_subdirectory(lemon EXCLUDE_FROM_ALL)
+    add_subdirectory(lemon)
 endif()
 
 add_custom_command(
