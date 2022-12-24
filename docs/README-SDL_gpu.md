@@ -85,7 +85,7 @@ massive like LLVM.
 
 By writing the compiler ourselves for a simple language, we could guarantee it'll
 be small, run fast, offer thread safety (so you can distribute compiles across CPU
-cores), accept a custom allocator, and be easily to embed in offline tools and also
+cores), accept a custom allocator, and be easily embedded in offline tools and also
 in games that want to compile shaders on-the-fly.
 
 Tools are readily available that will translate shader source from one language to
