@@ -42,7 +42,7 @@ We will _not_ support:
 ## What does the shader language look like?
 
 You can examine [the Shader Language Quickstart document](README-shader-language-quickstart.md), and see some
-example code at the start of the [the shader syntax megathread discussion](https://github.com/icculus/SDL_shader_tools/issues/3),
+example code at the start of the [the shader syntax megathread discussion](https://github.com/libsdl-org/SDL_shader_tools/issues/3),
 
 Mostly, it looks a lot like GLSL/HLSL with some footguns removed and some
 (mostly optional!) better syntax alternatives.
@@ -132,7 +132,7 @@ Longer-form writing about all of this:
 
 - [Current development branch for the API](https://github.com/icculus/SDL/tree/gpu-api)
 - [SDL_gpu.h, for API documentation](https://github.com/icculus/SDL/blob/gpu-api/include/SDL_gpu.h)
-- [SDL_shader_tools](https://github.com/icculus/SDL_shader_tools), where the shader compiler is being built.
+- [SDL_shader_tools](https://github.com/libsdl-org/SDL_shader_tools), where the shader compiler is being built.
 - [Shader Language Quickstart document](README-shader-language-quickstart.md)
 - [Shader Bytecode Format document](README-bytecode-format.md)
 - [The initial announcement.](https://www.patreon.com/posts/new-project-top-58563886)
