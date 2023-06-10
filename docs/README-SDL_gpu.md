@@ -116,6 +116,14 @@ DXIL? These formats are significantly (and in my personal opinion, unnecessarily
 and supporting them adds an enormous amount of complexity and risk to the project.
 
 
+## But I can still just use Direct3D, right?
+
+Yes! If you want to use any version of Direct3D, Vulkan, Metal, OpenGL, or whatever,
+you can do so, as always: SDL will provide you window handles and get out of your
+way so you can set up any rendering API to use directly. You are in no way forced to
+use the GPU API to use SDL3!
+
+
 ## Can I help fund this?
 
 YES. Initial work on this was funded by an Epic Megagrant, and while I'm
