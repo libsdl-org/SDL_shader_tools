@@ -1,7 +1,9 @@
-cmake_minimum_required(VERSION 3.16)
+ cmake_minimum_required(VERSION 3.16)
 project(SDL_shader_tools LANGUAGES C)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+
+option(SDLSL_TESTS "Build SDL_shader_tools tests" OFF)
 
 include(ExternalProject)
 
@@ -81,3 +83,10 @@ target_include_directories(sdl-shader-bytecode-dumper PRIVATE "${CMAKE_CURRENT_S
 target_link_libraries(sdl-shader-bytecode-dumper PRIVATE SDL2::SDL2)
 target_include_directories(sdl-shader-bytecode-dumper PRIVATE ${SDL2_INCLUDE_DIRS} ${SDL2_INCLUDE_DIR})
 target_compile_definitions(sdl-shader-bytecode-dumper PRIVATE SDL_MAIN_HANDLED)
+
+find_package(Perl)
+if(SDLSL_TESTS AND NOT CMAKE_CROSSCOMPILING AND Perl_FOUND)
+    enable_testing()
+    add_test(NAME SDL_shader_tools-tests COMMAND ${PERL_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/unit_tests/run_tests.pl")
+    set_tests_properties(SDL_shader_tools-tests PROPERTIES WORKING_DIRECTORY "$<TARGET_FILE_DIR:sdl-shader-compiler>")
+endif()

@@ -207,6 +207,7 @@ typedef enum
     TOKEN_PP_ENDIF,
     TOKEN_PP_ERROR,  /* caught in the preprocessor, not passed to caller */
     TOKEN_PP_PRAGMA,
+    TOKEN_PP_BAD,
     TOKEN_INCOMPLETE_STRING_LITERAL,
     TOKEN_INCOMPLETE_COMMENT,
     TOKEN_PP_UNARY_MINUS,  /* used internally, never returned. */
@@ -249,6 +250,7 @@ typedef struct IncludeState
     const unsigned char *lexer_marker;
     SDL_bool report_whitespace;
     SDL_bool asm_comments;
+    SDL_bool expanding_macro;
     size_t orig_length;
     size_t bytes_left;
     Sint32 line;
