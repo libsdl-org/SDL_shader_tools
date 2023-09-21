@@ -8,20 +8,30 @@ jobs:
     runs-on: ${{ matrix.platform.os }}
     strategy:
       matrix:
-        platform:  # !!! FIXME: figure out an efficient way to get SDL2 on the Windows/Mac bots.
-        - { name: Linux,   os: ubuntu-latest, flags: -GNinja }
+        platform:
+        - { name: Linux,   os: ubuntu-latest }
         #- { name: Windows, os: windows-latest }
         #- { name: MacOS,   os: macos-latest }
     steps:
+    - name: Install Ninja
+      uses: turtlesec-no/get-ninja@main
+    - name: Set up SDL
+      id: sdl
+      uses: libsdl-org/setup-sdl@main
+      with:
+        cmake-generator: Ninja
+        version: 2-head
     - name: Setup Linux dependencies
-      if: runner.os == 'Linux'
+      if: ${{ runner.os == 'Linux' }}
       run: |
+        # !!! FIXME: figure out an efficient way to get SDL2 on the Windows/Mac bots.
         sudo apt-get update
-        sudo apt-get install cmake ninja-build libsdl2-dev re2c
+        sudo apt-get install re2c
     - name: Get SDL_shader_tools sources
       uses: actions/checkout@v2
     - name: Configure CMake
-      run: cmake -B build ${{ matrix.platform.flags }}
+      run: cmake -B build -GNinja -DSDLSL_TESTS=ON
     - name: Build
       run: cmake --build build/
-
+    - name: Test
+      run: ctest -V --test-dir build --no-tests=error

@@ -90,6 +90,7 @@ void SDL_SHADER_print_debug_token(const char *subsystem, const char *token,
         TOKENCASE(TOKEN_PP_ENDIF);
         TOKENCASE(TOKEN_PP_ERROR);
         TOKENCASE(TOKEN_PP_PRAGMA);
+        TOKENCASE(TOKEN_PP_BAD);
         TOKENCASE(TOKEN_INCOMPLETE_STRING_LITERAL);
         TOKENCASE(TOKEN_INCOMPLETE_COMMENT);
         TOKENCASE(TOKEN_BAD_CHARS);
@@ -128,7 +129,7 @@ static const char *attempt_include_open(const char *path, const char *fname,
     char *fullpath = (char *) m(len, d);
     if (fullpath == NULL) {
         SDL_snprintf(failstr, failstrlen, "Out of memory");
-        return SDL_FALSE;
+        return NULL;
     }
 
     *failstr = '\0';
@@ -205,7 +206,7 @@ static const char *internal_include_open(SDL_SHADER_IncludeType inctype,
         char *parent_dir = m(slen, d);
         if (!parent_dir) {
             SDL_snprintf(failstr, failstrlen, "Out of memory");
-            return SDL_FALSE;
+            return NULL;
         }
         SDL_snprintf(parent_dir, slen, "%s", parent_fname);
         ptr = SDL_strrchr(parent_dir, '/');
@@ -934,6 +935,14 @@ static void handle_pp_error(Context *ctx)
 }
 
 
+static void handle_pp_bad(Context *ctx)
+{
+    IncludeState *state = ctx->include_stack;
+
+    failf(ctx, "unknown directive \"%s\"", state->token);
+}
+
+
 static void handle_pp_define(Context *ctx)
 {
     static const char space = ' ';
@@ -1265,6 +1274,7 @@ static SDL_bool replace_and_push_macro(Context *ctx, const Define *def, const De
     }
 
     state = ctx->include_stack;
+    state->expanding_macro = SDL_TRUE;
     while (lexer(state) != TOKEN_EOI) {
         SDL_bool wantorig = SDL_FALSE;
         const Define *arg = NULL;
@@ -1331,6 +1341,7 @@ static SDL_bool replace_and_push_macro(Context *ctx, const Define *def, const De
             goto replace_and_push_macro_failed;
         }
     }
+    state->expanding_macro = SDL_FALSE;
 
     final = buffer_flatten(buffer);
     if (!final) {
@@ -2106,6 +2117,9 @@ static inline const char *_preprocessor_nexttoken(Context *ctx, size_t *_len, To
             continue;  /* will return at top of loop. */
         } else if (token == TOKEN_PP_PRAGMA) {
             ctx->parsing_pragma = SDL_TRUE;
+        } else if (token == TOKEN_PP_BAD) {
+            handle_pp_bad(ctx);
+            continue;  /* will return at top of loop. */
         }
 
         /* !!! FIXME: was this meant to be an "else if"? */
@@ -2219,7 +2233,7 @@ const SDL_SHADER_PreprocessData *SDL_SHADER_Preprocess(const SDL_SHADER_Compiler
 
         prev_token = token;
     }
-    
+
     SDL_assert(token == TOKEN_EOI);
 
     total_bytes = buffer_size(buffer);

@@ -75,8 +75,8 @@ Token preprocessor_lexer(IncludeState *s)
     QUOTE = ["];
 */
 
-    // preprocessor directives are only valid at start of line.
-    if (s->tokenval == ((Token) '\n')) {
+    // preprocessor directives are only valid at start of line, and when not expanding a macro.
+    if (s->tokenval == ((Token) '\n') && !s->expanding_macro) {
         goto ppdirective;  // may jump back to scanner_loop.
     }
 
@@ -99,11 +99,11 @@ scanner_loop:
     QUOTE           { goto stringliteral; }
 
     L (L|D)*        { RET(TOKEN_IDENTIFIER); }
-    
+
     ("0" [xX] H+) | ("0" D+) | (D+) |
     (['] (ESC|ANY\[\r\n\\'])* ['])
                     { RET(TOKEN_INT_LITERAL); }
-    
+
     (D+ E) | (D* "." D+ E?) | (D+ "." D* E?)
                     { RET(TOKEN_FLOAT_LITERAL); }
 
@@ -229,6 +229,7 @@ ppdirective:
         PP "endif"      { RET(TOKEN_PP_ENDIF); }
         PP "error"      { RET(TOKEN_PP_ERROR); }
         PP "pragma"     { RET(TOKEN_PP_PRAGMA); }
+        PP L (L|D)*     { RET(TOKEN_PP_BAD); }
         WHITESPACE      { goto ppdirective; }
 
         ANY             {
