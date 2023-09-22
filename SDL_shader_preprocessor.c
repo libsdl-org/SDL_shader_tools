@@ -1982,7 +1982,8 @@ static Conditional *handle_pp_if(Context *ctx)
 
     result = reduce_pp_expression(ctx);
     if (result == -1) {
-        return NULL;
+        /* reduce_pp_expression emitted an error internally. Assume result is false to continue processing. */
+        result = 0;
     }
 
     conditional = get_conditional(ctx);
@@ -2006,12 +2007,13 @@ static Conditional *handle_pp_if(Context *ctx)
 
 static void handle_pp_elif(Context *ctx)
 {
-    const int rc = reduce_pp_expression(ctx);
+    int rc = reduce_pp_expression(ctx);
     IncludeState *state;
     Conditional *cond;
 
     if (rc == -1) {
-        return;
+        /* reduce_pp_expression emitted an error internally. Assume result is false to continue processing. */
+        rc = 0;
     }
 
     state = ctx->include_stack;

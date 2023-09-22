@@ -1,0 +1,7 @@
+#if 0
+case_a
+#elif 1+
+case_b
+#else
+case_c
+#endif
