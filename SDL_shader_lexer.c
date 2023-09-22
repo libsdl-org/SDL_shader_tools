@@ -65,7 +65,7 @@ Token preprocessor_lexer(IncludeState *s)
 
 
     // preprocessor directives are only valid at start of line, and when not expanding a macro.
-    if (s->tokenval == ((Token) '\n') && !s->expanding_macro) {
+    if (s->tokenval == ((Token) '\n') && s->current_define == NULL) {
         goto ppdirective;  // may jump back to scanner_loop.
     }
 
