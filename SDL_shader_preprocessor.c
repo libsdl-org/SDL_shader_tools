@@ -1616,25 +1616,35 @@ typedef struct RpnTokens
 static long interpret_rpn(Context *ctx, const RpnTokens *tokens, int tokencount, SDL_bool *_error)
 {
     DECLARE_RPN_ARRAY(stack, long, 16);
+    DECLARE_RPN_ARRAY(error_stack, const char *, 16);
     long retval = 0;
     *_error = SDL_TRUE;  /* by default */
 
     #define NEED_X_TOKENS(x) do { if (stack_size < x) goto interpret_rpn_failed; } while (SDL_FALSE)
 
-    #define BINARY_OPERATION(op) do { \
-        NEED_X_TOKENS(2); \
-        stack[stack_size-2] = stack[stack_size-2] op stack[stack_size-1]; \
-        stack_size--; \
+    #define BINARY_OPERATION(op) do {                                         \
+        NEED_X_TOKENS(2);                                                     \
+        if (error_stack[stack_size-2]) {                                      \
+            /* FIXME: error_stack[stack_size-1] gets dropped */               \
+        } else if (error_stack[stack_size-1]) {                               \
+            error_stack[stack_size-2] = error_stack[stack_size-1];            \
+        } else {                                                              \
+            stack[stack_size-2] = stack[stack_size-2] op stack[stack_size-1]; \
+        }                                                                     \
+        stack_size--;                                                         \
     } while (SDL_FALSE)
 
-    #define UNARY_OPERATION(op) do { \
-        NEED_X_TOKENS(1); \
-        stack[stack_size-1] = op stack[stack_size-1]; \
+    #define UNARY_OPERATION(op) do {                      \
+        NEED_X_TOKENS(1);                                 \
+        if (!error_stack[stack_size-1]) {                 \
+            stack[stack_size-1] = op stack[stack_size-1]; \
+        }                                                 \
     } while (SDL_FALSE)
 
     while (tokencount-- > 0) {
         if (!tokens->isoperator) {
             VERIFY_RPN_ARRAY_ALLOCATION(stack, long, 128, { goto interpret_rpn_failed; });
+            error_stack[stack_size] = NULL;
             stack[stack_size++] = (long) tokens->value;
             tokens++;
             continue;
@@ -1646,8 +1656,6 @@ static long interpret_rpn(Context *ctx, const RpnTokens *tokens, int tokencount,
             case '~': UNARY_OPERATION(~); break;
             case TOKEN_PP_UNARY_MINUS: UNARY_OPERATION(-); break;
             case TOKEN_PP_UNARY_PLUS: UNARY_OPERATION(+); break;
-            case TOKEN_OROR: BINARY_OPERATION(||); break;
-            case TOKEN_ANDAND: BINARY_OPERATION(&&); break;
             case '|': BINARY_OPERATION(|); break;
             case '^': BINARY_OPERATION(^); break;
             case '&': BINARY_OPERATION(&); break;
@@ -1663,10 +1671,50 @@ static long interpret_rpn(Context *ctx, const RpnTokens *tokens, int tokencount,
             case '+': BINARY_OPERATION(+); break;
             case '*': BINARY_OPERATION(*); break;
 
+            case TOKEN_OROR:
+                NEED_X_TOKENS(2);
+                if (error_stack[stack_size-2]) {
+                    stack_size--;
+                    break;
+                }
+                if (stack[stack_size-2]) {
+                    stack_size--;
+                    break;
+                }
+                if (error_stack[stack_size-1]) {
+                    error_stack[stack_size-2] = error_stack[stack_size-1];
+                    stack_size--;
+                    break;
+                }
+                stack[stack_size-2] = stack[stack_size-1];
+                stack_size--;
+                break;
+
+            case TOKEN_ANDAND:
+                NEED_X_TOKENS(2);
+                if (error_stack[stack_size-2]) {
+                    stack_size--;
+                    break;
+                }
+                if (!stack[stack_size-2]) {
+                    stack_size--;
+                    break;
+                }
+                if (error_stack[stack_size-1]) {
+                    error_stack[stack_size-2] = error_stack[stack_size-1];
+                    stack_size--;
+                    break;
+                }
+                stack[stack_size-2] = stack[stack_size-1];
+                stack_size--;
+                break;
+
             case '/':
                 NEED_X_TOKENS(2);
                 if (stack[stack_size-1] == 0) {
-                    goto interpret_rpn_failed;  // division by zero. !!! FIXME: report this error.
+                    error_stack[stack_size-2] = "division by zero";
+                    stack_size--;
+                    break;
                 }
                 BINARY_OPERATION(/);
                 break;
@@ -1674,7 +1722,9 @@ static long interpret_rpn(Context *ctx, const RpnTokens *tokens, int tokencount,
             case '%':
                 NEED_X_TOKENS(2);
                 if (stack[stack_size-1] == 0) {
-                    goto interpret_rpn_failed;  // division by zero. !!! FIXME: report this error.
+                    error_stack[stack_size-2] = "division by zero";
+                    stack_size--;
+                    break;
                 }
                 BINARY_OPERATION(%);
                 break;
@@ -1691,6 +1741,9 @@ static long interpret_rpn(Context *ctx, const RpnTokens *tokens, int tokencount,
 
     if (stack_size == 1) {
         retval = stack[0];
+        if (error_stack[0]) {
+            fail(ctx, error_stack[0]);
+        }
         *_error = SDL_FALSE;
     }
 

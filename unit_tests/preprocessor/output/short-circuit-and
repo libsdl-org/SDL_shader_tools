@@ -1,0 +1,5 @@
+#if 0 && 1 / 0
+bad
+#else
+good
+#endif
