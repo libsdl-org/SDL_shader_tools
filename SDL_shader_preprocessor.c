@@ -939,7 +939,7 @@ static void handle_pp_bad(Context *ctx)
 {
     IncludeState *state = ctx->include_stack;
 
-    failf(ctx, "unknown directive \"%s\"", state->token);
+    failf(ctx, "unknown directive \"%.*s\"", state->tokenlen, state->token);
 }
 
 
@@ -1274,7 +1274,6 @@ static SDL_bool replace_and_push_macro(Context *ctx, const Define *def, const De
     }
 
     state = ctx->include_stack;
-    state->expanding_macro = SDL_TRUE;
     while (lexer(state) != TOKEN_EOI) {
         SDL_bool wantorig = SDL_FALSE;
         const Define *arg = NULL;
@@ -1341,7 +1340,6 @@ static SDL_bool replace_and_push_macro(Context *ctx, const Define *def, const De
             goto replace_and_push_macro_failed;
         }
     }
-    state->expanding_macro = SDL_FALSE;
 
     final = buffer_flatten(buffer);
     if (!final) {
