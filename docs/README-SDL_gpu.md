@@ -9,17 +9,23 @@ work is about.
 
 The idea is that it's a new 3D API, that works with command queues (like
 next-gen APIs like Direct3D 12, Vulkan, and Metal), and leaves all the heavy
-lifting to shaders. Shaders are written in a new programming language, and
-compiles to a cross-platform bytecode. You ship one shader binary that works
+lifting to shaders. Shaders are written in whatever language you like--SDL3
+only cares about the compiled shader binaries--but a new programming language
+and cross-platform bytecode is also being developed.
+
+The ideal scenario is this: you ship one shader binary that works
 everywhere, and the C code you write to draw things works everywhere.
-You can precook shaders, or compile shaders at runtime.
+You can precook shaders, or compile shaders at runtime. SDL3 already has
+the API for your C code, and the SDL_shader_tools repository is focusing
+on building the shader language and binary format.
 
 ## What's supported?
 
-This is still work in progress, but the initial plans are to write backends
-to support:
+The GPU API has been merged into SDL3's revision control!
+Behind the scenes, it currently supports:
 
 - Metal
+- Direct3D 11
 - Direct3D 12
 - Vulkan
 
@@ -28,15 +34,11 @@ Future plans are to also support:
 - WebGPU
 - Various console targets (in a separate fork, under NDA).
 
-We _may_ try to get this to limp along on:
-
-- Direct3D 11.
-- OpenGL 4.5 Core Profile, GLES3, WebGL 2.
-
 We will _not_ support:
 
 - A software renderer.
-- Older OpenGL and Direct3D.
+- OpenGL, OpenGL ES, WebGL.
+- Direct3D older than D3D11.
 - Wild old APIs like Sony PSP/Vita homebrew, etc.
 
 ## Is this going into SDL2?
@@ -44,6 +46,18 @@ We will _not_ support:
 No, this will be part of SDL3, included in the first official release. It will not be backported to SDL2.
 
 ## What does the shader language look like?
+
+Let me preface this by saying: you do _not_ have to use SDL's shader language. The SDL3 GPU 
+API only cares about compiled shader binaries, and it accepts several different formats. So
+if you want to force Vulkan behind the scenes and only provide SPIR-V binaries, or use
+Direct3D 12 and provide DXIL, or provide several binary formats and use several different
+backends, you can do that and not worry about this _at all_. This is the initial solution in
+SDL3, and also happens to be a convenient way to migrate existing rendering code to SDL3.
+
+The SDL shader language is meant to allow one shader language that generates one binary
+format that will work on _any_ SDL3 GPU target, that can be conveniently used to either 
+precook shader binaries with simple command line tools or used as a lightweight shader
+compiler at runtime. It is still under construction.
 
 You can examine [the Shader Language Quickstart document](README-shader-language-quickstart.md), and see some
 example code at the start of the [the shader syntax megathread discussion](https://github.com/libsdl-org/SDL_shader_tools/issues/3).
@@ -54,13 +68,13 @@ Mostly, it looks a lot like GLSL/HLSL with some footguns removed and some
 
 ## What does this look like on the C side?
 
-The best comparison I can give is to look at SDL's [testvulkan.c](https://github.com/icculus/SDL/blob/gpu-api/test/testvulkan.c),
-which is about 1100 lines of C code and just clears the screen, and then
-show you the [same thing with the new API](https://github.com/icculus/SDL/blob/gpu-api/test/testgpu_simple_clear.c),
+The best comparison I can give is to look at SDL's [testvulkan.c](https://github.com/libsdl-org/SDL/blob/main/test/testvulkan.c),
+which is about 1170 lines of C code and just clears the screen, and then
+show you the [same thing with the new API](https://github.com/libsdl-org/SDL/blob/main/test/testgpu_simple_clear.c),
 in under 150 lines.
 
 [A spinning cube in GLES2](https://github.com/icculus/SDL/blob/gpu-api/test/testgles2.c) becomes
-[this in the new API](https://github.com/icculus/SDL/blob/gpu-api/test/testgpu_spinning_cube.c),
+[this in the new API](https://github.com/libsdl-org/SDL/blob/main/test/testgpu_spinning_cube.c),
 but now can work with many different targets and platforms, and gives you an idea of what, you
 know, a _draw call_ looks like.
 
@@ -68,18 +82,21 @@ know, a _draw call_ looks like.
 ## Does this replace the existing SDL 2D rendering API?
 
 Nope! The existing API remains, for when you want simple rendering of 2D
-graphics. However, we will be writing a backend for that API that uses the
-new SDL GPU API directly and exposing the structures you need so you can
+graphics. However, there is a now a 2D backend that that uses the new SDL
+GPU API directly and exposes the structures you need so you can
 jump between them as necessary, which might be nice if you mostly want to
 do 2D but throw some post-processing effects on top, or slot in some 3D
 models, etc.
 
-The 2D API might lose some backends, if the GPU API backend makes them
+The 2D API may lose some backends, if the GPU API backend makes them
 redundant, but several of them will remain for targets the GPU API doesn't
 support.
 
 
 ## Why a new shader language?
+
+(To restate: _you do not need to use the new shader language if you don't want to!_
+But here are some reasons you might want to use it.)
 
 HLSL, GLSL, and Metal Shader Language are all fairly complex languages, so to
 support them we would either need to build something that handles all their 
@@ -156,8 +173,6 @@ Longer-form writing about all of this:
 
 ## Questions? Comments? Complaints?
 
-File them at the [current issue tracker](https://github.com/icculus/SDL/issues/new).
+File GPU API bugs and feedback at the [SDL issue tracker](https://github.com/libsdl-org/SDL/issues/new).
 
-The API will eventually merge with mainline SDL, and the shader tools will migrate
-to SDL's github organization, but for now, this is where the magic happens.
-
+For shader language and bytecode stuff, use the [SDL_shader_tools issue tracker](https://github.com/libsdl-org/SDL_shader_tools/issues/new).
