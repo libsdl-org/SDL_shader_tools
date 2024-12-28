@@ -1,3 +1,14 @@
+
+# THIS IS FUTURE WORK, NOT WHAT SDL3 USES TODAY.
+
+Hi, people coming in from YouTube!
+
+Just to be clear about this project: SDL3 has a GPU API, and it does not
+care what shader _language_ you use, because it only cares about compiled
+shader _binaries_. This shader language is an attempt to build what I
+believe to be a better programmer experience, but it's both not ready yet,
+and not necessary to use the GPU API in any case.
+
 I haven't even proofread this yet, but in case this is something you care
 about, here's how the new shader language is different from C, or GLSL, etc,
 if you just want to get a quick feel for what I'm aiming for.
